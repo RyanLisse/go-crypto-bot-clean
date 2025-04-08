@@ -1,0 +1,192 @@
+# Project Progress
+
+## Advanced Trading Strategies & Risk Management (May 2025)
+- Completed comprehensive specifications for the trading strategy framework
+- Designed three concrete strategies with detailed logic and parameters:
+  - NewCoinStrategy for newly listed assets
+  - VolumeSpikeStrategy for volume-based breakouts
+  - BreakoutStrategy for price range breakouts
+- Specified formulas and algorithms for position sizing calculations
+- Defined drawdown protection mechanisms with thresholds and actions
+- Outlined exposure limits for coins, sectors, and total portfolio
+- Specified risk metrics formulas (Sharpe ratio, max drawdown, win/loss ratio)
+- Developed position management specifications with dynamic stop-loss and trailing stops
+- Designed multi-target take-profit management with partial exit logic
+- Outlined position tracking data requirements and update frequency
+- Created specifications for an optional backtesting framework
+- Implemented risk controls with the following features:
+  - Position sizing based on account balance and risk parameters
+  - Drawdown monitoring with historical balance tracking
+  - Exposure limits to prevent overexposure to the market
+  - Daily loss limits to prevent excessive losses in a single day
+  - Comprehensive risk status reporting
+  - Integration with trade service for risk-aware trading decisions
+- Implemented `PositionService` with the following features:
+  - Opening and closing positions with proper P&L calculation
+  - Setting stop-loss and take-profit levels
+  - Retrieving positions by ID and getting all positions
+  - Calculating current profit/loss for positions
+  - Comprehensive test coverage following TDD principles
+
+## Interface-Based Architecture Implementation
+
+### Code Refactoring (April 2025)
+- Successfully refactored `NewCoinDetectionService` to use `service.ExchangeService` interface
+- Refactored `TradeService` interface with new methods aligned with the specifications
+- Fixed import errors and test failures in the newcoin module
+- Implemented proper interface-based dependency injection
+- Created helper functions to facilitate interface compatibility
+- Resolved warnings about copying lock values in tests
+- Added missing interface method implementations
+- Fixed import path issues in `repositories.go` to reflect the new project structure
+- Implemented the `AccountService` interface with comprehensive unit tests
+- Created domain models for positions and closed positions
+- Added the `github.com/google/uuid` dependency for generating unique IDs
+- Fixed compiler errors and warnings throughout the codebase:
+  - Added `NewNewCoinDetectionService` as an alias to maintain backward compatibility with tests
+  - Implemented missing `StartWatching` and `StopWatching` methods in the NewCoin service
+  - Removed unused fields from `riskService` struct with proper documentation
+  - Fixed unused parameter warnings by replacing them with underscores
+  - Successfully built the project with no compiler errors
+- Implemented new TradeService methods: EvaluatePurchaseDecision, ExecutePurchase, CheckStopLoss, CheckTakeProfit, and SellCoin
+- Updated API handlers to use the new TradeService interface methods
+- Fixed model definition issues:
+  - Resolved JSON tag syntax errors in `models.go`
+  - Fixed model redeclaration issues by commenting out duplicate definitions
+  - Consolidated model definitions in the `models.go` file
+- Addressed interface implementation issues:
+  - Identified and documented method signature mismatches
+  - Found return type mismatch in `GetOrderStatus` method
+  - Discovered mock implementation issues in test files
+
+### Testing Improvements
+- Fixed all test failures in `newcoin_service_test.go`
+- Updated mock implementations to satisfy interface requirements
+- Implemented proper error handling in tests
+- Ensured tests handle edge cases correctly
+- Added appropriate type assertions for interface compatibility
+- Created comprehensive test suite for `AccountService` with mock dependencies
+- Implemented thorough tests for `PositionService` covering all methods
+- Followed Test-Driven Development (TDD) principles by writing tests before implementation
+
+### WebSocket Client Implementation Progress
+
+#### Initial Setup
+- Created basic WebSocket client structure
+- Implemented NewClient method with configuration options
+- Added getter methods for client properties
+- Created placeholder methods for connection and subscription management
+
+#### Connection Implementation
+- Implemented Connect method with WebSocket connection logic
+- Added thread-safe connection state management using RWMutex
+- Implemented Disconnect method
+- Added initial ping/pong handling
+
+#### Advanced WebSocket Features
+- Implemented comprehensive message handling
+- Added ticker subscription and unsubscription methods
+- Implemented reconnection logic with exponential backoff
+- Added error handling for WebSocket operations
+- Processed ticker update messages
+
+### Core Services Implementation (April 2025)
+- Implemented the `AccountService` interface with the following features:
+  - Getting account balance from the exchange
+  - Calculating portfolio value across fiat and crypto assets
+  - Assessing position risk levels for individual symbols
+  - Retrieving all position risks for the portfolio
+  - Validating API keys with the exchange
+- Implemented the `PositionService` interface with comprehensive position management capabilities
+- Implemented the `RiskService` interface with the following features:
+  - Position sizing based on risk parameters
+  - Drawdown monitoring with historical balance tracking
+  - Exposure limits to prevent overexposure
+  - Daily loss limits to prevent excessive losses
+  - Comprehensive risk status reporting
+  - Integration with trade service for risk-aware trading
+- Created necessary domain models for positions and trading operations
+- Designed clean interfaces for repository and market data dependencies
+- Followed SOLID principles with proper dependency injection
+- Ensured all implementations are testable with mock dependencies
+### CLI Implementation (May 2025)
+- Implemented full CLI structure using Cobra
+- Created commands for portfolio management, trading operations, new coin detection, and running the bot
+- Added global flags for configuration, API keys, and database path
+- Integrated CLI commands with service initialization logic
+- CLI matches the detailed design in `docs/implementation/06b-cli-implementation.md`
+- Pending: Resolve import errors once internal packages are finalized
+
+### WebSocket Client Improvements (April 2025)
+- Fixed WebSocket client reconnection logic with exponential backoff
+- Added connection attempt tracking for better testing and monitoring
+- Improved rate limiting with proper context handling for zero or very small rates
+- Enhanced test synchronization with channel-based coordination
+- Fixed test failures in TestReconnectionWithRateLimiting and TestExcessiveSubscriptionRequests
+- Ensured proper context propagation throughout the WebSocket client
+- Added thread-safe connection state tracking with appropriate mutex usage
+- Implemented proper cleanup with disconnect calls in tests
+- All WebSocket tests now pass successfully
+
+### Verification Process
+- Verified Trade Service implementation
+- Verified Portfolio Service implementation
+- Verified Strategy Factory implementation
+- Verified Trade Service integration with Strategy Framework
+- Verified Huma OpenAPI documentation implementation
+- Verified Risk Controls implementation
+
+### Next Implementation Files to Verify
+1. MEXC Main Client (03a-mexc-main-client.md)
+2. API Middleware (07a-api-middleware.md)
+3. ✅ Backtesting Framework (10a-backtesting-framework.md)
+4. ✅ Notification Service (11a-notification-service.md)
+
+### Recent Achievements
+- Implemented strategy factory for managing trading strategies
+- Added Huma integration for OpenAPI documentation
+- Created comprehensive API documentation with interactive UI
+- Implemented adapter for Gin handlers to work with Chi router
+- Added CORS middleware for Chi router
+- Created tests for Huma implementation
+- Implemented risk controls with position sizing, drawdown monitoring, exposure limits, and daily loss limits
+- Created SQLite repository for balance history
+- Integrated risk service with trade service
+- Enhanced MEXC client with caching for market data
+- Implemented cache for tickers, order books, klines, and new coins
+- Added appropriate TTL for different types of data
+- Created comprehensive tests for cache implementation
+- Added market regime detection for adaptive strategy selection
+- Integrated strategy framework with the trade service
+- Implemented signal handling for buy and sell decisions
+- Created comprehensive tests for strategy factory and trade service integration
+- Fixed all compiler errors and made all tests pass
+- Implemented backtesting framework with the following features:
+  - Historical data loading from CSV and database sources
+  - Position tracking and P&L calculation
+  - Performance metrics calculation (Sharpe ratio, drawdown, etc.)
+  - Slippage models for realistic trade simulation
+  - CLI command for running backtests
+  - Strategy interface for testing different strategies
+- Added CI/CD with GitHub Actions for automated building, testing, and deployment
+- Implemented notification service with the following features:
+  - Telegram integration for sending real-time alerts
+  - Slack integration for team notifications
+  - Templating system for formatting notifications
+  - Attachment handling for sending charts and files
+  - Asynchronous processing with worker pool
+  - Rate limiting to avoid API throttling
+  - Comprehensive documentation and examples
+
+### Upcoming Work
+- Enhance the backtesting framework with visualization tools for equity curves and drawdowns
+- Implement Monte Carlo simulation for strategy robustness testing
+- Create parameter optimization framework for backtesting
+- Implement walk-forward analysis for strategy validation
+- Develop a web dashboard for monitoring and control
+- Add support for more cryptocurrency exchanges
+- Implement machine learning models for price prediction and strategy optimization
+- Create more technical indicators for market analysis (Ichimoku Cloud, Fibonacci Retracement, etc.)
+- Enhance market regime detection with machine learning capabilities
+- Implement adaptive parameter tuning for strategy optimization
+- Create a strategy configuration UI for easy parameter adjustment
