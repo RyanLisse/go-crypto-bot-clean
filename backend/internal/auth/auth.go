@@ -294,6 +294,33 @@ func (s *DisabledService) RequireRole(role string, next http.Handler) http.Handl
 	})
 }
 
+// RequirePermission for DisabledService allows all requests through
+func (s *DisabledService) RequirePermission(permission string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAnyPermission for DisabledService allows all requests through
+func (s *DisabledService) RequireAnyPermission(permissions ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAllPermissions for DisabledService allows all requests through
+func (s *DisabledService) RequireAllPermissions(permissions ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // NewDisabledService creates a new disabled auth service for testing or development
 func NewDisabledService() *DisabledService {
 	return &DisabledService{}
