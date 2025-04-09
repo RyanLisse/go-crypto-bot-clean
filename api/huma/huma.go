@@ -5,6 +5,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+
+	"go-crypto-bot-clean/api/huma/strategy"
 )
 
 // Config represents the configuration for the Huma API documentation.
@@ -30,10 +32,10 @@ func SetupHuma(router chi.Router, config Config) huma.API {
 	// Create a new Huma API
 	api := humachi.New(router, huma.DefaultConfig(config.Title, config.Version))
 
-	// TODO: Register endpoints
-	// These functions need to be implemented
-	// registerBacktestEndpoints(api, config.BasePath)
-	// registerStrategyEndpoints(api, config.BasePath)
+	// Register endpoints
+	registerBacktestEndpoints(api, config.BasePath)
+	strategy.RegisterEndpoints(api, config.BasePath)
+	// TODO: Implement these
 	// registerAuthEndpoints(api, config.BasePath)
 	// registerUserEndpoints(api, config.BasePath)
 

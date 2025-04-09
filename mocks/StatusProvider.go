@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	status "command-line-arguments"
+	status "go-crypto-bot-clean/backend/internal/core/status"
 
 	mock "github.com/stretchr/testify/mock"
 )

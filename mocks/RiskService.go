@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	service "command-line-arguments"
+	service "go-crypto-bot-clean/backend/internal/domain/risk/service"
 	context "context"
 
 	mock "github.com/stretchr/testify/mock"
