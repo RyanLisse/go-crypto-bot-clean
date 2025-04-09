@@ -1,353 +1,463 @@
+
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
+import { Header } from '@/components/layout/Header';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertCircle, Shield, Globe, Bell, Key, User, FileCode, Terminal, Save } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
   const { toast } = useToast();
+  const [notifications, setNotifications] = useState({
+    tradeAlerts: true,
+    priceAlerts: true,
+    systemAlerts: true,
+    emailNotifications: false,
+    pushNotifications: true
+  });
   
-  // General settings
-  const [darkMode, setDarkMode] = useState(true);
-  const [notifications, setNotifications] = useState(true);
-  const [soundAlerts, setSoundAlerts] = useState(true);
+  const [apiKeys, setApiKeys] = useState({
+    binance: '••••••••••••••••••••••',
+    coinbase: '',
+    kucoin: '••••••••••••••••••••••',
+    ftx: ''
+  });
   
-  // API settings
-  const [apiKey, setApiKey] = useState('');
-  const [apiSecret, setApiSecret] = useState('');
-  const [testnet, setTestnet] = useState(true);
-  
-  // Trading settings
-  const [defaultLeverage, setDefaultLeverage] = useState('5');
-  const [maxPositionSize, setMaxPositionSize] = useState('1000');
-  const [stopLossPercentage, setStopLossPercentage] = useState('2');
-  const [takeProfitPercentage, setTakeProfitPercentage] = useState('5');
-  
-  // Bot settings
-  const [botEnabled, setBotEnabled] = useState(false);
-  const [tradingStrategy, setTradingStrategy] = useState('macd_crossover');
-  const [tradingInterval, setTradingInterval] = useState('1h');
-  
-  const handleSaveSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const [testSettings, setTestSettings] = useState({
+    useTestnet: true,
+    mockData: false,
+    enablePlaywrightTests: true,
+    enableUnitTests: true
+  });
+
+  const handleSaveSettings = () => {
     toast({
-      title: 'Success',
-      description: 'Settings saved successfully',
-    });
-  };
-  
-  const handleSaveApiKeys = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!apiKey || !apiSecret) {
-      toast({
-        title: 'Error',
-        description: 'Please enter both API key and secret',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    toast({
-      title: 'Success',
-      description: 'API keys saved successfully',
-    });
-  };
-  
-  const handleSaveTradingSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    toast({
-      title: 'Success',
-      description: 'Trading settings saved successfully',
-    });
-  };
-  
-  const handleSaveBotSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    toast({
-      title: 'Success',
-      description: 'Bot settings saved successfully',
+      title: "Settings saved",
+      description: "Your settings have been saved successfully.",
     });
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto">
-      <div className="flex-1 p-6">
-        <Tabs defaultValue="general" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="api">API Keys</TabsTrigger>
-            <TabsTrigger value="trading">Trading</TabsTrigger>
-            <TabsTrigger value="bot">Bot</TabsTrigger>
+    <div className="flex-1 flex flex-col h-full overflow-auto">
+      <Header />
+      
+      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+          <h1 className="text-2xl font-bold text-brutal-text tracking-tight">SETTINGS</h1>
+          
+          <Button 
+            variant="default" 
+            className="bg-brutal-info text-white hover:bg-brutal-info/80"
+            onClick={handleSaveSettings}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            Save Settings
+          </Button>
+        </div>
+        
+        <Tabs defaultValue="security" className="w-full">
+          <TabsList className="bg-brutal-panel border border-brutal-border">
+            <TabsTrigger value="security" className="data-[state=active]:bg-brutal-info data-[state=active]:text-brutal-background">Security</TabsTrigger>
+            <TabsTrigger value="notifications" className="data-[state=active]:bg-brutal-info data-[state=active]:text-brutal-background">Notifications</TabsTrigger>
+            <TabsTrigger value="api" className="data-[state=active]:bg-brutal-info data-[state=active]:text-brutal-background">API Keys</TabsTrigger>
+            <TabsTrigger value="testing" className="data-[state=active]:bg-brutal-info data-[state=active]:text-brutal-background">Testing</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="general">
-            <div className="brutal-card">
-              <div className="brutal-card-header mb-4">General Settings</div>
-              
-              <form onSubmit={handleSaveSettings} className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Dark Mode</h4>
-                    <p className="text-xs text-brutal-text/70">Enable dark mode for the application</p>
+          {/* Security Settings */}
+          <TabsContent value="security" className="mt-4">
+            <Card className="bg-brutal-panel border-brutal-border">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-brutal-text flex items-center text-lg">
+                  <Shield className="mr-2 h-5 w-5 text-brutal-info" />
+                  Security Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm text-brutal-text">Password</label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="password" 
+                        value="••••••••••••" 
+                        className="bg-brutal-background border-brutal-border" 
+                        readOnly
+                      />
+                      <Button variant="outline" className="border-brutal-border">
+                        Change
+                      </Button>
+                    </div>
                   </div>
-                  <Switch 
-                    checked={darkMode} 
-                    onCheckedChange={setDarkMode} 
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Notifications</h4>
-                    <p className="text-xs text-brutal-text/70">Enable browser notifications</p>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm text-brutal-text">Two-Factor Authentication</label>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-brutal-text/70">Enable 2FA for added security</span>
+                      <Switch checked={true} />
+                    </div>
                   </div>
-                  <Switch 
-                    checked={notifications} 
-                    onCheckedChange={setNotifications} 
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Sound Alerts</h4>
-                    <p className="text-xs text-brutal-text/70">Enable sound alerts for important events</p>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm text-brutal-text">Session Timeout</label>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-brutal-text/70">Automatically log out after inactivity</span>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="number" 
+                          defaultValue="30" 
+                          className="w-20 bg-brutal-background border-brutal-border" 
+                        />
+                        <span className="text-xs text-brutal-text/70">minutes</span>
+                      </div>
+                    </div>
                   </div>
-                  <Switch 
-                    checked={soundAlerts} 
-                    onCheckedChange={setSoundAlerts} 
-                  />
+                  
+                  <div className="p-3 bg-brutal-info/10 border border-brutal-info/30 text-xs flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-brutal-info mt-0.5" />
+                    <div className="text-brutal-text/80">
+                      We recommend enabling all security features to protect your trading account.
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-sm">Language</label>
-                  <select className="w-full brutal-input">
-                    <option value="en">English</option>
-                    <option value="es">Spanish</option>
-                    <option value="fr">French</option>
-                    <option value="de">German</option>
-                    <option value="ja">Japanese</option>
-                  </select>
+                <div className="pt-4 border-t border-brutal-border">
+                  <h3 className="text-sm font-medium text-brutal-text mb-3 flex items-center">
+                    <Globe className="h-4 w-4 mr-2" />
+                    IP Access Restrictions
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-brutal-text/70">Enable IP Restrictions</span>
+                      <Switch checked={false} />
+                    </div>
+                    
+                    <Input 
+                      placeholder="Enter allowed IP addresses (comma separated)" 
+                      className="bg-brutal-background border-brutal-border" 
+                      disabled
+                    />
+                  </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-sm">Time Zone</label>
-                  <select className="w-full brutal-input">
-                    <option value="utc">UTC</option>
-                    <option value="est">Eastern Time (EST)</option>
-                    <option value="cst">Central Time (CST)</option>
-                    <option value="pst">Pacific Time (PST)</option>
-                    <option value="jst">Japan Standard Time (JST)</option>
-                  </select>
+                <div className="pt-4 border-t border-brutal-border">
+                  <h3 className="text-sm font-medium text-brutal-text mb-3 flex items-center">
+                    <User className="h-4 w-4 mr-2" />
+                    Account Access
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-brutal-text/70">API Trading Enabled</span>
+                      <Switch checked={true} />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-brutal-text/70">Withdrawal Enabled</span>
+                      <Switch checked={false} />
+                    </div>
+                  </div>
                 </div>
-                
-                <button type="submit" className="w-full brutal-button">
-                  Save Settings
-                </button>
-              </form>
-            </div>
+              </CardContent>
+            </Card>
           </TabsContent>
           
-          <TabsContent value="api">
-            <div className="brutal-card">
-              <div className="brutal-card-header mb-4">API Keys</div>
-              
-              <form onSubmit={handleSaveApiKeys} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-sm">Exchange</label>
-                  <select className="w-full brutal-input">
-                    <option value="mexc">MEXC</option>
-                    <option value="binance">Binance</option>
-                    <option value="kucoin">KuCoin</option>
-                    <option value="bybit">Bybit</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm">API Key</label>
-                  <input
-                    type="text"
-                    className="w-full brutal-input"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Enter your API key"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm">API Secret</label>
-                  <input
-                    type="password"
-                    className="w-full brutal-input"
-                    value={apiSecret}
-                    onChange={(e) => setApiSecret(e.target.value)}
-                    placeholder="Enter your API secret"
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Use Testnet</h4>
-                    <p className="text-xs text-brutal-text/70">Use testnet for testing (no real funds)</p>
+          {/* Notification Settings */}
+          <TabsContent value="notifications" className="mt-4">
+            <Card className="bg-brutal-panel border-brutal-border">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-brutal-text flex items-center text-lg">
+                  <Bell className="mr-2 h-5 w-5 text-brutal-warning" />
+                  Notification Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm text-brutal-text">Trade Alerts</h4>
+                      <p className="text-xs text-brutal-text/70">Receive notifications for trade executions</p>
+                    </div>
+                    <Switch 
+                      checked={notifications.tradeAlerts} 
+                      onCheckedChange={(checked) => 
+                        setNotifications({...notifications, tradeAlerts: checked})
+                      } 
+                    />
                   </div>
-                  <Switch 
-                    checked={testnet} 
-                    onCheckedChange={setTestnet} 
-                  />
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm text-brutal-text">Price Alerts</h4>
+                      <p className="text-xs text-brutal-text/70">Receive notifications for price movements</p>
+                    </div>
+                    <Switch 
+                      checked={notifications.priceAlerts} 
+                      onCheckedChange={(checked) => 
+                        setNotifications({...notifications, priceAlerts: checked})
+                      } 
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm text-brutal-text">System Alerts</h4>
+                      <p className="text-xs text-brutal-text/70">Receive notifications for system events</p>
+                    </div>
+                    <Switch 
+                      checked={notifications.systemAlerts} 
+                      onCheckedChange={(checked) => 
+                        setNotifications({...notifications, systemAlerts: checked})
+                      } 
+                    />
+                  </div>
                 </div>
                 
-                <button type="submit" className="w-full brutal-button">
-                  Save API Keys
-                </button>
-              </form>
-            </div>
+                <div className="pt-4 border-t border-brutal-border">
+                  <h3 className="text-sm font-medium text-brutal-text mb-3">Notification Methods</h3>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm text-brutal-text">Email Notifications</h4>
+                        <p className="text-xs text-brutal-text/70">Send alerts to your email</p>
+                      </div>
+                      <Switch 
+                        checked={notifications.emailNotifications} 
+                        onCheckedChange={(checked) => 
+                          setNotifications({...notifications, emailNotifications: checked})
+                        } 
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm text-brutal-text">Push Notifications</h4>
+                        <p className="text-xs text-brutal-text/70">Send alerts to your browser</p>
+                      </div>
+                      <Switch 
+                        checked={notifications.pushNotifications} 
+                        onCheckedChange={(checked) => 
+                          setNotifications({...notifications, pushNotifications: checked})
+                        } 
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-xs text-brutal-text/70">Email Address</label>
+                      <Input 
+                        type="email" 
+                        placeholder="Enter your email address" 
+                        className="bg-brutal-background border-brutal-border" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
           
-          <TabsContent value="trading">
-            <div className="brutal-card">
-              <div className="brutal-card-header mb-4">Trading Settings</div>
-              
-              <form onSubmit={handleSaveTradingSettings} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-sm">Default Leverage: {defaultLeverage}x</label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="20"
-                    step="1"
-                    value={defaultLeverage}
-                    onChange={(e) => setDefaultLeverage(e.target.value)}
-                    className="w-full"
-                  />
+          {/* API Keys Settings */}
+          <TabsContent value="api" className="mt-4">
+            <Card className="bg-brutal-panel border-brutal-border">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-brutal-text flex items-center text-lg">
+                  <Key className="mr-2 h-5 w-5 text-brutal-success" />
+                  API Keys
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm text-brutal-text">Binance API Key</label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="password" 
+                        value={apiKeys.binance} 
+                        onChange={(e) => setApiKeys({...apiKeys, binance: e.target.value})} 
+                        className="bg-brutal-background border-brutal-border" 
+                      />
+                      <Button variant="outline" className="border-brutal-border">
+                        Update
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm text-brutal-text">Coinbase API Key</label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="password" 
+                        value={apiKeys.coinbase} 
+                        onChange={(e) => setApiKeys({...apiKeys, coinbase: e.target.value})} 
+                        className="bg-brutal-background border-brutal-border" 
+                        placeholder="Not configured"
+                      />
+                      <Button variant="outline" className="border-brutal-border">
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm text-brutal-text">KuCoin API Key</label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="password" 
+                        value={apiKeys.kucoin} 
+                        onChange={(e) => setApiKeys({...apiKeys, kucoin: e.target.value})} 
+                        className="bg-brutal-background border-brutal-border" 
+                      />
+                      <Button variant="outline" className="border-brutal-border">
+                        Update
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm text-brutal-text">FTX API Key</label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="password" 
+                        value={apiKeys.ftx} 
+                        onChange={(e) => setApiKeys({...apiKeys, ftx: e.target.value})} 
+                        className="bg-brutal-background border-brutal-border" 
+                        placeholder="Not configured"
+                      />
+                      <Button variant="outline" className="border-brutal-border">
+                        Add
+                      </Button>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-sm">Max Position Size (USD)</label>
-                  <input
-                    type="text"
-                    className="w-full brutal-input"
-                    value={maxPositionSize}
-                    onChange={(e) => setMaxPositionSize(e.target.value)}
-                  />
+                <div className="p-3 bg-brutal-warning/10 border border-brutal-warning/30 text-xs flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-brutal-warning mt-0.5" />
+                  <div className="text-brutal-text/80">
+                    Only provide API keys with read and trade permissions. Never share keys with withdrawal permissions.
+                  </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-sm">Default Stop Loss (%): {stopLossPercentage}%</label>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="10"
-                    step="0.5"
-                    value={stopLossPercentage}
-                    onChange={(e) => setStopLossPercentage(e.target.value)}
-                    className="w-full"
-                  />
+                <div className="pt-4 border-t border-brutal-border">
+                  <h3 className="text-sm font-medium text-brutal-text mb-3 flex items-center">
+                    <Shield className="h-4 w-4 mr-2" />
+                    API Security
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-brutal-text/70">Encrypt API Keys</span>
+                      <Switch checked={true} />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-brutal-text/70">Require Password for Key Access</span>
+                      <Switch checked={true} />
+                    </div>
+                  </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm">Default Take Profit (%): {takeProfitPercentage}%</label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="20"
-                    step="1"
-                    value={takeProfitPercentage}
-                    onChange={(e) => setTakeProfitPercentage(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm">Order Type</label>
-                  <select className="w-full brutal-input">
-                    <option value="market">Market</option>
-                    <option value="limit">Limit</option>
-                  </select>
-                </div>
-                
-                <button type="submit" className="w-full brutal-button">
-                  Save Trading Settings
-                </button>
-              </form>
-            </div>
+              </CardContent>
+            </Card>
           </TabsContent>
           
-          <TabsContent value="bot">
-            <div className="brutal-card">
-              <div className="brutal-card-header mb-4">Bot Settings</div>
-              
-              <form onSubmit={handleSaveBotSettings} className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Enable Trading Bot</h4>
-                    <p className="text-xs text-brutal-text/70">Allow the bot to execute trades automatically</p>
+          {/* Testing Settings */}
+          <TabsContent value="testing" className="mt-4">
+            <Card className="bg-brutal-panel border-brutal-border">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-brutal-text flex items-center text-lg">
+                  <FileCode className="mr-2 h-5 w-5 text-brutal-info" />
+                  Testing Environment
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm text-brutal-text">Use Testnet</h4>
+                      <p className="text-xs text-brutal-text/70">Connect to exchange testnets instead of production</p>
+                    </div>
+                    <Switch 
+                      checked={testSettings.useTestnet} 
+                      onCheckedChange={(checked) => 
+                        setTestSettings({...testSettings, useTestnet: checked})
+                      } 
+                    />
                   </div>
-                  <Switch 
-                    checked={botEnabled} 
-                    onCheckedChange={setBotEnabled} 
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm">Trading Strategy</label>
-                  <select 
-                    className="w-full brutal-input"
-                    value={tradingStrategy}
-                    onChange={(e) => setTradingStrategy(e.target.value)}
-                  >
-                    <option value="macd_crossover">MACD Crossover</option>
-                    <option value="rsi_divergence">RSI Divergence</option>
-                    <option value="bollinger_bands">Bollinger Bands</option>
-                    <option value="moving_average">Moving Average</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm">Trading Interval</label>
-                  <select 
-                    className="w-full brutal-input"
-                    value={tradingInterval}
-                    onChange={(e) => setTradingInterval(e.target.value)}
-                  >
-                    <option value="1m">1 minute</option>
-                    <option value="5m">5 minutes</option>
-                    <option value="15m">15 minutes</option>
-                    <option value="1h">1 hour</option>
-                    <option value="4h">4 hours</option>
-                    <option value="1d">1 day</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm">Trading Pairs</label>
-                  <div className="space-y-1">
-                    <div className="flex items-center">
-                      <input type="checkbox" id="btc" className="mr-2" checked />
-                      <label htmlFor="btc" className="text-sm">BTC/USDT</label>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm text-brutal-text">Use Mock Data</h4>
+                      <p className="text-xs text-brutal-text/70">Generate mock trading data for testing</p>
                     </div>
-                    <div className="flex items-center">
-                      <input type="checkbox" id="eth" className="mr-2" checked />
-                      <label htmlFor="eth" className="text-sm">ETH/USDT</label>
-                    </div>
-                    <div className="flex items-center">
-                      <input type="checkbox" id="sol" className="mr-2" />
-                      <label htmlFor="sol" className="text-sm">SOL/USDT</label>
-                    </div>
-                    <div className="flex items-center">
-                      <input type="checkbox" id="doge" className="mr-2" />
-                      <label htmlFor="doge" className="text-sm">DOGE/USDT</label>
-                    </div>
+                    <Switch 
+                      checked={testSettings.mockData} 
+                      onCheckedChange={(checked) => 
+                        setTestSettings({...testSettings, mockData: checked})
+                      } 
+                    />
                   </div>
                 </div>
                 
-                <button type="submit" className="w-full brutal-button">
-                  Save Bot Settings
-                </button>
-              </form>
-            </div>
+                <div className="pt-4 border-t border-brutal-border">
+                  <h3 className="text-sm font-medium text-brutal-text mb-3 flex items-center">
+                    <Terminal className="h-4 w-4 mr-2" />
+                    Automated Testing
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm text-brutal-text">Playwright E2E Tests</h4>
+                        <p className="text-xs text-brutal-text/70">Enable end-to-end testing</p>
+                      </div>
+                      <Switch 
+                        checked={testSettings.enablePlaywrightTests} 
+                        onCheckedChange={(checked) => 
+                          setTestSettings({...testSettings, enablePlaywrightTests: checked})
+                        } 
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm text-brutal-text">Unit Tests</h4>
+                        <p className="text-xs text-brutal-text/70">Enable unit testing with Bun test</p>
+                      </div>
+                      <Switch 
+                        checked={testSettings.enableUnitTests} 
+                        onCheckedChange={(checked) => 
+                          setTestSettings({...testSettings, enableUnitTests: checked})
+                        } 
+                      />
+                    </div>
+                    
+                    <div className="flex gap-2 mt-3">
+                      <Button 
+                        className="bg-brutal-info text-white hover:bg-brutal-info/80"
+                      >
+                        Run All Tests
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="border-brutal-border"
+                      >
+                        View Test Reports
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-3 bg-brutal-info/10 border border-brutal-info/30 text-xs flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-brutal-info mt-0.5" />
+                  <div className="text-brutal-text/80">
+                    Testing features run in an isolated environment and will not affect your actual portfolio.
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

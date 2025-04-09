@@ -1,21 +1,30 @@
+
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
   BarChart3, 
   CircleDollarSign, 
-  Cpu, 
   LineChart, 
-  LucideIcon, 
-  MessageSquare, 
+  Star, 
+  Cpu, 
+  Settings,
+  MessageSquare,
   Send,
-  Settings, 
-  Star 
+  Zap,
+  FileBarChart
 } from 'lucide-react';
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+} from "@/components/ui/sidebar";
 
 type NavItem = {
   name: string;
   path: string;
-  icon: LucideIcon;
+  icon: React.ElementType;
 };
 
 const navItems: NavItem[] = [
@@ -40,6 +49,11 @@ const navItems: NavItem[] = [
     icon: Star,
   },
   {
+    name: 'Backtesting',
+    path: '/backtesting',
+    icon: FileBarChart,
+  },
+  {
     name: 'System Status',
     path: '/system',
     icon: Cpu,
@@ -49,6 +63,11 @@ const navItems: NavItem[] = [
     path: '/config',
     icon: Settings,
   },
+  {
+    name: 'Settings',
+    path: '/settings',
+    icon: Zap,
+  }
 ];
 
 type Message = {
@@ -57,7 +76,7 @@ type Message = {
   timestamp: Date;
 };
 
-export function Sidebar() {
+export function AppSidebar() {
   const location = useLocation();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([
@@ -93,41 +112,45 @@ export function Sidebar() {
       setMessages((prev) => [...prev, botMessage]);
     }, 1000);
   };
-  
+
   return (
-    <div className="w-60 h-screen border-r border-brutal-border flex flex-col bg-brutal-background">
-      <div className="p-6 border-b border-brutal-border">
-        <h1 className="text-lg font-bold uppercase tracking-widest flex items-center">
-          BRUTE<span className="text-brutal-text/30 mx-2">/</span>DASH
-        </h1>
-      </div>
+    <Sidebar>
+      <SidebarHeader className="p-0 border-b border-brutal-border">
+        <div className="p-6">
+          <h1 className="text-lg font-bold uppercase tracking-widest flex items-center">
+            BRUTE<span className="text-sidebar-foreground/30 mx-2">/</span>DASH
+          </h1>
+        </div>
+      </SidebarHeader>
       
-      <nav className="flex-1 py-6">
-        <ul className="space-y-1">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            
-            return (
-              <li key={item.name}>
-                <Link
-                  to={item.path}
-                  className={`
-                    flex items-center px-6 py-3 text-sm
-                    ${isActive 
-                      ? 'bg-brutal-panel border-l-2 border-brutal-info text-brutal-text' 
-                      : 'text-brutal-text/70 hover:text-brutal-text hover:bg-brutal-panel/50'}
-                  `}
-                >
-                  <item.icon className="h-5 w-5 mr-3" />
-                  {item.name}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <SidebarContent className="p-0">
+        <nav className="flex-1 py-6">
+          <ul className="space-y-1">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              
+              return (
+                <li key={item.name}>
+                  <NavLink
+                    to={item.path}
+                    className={`
+                      flex items-center px-6 py-3 text-sm
+                      ${isActive 
+                        ? 'bg-brutal-panel border-l-2 border-brutal-info text-sidebar-foreground' 
+                        : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-brutal-panel/50'}
+                    `}
+                  >
+                    <item.icon className="h-5 w-5 mr-3" />
+                    {item.name}
+                  </NavLink>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      </SidebarContent>
       
-      <div className="p-3 border-t border-brutal-border">
+      <SidebarFooter className="p-3 border-t border-brutal-border">
         <div className="text-sm font-bold flex items-center mb-2 text-brutal-text">
           <MessageSquare className="h-4 w-4 mr-2" />
           BRUTEBOT CHAT
@@ -166,7 +189,7 @@ export function Sidebar() {
         <div className="mt-3 text-xs text-brutal-text/50">
           Bot version: 1.4.2
         </div>
-      </div>
-    </div>
+      </SidebarFooter>
+    </Sidebar>
   );
 }

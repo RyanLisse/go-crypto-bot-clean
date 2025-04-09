@@ -6,17 +6,19 @@
 - **Framework**: React 18 with TypeScript
 - **Build Tool**: Vite
 - **State Management**: Redux Toolkit + TanStack Query
-- **UI Components**: 
-  - Material-UI (MUI)
+- **UI Components**:
+  - Brutalist Design System
   - Radix UI primitives
   - Tailwind CSS
+  - shadcn/ui components
+- **Typography**: JetBrains Mono (monospace)
 - **Authentication**: Clerk
 - **Local Database**: TursoDB with Drizzle ORM
 - **Testing**: Vitest + Playwright
 
 ### Backend
 - **Language**: Go 1.24+
-- **Database**: 
+- **Database**:
   - TursoDB (primary)
   - SQLite (fallback/development)
 - **API Framework**: Chi Router
@@ -26,7 +28,7 @@
 
 ### Database
 - **Primary**: TursoDB (distributed SQLite)
-- **ORM**: 
+- **ORM**:
   - Backend: Native SQL with prepared statements
   - Frontend: Drizzle ORM
 - **Migration**: Drizzle Kit
@@ -47,10 +49,13 @@
 ## Implementation Documentation
 
 ### Frontend Architecture
+- Brutalist design system implementation
 - Component structure and organization
 - State management patterns
-- Data fetching and caching
-- Authentication flow
+- Data fetching and caching with React Query
+- Authentication flow with Clerk
+- Responsive layout with brutalist principles
+- Monospace typography and high-contrast UI
 - Offline capabilities
 - Testing strategy
 
@@ -83,8 +88,11 @@
 - @clerk/clerk-react - Authentication
 - @reduxjs/toolkit - State management
 - @tanstack/react-query - Data fetching
-- @mui/material - UI components
 - @radix-ui/* - UI primitives
+- class-variance-authority - Component styling
+- clsx - Class name utilities
+- tailwind-merge - Tailwind class merging
+- lucide-react - Brutalist-friendly icons
 - drizzle-orm - Local database ORM
 - @libsql/client - TursoDB client
 

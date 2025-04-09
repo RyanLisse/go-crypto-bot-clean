@@ -1,466 +1,358 @@
+
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import BacktestChart, { EquityPoint, DrawdownPoint } from '@/components/charts/BacktestChart';
-import PerformanceMetrics from '@/components/charts/PerformanceMetrics';
-import MonthlyReturnsChart, { MonthlyReturn } from '@/components/charts/MonthlyReturnsChart';
-import TradeDistributionChart from '@/components/charts/TradeDistributionChart';
-import MonteCarloChart from '@/components/charts/MonteCarloChart';
-
-type BacktestResult = {
-  id: number;
-  date: string;
-  side: 'BUY' | 'SELL';
-  price: string;
-  amount: string;
-  profitLoss: string;
-  isProfitable: boolean;
-};
-
-type BacktestMetrics = {
-  totalReturn: number;
-  annualizedReturn: number;
-  sharpeRatio: number;
-  sortinoRatio: number;
-  maxDrawdownPercent: number;
-  winRate: number;
-  profitFactor: number;
-  totalTrades: number;
-  winningTrades: number;
-  losingTrades: number;
-  averageProfitTrade: number;
-  averageLossTrade: number;
-  calmarRatio: number;
-  omegaRatio: number;
-  informationRatio: number;
-};
-
-// Mock data for backtest results
-const mockBacktestResults: BacktestResult[] = [
-  {
-    id: 1,
-    date: '2023-02-15',
-    side: 'BUY',
-    price: '$24,150.32',
-    amount: '0.12',
-    profitLoss: '$320.45',
-    isProfitable: true,
-  },
-  {
-    id: 2,
-    date: '2023-03-02',
-    side: 'SELL',
-    price: '$23,980.15',
-    amount: '0.08',
-    profitLoss: '-$42.18',
-    isProfitable: false,
-  },
-  {
-    id: 3,
-    date: '2023-03-18',
-    side: 'BUY',
-    price: '$27,340.78',
-    amount: '0.15',
-    profitLoss: '$512.67',
-    isProfitable: true,
-  },
-  {
-    id: 4,
-    date: '2023-04-05',
-    side: 'BUY',
-    price: '$28,120.45',
-    amount: '0.10',
-    profitLoss: '$278.90',
-    isProfitable: true,
-  },
-  {
-    id: 5,
-    date: '2023-04-22',
-    side: 'SELL',
-    price: '$27,890.33',
-    amount: '0.11',
-    profitLoss: '-$89.75',
-    isProfitable: false,
-  },
-];
+import { Header } from '@/components/layout/Header';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { AlertCircle, ArrowRightCircle, Clock, Cog, Play } from 'lucide-react';
 
 const Backtesting = () => {
-  const { toast } = useToast();
-  const [isRunningBacktest, setIsRunningBacktest] = useState(false);
-  const [backtestResults, setBacktestResults] = useState<BacktestResult[]>([]);
-  const [showResults, setShowResults] = useState(false);
+  const [selectedStrategy, setSelectedStrategy] = useState('ml');
+  const [dateRange, setDateRange] = useState('30');
+  const [isRunning, setIsRunning] = useState(false);
 
-  // Form state
-  const [strategy, setStrategy] = useState('macd_crossover');
-  const [symbol, setSymbol] = useState('BTC');
-  const [timeframe, setTimeframe] = useState('1h');
-  const [startDate, setStartDate] = useState('2023-01-01');
-  const [endDate, setEndDate] = useState('2023-12-31');
-  const [initialCapital, setInitialCapital] = useState('10000');
-  const [riskPerTrade, setRiskPerTrade] = useState('2');
+  // Mock data for backtesting results
+  const backTestResults = [
+    { date: '2025-03-01', strategy: 100, benchmark: 100 },
+    { date: '2025-03-05', strategy: 105, benchmark: 102 },
+    { date: '2025-03-10', strategy: 110, benchmark: 103 },
+    { date: '2025-03-15', strategy: 108, benchmark: 104 },
+    { date: '2025-03-20', strategy: 115, benchmark: 106 },
+    { date: '2025-03-25', strategy: 120, benchmark: 107 },
+    { date: '2025-04-01', strategy: 125, benchmark: 108 },
+    { date: '2025-04-05', strategy: 130, benchmark: 110 },
+  ];
 
-  // Mock data for visualization
-  const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
-  const [drawdownCurve, setDrawdownCurve] = useState<DrawdownPoint[]>([]);
-  const [performanceMetrics, setPerformanceMetrics] = useState<BacktestMetrics | null>(null);
-  const [monthlyReturns, setMonthlyReturns] = useState<MonthlyReturn[]>([]);
-  const [monteCarloSimulations, setMonteCarloSimulations] = useState<number[][]>([]);
-
-  const handleRunBacktest = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validate inputs
-    if (!strategy || !symbol || !timeframe || !startDate || !endDate || !initialCapital || !riskPerTrade) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all fields',
-        variant: 'destructive',
-      });
-      return;
+  const strategies = [
+    {
+      id: 'dca',
+      name: 'Dollar Cost Averaging',
+      description: 'Regularly buy fixed amounts regardless of price to average position over time'
+    },
+    {
+      id: 'grid',
+      name: 'Grid Trading',
+      description: 'Place buy and sell orders at regular intervals to profit from price oscillations'
+    },
+    {
+      id: 'trend',
+      name: 'Trend Following',
+      description: 'Follow market trends using technical indicators like moving averages'
+    },
+    {
+      id: 'ml',
+      name: 'Machine Learning',
+      description: 'Use AI prediction models to determine optimal entry and exit points'
+    },
+    {
+      id: 'arbitrage',
+      name: 'Arbitrage',
+      description: 'Exploit price differences of the same asset across different markets'
     }
+  ];
 
+  const performanceMetrics = {
+    totalReturn: 25.0,
+    annualizedReturn: 18.5,
+    winRate: 68,
+    averageTrade: 1.2,
+    sharpeRatio: 1.8,
+    drawdown: 8.5,
+    tradesCount: 124
+  };
+
+  const handleRunBacktest = () => {
+    setIsRunning(true);
+    
     // Simulate running a backtest
-    setIsRunningBacktest(true);
-    setShowResults(false);
-
-    // Simulate API call delay
     setTimeout(() => {
-      setBacktestResults(mockBacktestResults);
-
-      // Generate mock equity curve and drawdown curve
-      const mockEquityCurve: EquityPoint[] = [];
-      const mockDrawdownCurve: DrawdownPoint[] = [];
-      const initialCap = parseFloat(initialCapital);
-      let equity = initialCap;
-
-      // Generate data points for 6 months
-      const startDateObj = new Date(startDate);
-      for (let i = 0; i < 180; i++) {
-        const date = new Date(startDateObj);
-        date.setDate(date.getDate() + i);
-
-        // Random daily change between -2% and +3%
-        const dailyChange = (Math.random() * 5 - 2) / 100;
-        equity = equity * (1 + dailyChange);
-
-        // Calculate drawdown
-        const highWaterMark = Math.max(...mockEquityCurve.map(p => p.equity).concat(initialCap));
-        const drawdown = highWaterMark - equity;
-
-        mockEquityCurve.push({
-          timestamp: date.toISOString(),
-          equity: equity
-        });
-
-        mockDrawdownCurve.push({
-          timestamp: date.toISOString(),
-          drawdown: drawdown
-        });
-      }
-
-      setEquityCurve(mockEquityCurve);
-      setDrawdownCurve(mockDrawdownCurve);
-
-      // Generate mock monthly returns
-      const mockMonthlyReturns: MonthlyReturn[] = [
-        { month: '2023-01', return: 5.2 },
-        { month: '2023-02', return: -2.1 },
-        { month: '2023-03', return: 3.8 },
-        { month: '2023-04', return: 1.5 },
-        { month: '2023-05', return: -1.2 },
-        { month: '2023-06', return: 4.3 }
-      ];
-      setMonthlyReturns(mockMonthlyReturns);
-
-      // Generate mock Monte Carlo simulations
-      const mockSimulations: number[][] = [];
-      for (let i = 0; i < 10; i++) {
-        const simulation: number[] = [initialCap];
-        let simEquity = initialCap;
-
-        for (let j = 0; j < 180; j++) {
-          // Random daily change with slight variation between simulations
-          const dailyChange = (Math.random() * 5 - 2 + (i - 5) * 0.1) / 100;
-          simEquity = simEquity * (1 + dailyChange);
-          simulation.push(simEquity);
-        }
-
-        mockSimulations.push(simulation);
-      }
-      setMonteCarloSimulations(mockSimulations);
-
-      // Generate mock performance metrics
-      const finalEquity = mockEquityCurve[mockEquityCurve.length - 1].equity;
-      const totalReturn = ((finalEquity - initialCap) / initialCap) * 100;
-      const maxDrawdown = Math.max(...mockDrawdownCurve.map(p => p.drawdown));
-      const maxDrawdownPercent = (maxDrawdown / initialCap) * 100;
-
-      setPerformanceMetrics({
-        totalReturn: totalReturn,
-        annualizedReturn: totalReturn * 2, // Annualized for 6 months
-        sharpeRatio: 1.42,
-        sortinoRatio: 1.65,
-        maxDrawdownPercent: maxDrawdownPercent,
-        winRate: 62.1,
-        profitFactor: 1.87,
-        totalTrades: 124,
-        winningTrades: 77,
-        losingTrades: 47,
-        averageProfitTrade: 112.45,
-        averageLossTrade: 78.32,
-        calmarRatio: 3.2,
-        omegaRatio: 1.95,
-        informationRatio: 1.1
-      });
-
-      setShowResults(true);
-      setIsRunningBacktest(false);
-
-      toast({
-        title: 'Success',
-        description: 'Backtest completed successfully',
-      });
+      setIsRunning(false);
     }, 2000);
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto">
-      <div className="flex-1 p-6 space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Backtest Form */}
-          <div className="lg:col-span-1">
-            <div className="brutal-card">
-              <div className="brutal-card-header mb-4">Backtest Configuration</div>
-
-              <form className="space-y-4" onSubmit={handleRunBacktest}>
-                <div className="space-y-2">
-                  <label className="text-sm">Strategy</label>
-                  <select
-                    className="w-full brutal-input"
-                    value={strategy}
-                    onChange={(e) => setStrategy(e.target.value)}
-                  >
-                    <option value="macd_crossover">MACD Crossover</option>
-                    <option value="rsi_divergence">RSI Divergence</option>
-                    <option value="bollinger_bands">Bollinger Bands</option>
-                    <option value="moving_average">Moving Average</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm">Symbol</label>
-                  <select
-                    className="w-full brutal-input"
-                    value={symbol}
-                    onChange={(e) => setSymbol(e.target.value)}
-                  >
-                    <option value="BTC">BTC</option>
-                    <option value="ETH">ETH</option>
-                    <option value="SOL">SOL</option>
-                    <option value="DOGE">DOGE</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm">Timeframe</label>
-                  <select
-                    className="w-full brutal-input"
-                    value={timeframe}
-                    onChange={(e) => setTimeframe(e.target.value)}
-                  >
-                    <option value="1m">1 minute</option>
-                    <option value="5m">5 minutes</option>
-                    <option value="15m">15 minutes</option>
-                    <option value="1h">1 hour</option>
-                    <option value="4h">4 hours</option>
-                    <option value="1d">1 day</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm">Start Date</label>
-                  <input
-                    type="date"
-                    className="w-full brutal-input"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm">End Date</label>
-                  <input
-                    type="date"
-                    className="w-full brutal-input"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm">Initial Capital (USD)</label>
-                  <input
-                    type="text"
-                    className="w-full brutal-input"
-                    value={initialCapital}
-                    onChange={(e) => setInitialCapital(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm">Risk Per Trade (%): {riskPerTrade}%</label>
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="10"
-                    step="0.1"
-                    value={riskPerTrade}
-                    onChange={(e) => setRiskPerTrade(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full brutal-button"
-                  disabled={isRunningBacktest}
-                >
-                  {isRunningBacktest ? 'Running Backtest...' : 'Run Backtest'}
-                </button>
-              </form>
-            </div>
-          </div>
-
-          {/* Backtest Results */}
-          <div className="lg:col-span-2">
-            <div className="brutal-card">
-              <div className="brutal-card-header mb-4">Backtest Results</div>
-
-              {!showResults && !isRunningBacktest ? (
-                <div className="text-center py-12 text-brutal-text/50">
-                  Configure and run a backtest to see results
-                </div>
-              ) : isRunningBacktest ? (
-                <div className="text-center py-12 text-brutal-text/50">
-                  Running backtest, please wait...
-                </div>
+    <div className="flex-1 flex flex-col h-full overflow-auto">
+      <Header />
+      
+      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+          <h1 className="text-2xl font-bold text-brutal-text tracking-tight">BACKTESTING</h1>
+          
+          <div className="w-full md:w-auto flex items-center gap-2">
+            <Button 
+              variant="default" 
+              className="bg-brutal-info text-white hover:bg-brutal-info/80"
+              onClick={handleRunBacktest}
+              disabled={isRunning}
+            >
+              {isRunning ? (
+                <>
+                  <Clock className="mr-2 h-4 w-4 animate-spin" />
+                  Running...
+                </>
               ) : (
-                <div>
-                  {/* Results Summary */}
-                  <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div>
-                      <div className="text-brutal-text/70 text-sm">Total Trades</div>
-                      <div className="text-xl font-bold">124</div>
-                    </div>
-                    <div>
-                      <div className="text-brutal-text/70 text-sm">Win Rate</div>
-                      <div className="text-xl font-bold">62.1%</div>
-                    </div>
-                    <div>
-                      <div className="text-brutal-text/70 text-sm">Profit Factor</div>
-                      <div className="text-xl font-bold">1.87</div>
-                    </div>
-                    <div>
-                      <div className="text-brutal-text/70 text-sm">Net Profit</div>
-                      <div className="text-xl font-bold text-brutal-success">$4,328.45</div>
-                    </div>
-                    <div>
-                      <div className="text-brutal-text/70 text-sm">Max Drawdown</div>
-                      <div className="text-xl font-bold text-brutal-error">12.3%</div>
-                    </div>
-                    <div>
-                      <div className="text-brutal-text/70 text-sm">Sharpe Ratio</div>
-                      <div className="text-xl font-bold">1.42</div>
-                    </div>
-                  </div>
-
-                  {/* Results Charts */}
-                  {equityCurve.length > 0 && drawdownCurve.length > 0 && (
-                    <div className="mb-6">
-                      <BacktestChart
-                        equityCurve={equityCurve}
-                        drawdownCurve={drawdownCurve}
-                        initialCapital={parseFloat(initialCapital)}
-                        title={`${symbol} ${strategy.toUpperCase()} Backtest`}
-                      />
-                    </div>
-                  )}
-
-                  {/* Performance Metrics */}
-                  {performanceMetrics && (
-                    <div className="mb-6">
-                      <PerformanceMetrics metrics={performanceMetrics} />
-                    </div>
-                  )}
-
-                  {/* Monthly Returns Chart */}
-                  {monthlyReturns.length > 0 && (
-                    <div className="mb-6">
-                      <MonthlyReturnsChart monthlyReturns={monthlyReturns} />
-                    </div>
-                  )}
-
-                  {/* Trade Distribution Chart */}
-                  {performanceMetrics && (
-                    <div className="mb-6">
-                      <TradeDistributionChart
-                        winningTrades={performanceMetrics.winningTrades}
-                        losingTrades={performanceMetrics.losingTrades}
-                        averageProfitTrade={performanceMetrics.averageProfitTrade}
-                        averageLossTrade={performanceMetrics.averageLossTrade}
-                      />
-                    </div>
-                  )}
-
-                  {/* Monte Carlo Simulation Chart */}
-                  {monteCarloSimulations.length > 0 && (
-                    <div className="mb-6">
-                      <MonteCarloChart
-                        simulations={monteCarloSimulations}
-                        initialCapital={parseFloat(initialCapital)}
-                      />
-                    </div>
-                  )}
-
-                  {/* Trade List */}
-                  <h4 className="text-sm text-brutal-text/70 mb-2">Trade List</h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="border-b border-brutal-border">
-                          <th className="pb-2 text-brutal-text/70 font-normal">ID</th>
-                          <th className="pb-2 text-brutal-text/70 font-normal">Date</th>
-                          <th className="pb-2 text-brutal-text/70 font-normal">Side</th>
-                          <th className="pb-2 text-brutal-text/70 font-normal">Price</th>
-                          <th className="pb-2 text-brutal-text/70 font-normal">Amount</th>
-                          <th className="pb-2 text-brutal-text/70 font-normal">Profit/Loss</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {backtestResults.map((trade) => (
-                          <tr key={trade.id} className="border-b border-brutal-border/30">
-                            <td className="py-2">{trade.id}</td>
-                            <td className="py-2">{trade.date}</td>
-                            <td className={`py-2 ${trade.side === 'BUY' ? 'text-brutal-success' : 'text-brutal-error'}`}>
-                              {trade.side}
-                            </td>
-                            <td className="py-2">{trade.price}</td>
-                            <td className="py-2">{trade.amount}</td>
-                            <td className={`py-2 ${trade.isProfitable ? 'text-brutal-success' : 'text-brutal-error'}`}>
-                              {trade.profitLoss}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  Run Backtest
+                </>
               )}
-            </div>
+            </Button>
           </div>
         </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          {/* Strategy Selection */}
+          <Card className="bg-brutal-panel border-brutal-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-brutal-text flex items-center text-lg">
+                <Cog className="mr-2 h-5 w-5 text-brutal-info" />
+                Strategy Selection
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs text-brutal-text/70">Strategy</label>
+                  <Select 
+                    defaultValue={selectedStrategy} 
+                    onValueChange={setSelectedStrategy}
+                  >
+                    <SelectTrigger className="bg-brutal-background border-brutal-border">
+                      <SelectValue placeholder="Select a strategy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {strategies.map(strategy => (
+                        <SelectItem key={strategy.id} value={strategy.id}>{strategy.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedStrategy && (
+                    <div className="text-xs text-brutal-text/70 p-2 border border-brutal-border bg-brutal-background/50">
+                      {strategies.find(s => s.id === selectedStrategy)?.description}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-xs text-brutal-text/70">Date Range (Days)</label>
+                  <Select 
+                    defaultValue={dateRange} 
+                    onValueChange={setDateRange}
+                  >
+                    <SelectTrigger className="bg-brutal-background border-brutal-border">
+                      <SelectValue placeholder="Select date range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">7 Days</SelectItem>
+                      <SelectItem value="30">30 Days</SelectItem>
+                      <SelectItem value="90">90 Days</SelectItem>
+                      <SelectItem value="180">180 Days</SelectItem>
+                      <SelectItem value="365">365 Days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-xs text-brutal-text/70">Initial Capital</label>
+                  <Input 
+                    type="number" 
+                    defaultValue="10000" 
+                    className="bg-brutal-background border-brutal-border" 
+                  />
+                </div>
+                
+                <div className="p-3 bg-brutal-info/10 border border-brutal-info/30 text-xs text-brutal-text/80">
+                  Historical data is sourced from multiple exchanges for accuracy.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Parameters */}
+          <Card className="bg-brutal-panel border-brutal-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-brutal-text flex items-center text-lg">
+                <ArrowRightCircle className="mr-2 h-5 w-5 text-brutal-warning" />
+                Parameters
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs text-brutal-text/70">Take Profit (%)</label>
+                  <Input 
+                    type="number" 
+                    defaultValue="5" 
+                    className="bg-brutal-background border-brutal-border" 
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-xs text-brutal-text/70">Stop Loss (%)</label>
+                  <Input 
+                    type="number" 
+                    defaultValue="3" 
+                    className="bg-brutal-background border-brutal-border" 
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-xs text-brutal-text/70">Position Size (%)</label>
+                  <Input 
+                    type="number" 
+                    defaultValue="10" 
+                    className="bg-brutal-background border-brutal-border" 
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-xs text-brutal-text/70">Max Open Positions</label>
+                  <Input 
+                    type="number" 
+                    defaultValue="5" 
+                    className="bg-brutal-background border-brutal-border" 
+                  />
+                </div>
+                
+                <div className="p-3 bg-brutal-warning/10 border border-brutal-warning/30 text-xs flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-brutal-warning mt-0.5" />
+                  <div className="text-brutal-text/80">
+                    Parameters significantly impact backtesting results. Adjust with caution.
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Performance Metrics */}
+          <Card className="bg-brutal-panel border-brutal-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-brutal-text flex items-center text-lg">
+                <AlertCircle className="mr-2 h-5 w-5 text-brutal-success" />
+                Performance Metrics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 border border-brutal-border bg-brutal-background/50">
+                    <div className="text-xs text-brutal-text/70">Total Return</div>
+                    <div className="text-brutal-text font-mono text-lg text-brutal-success">
+                      +{performanceMetrics.totalReturn}%
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 border border-brutal-border bg-brutal-background/50">
+                    <div className="text-xs text-brutal-text/70">Annualized Return</div>
+                    <div className="text-brutal-text font-mono text-lg">
+                      {performanceMetrics.annualizedReturn}%
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 border border-brutal-border bg-brutal-background/50">
+                    <div className="text-xs text-brutal-text/70">Win Rate</div>
+                    <div className="text-brutal-text font-mono text-lg">
+                      {performanceMetrics.winRate}%
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 border border-brutal-border bg-brutal-background/50">
+                    <div className="text-xs text-brutal-text/70">Avg Trade</div>
+                    <div className="text-brutal-text font-mono text-lg">
+                      {performanceMetrics.averageTrade}%
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 border border-brutal-border bg-brutal-background/50">
+                    <div className="text-xs text-brutal-text/70">Sharpe Ratio</div>
+                    <div className="text-brutal-text font-mono text-lg">
+                      {performanceMetrics.sharpeRatio}
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 border border-brutal-border bg-brutal-background/50">
+                    <div className="text-xs text-brutal-text/70">Max Drawdown</div>
+                    <div className="text-brutal-text font-mono text-lg text-brutal-error">
+                      -{performanceMetrics.drawdown}%
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-3 border border-brutal-border bg-brutal-background/50">
+                  <div className="text-xs text-brutal-text/70">Total Trades</div>
+                  <div className="text-brutal-text font-mono text-lg">
+                    {performanceMetrics.tradesCount}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Results Chart */}
+        <Card className="bg-brutal-panel border-brutal-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-brutal-text text-lg">
+              Backtest Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={backTestResults}
+                  margin={{
+                    top: 20,
+                    right: 30,
+                    left: 20,
+                    bottom: 10,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.1} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#f7f7f7" 
+                    opacity={0.5} 
+                    tick={{ fill: '#f7f7f7', fontSize: 12 }} 
+                  />
+                  <YAxis 
+                    stroke="#f7f7f7" 
+                    opacity={0.5} 
+                    tick={{ fill: '#f7f7f7', fontSize: 12 }} 
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1e1e1e', 
+                      borderColor: '#333333', 
+                      color: '#f7f7f7' 
+                    }} 
+                  />
+                  <Legend wrapperStyle={{ paddingTop: 10 }} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="strategy" 
+                    name="Strategy" 
+                    stroke="#3a86ff" 
+                    strokeWidth={2} 
+                    dot={{ r: 4 }} 
+                    activeDot={{ r: 6 }} 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="benchmark" 
+                    name="Benchmark" 
+                    stroke="#ff9f1c" 
+                    strokeWidth={2} 
+                    dot={{ r: 4 }} 
+                    strokeDasharray="5 5" 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -1,87 +1,39 @@
+
 import React from 'react';
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
-  Badge,
-  Menu,
-  MenuItem,
-  Box,
-} from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Notifications as NotificationsIcon,
-  Settings as SettingsIcon,
-} from '@mui/icons-material';
-import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
 
-interface HeaderProps {
-  open: boolean;
-  toggleDrawer: () => void;
-}
+export function Header() {
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 
-const Header: React.FC<HeaderProps> = ({ open, toggleDrawer }) => {
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-
-  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
+  const currentTime = new Date().toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
 
   return (
-    <AppBar
-      position="fixed"
-      sx={{
-        zIndex: theme => theme.zIndex.drawer + 1,
-        transition: theme => theme.transitions.create(['width', 'margin'], {
-          easing: theme.transitions.easing.sharp,
-          duration: theme.transitions.duration.leavingScreen,
-        }),
-        ...(open && {
-          marginLeft: 240,
-          width: `calc(100% - 240px)`,
-          transition: theme => theme.transitions.create(['width', 'margin'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
-        }),
-      }}
-    >
-      <Toolbar>
-        <IconButton
-          color="inherit"
-          aria-label="open drawer"
-          onClick={toggleDrawer}
-          edge="start"
-          sx={{
-            marginRight: 5,
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
-        <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-          Crypto Trading Bot
-        </Typography>
-        <Box sx={{ display: 'flex' }}>
-          <IconButton color="inherit">
-            <Badge badgeContent={4} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-          <SignedIn>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
-          <SignedOut>
-            <SignInButton mode="modal" />
-          </SignedOut>
-        </Box>
-      </Toolbar>
-    </AppBar>
+    <header className="h-12 md:h-14 border-b border-brutal-border flex items-center justify-between px-3 md:px-6">
+      <div className="flex items-center">
+        <div className="uppercase text-xs tracking-wider">
+          DASHBOARD<span className="text-brutal-text/30 mx-2">/</span>OVERVIEW
+        </div>
+      </div>
+      
+      <div className="flex items-center space-x-3 md:space-x-6 text-xs md:text-sm">
+        <div className="hidden sm:flex items-center">
+          <div className="h-2 w-2 rounded-full bg-green-500 mr-1"></div>
+          <span className="uppercase text-xs tracking-wider mr-2">Backend</span>
+          <div className="h-2 w-2 rounded-full bg-red-500 mr-1"></div>
+          <span className="uppercase text-xs tracking-wider">Offline</span>
+        </div>
+        <div className="text-brutal-text/70 font-mono">
+          {currentDate.replace(/\//g, '/')} {currentTime}
+        </div>
+      </div>
+    </header>
   );
-};
-
-export { Header };
+}

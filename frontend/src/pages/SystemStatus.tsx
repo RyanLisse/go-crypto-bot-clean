@@ -3,51 +3,21 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Database, Monitor, Settings } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { StatusResponse } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
-import { useStatusQuery, useStartProcessesMutation, useStopProcessesMutation } from '@/hooks/queries';
 
 const SystemStatus = () => {
-  const { toast } = useToast();
-
-  // Use TanStack Query for status data
-  const {
-    data: statusData,
-    isLoading: loading,
-    error: queryError,
-    refetch: refetchStatus
-  } = useStatusQuery();
-
-  // Use TanStack Query mutations for process control
-  const { mutate: startProcesses, isLoading: isStarting } = useStartProcessesMutation();
-  const { mutate: stopProcesses, isLoading: isStopping } = useStopProcessesMutation();
-
-  // Show error toast if query fails
-  React.useEffect(() => {
-    if (queryError) {
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch system status',
-        variant: 'destructive',
-      });
-    }
-  }, [queryError, toast]);
-
-  // Derived error state
-  const error = queryError ? 'Failed to fetch system status. Please try again.' : null;
-
-  // Mock data for system metrics that aren't provided by the API
+  // Mock data for system status
   const systemMetrics = [
     { name: 'CPU Usage', value: '42%', status: 'normal' },
-    { name: 'Memory Usage', value: statusData?.memory_usage?.allocated || '0MB', status: 'normal' },
-    { name: 'Goroutines', value: statusData?.goroutines?.toString() || '0', status: 'normal' },
-    { name: 'Uptime', value: statusData?.uptime || '0s', status: 'normal' },
+    { name: 'Memory Usage', value: '2.8GB / 8GB', status: 'normal' },
+    { name: 'Disk Space', value: '156GB / 500GB', status: 'normal' },
+    { name: 'Network Load', value: '18Mbps', status: 'normal' },
   ];
 
-  // Use process data from API if available
-  const processStatuses = statusData?.processes || [
-    { name: 'Trading Engine', status: 'unknown', is_running: false },
-    { name: 'Market Data Collector', status: 'unknown', is_running: false },
+  const processStatuses = [
+    { name: 'Trading Engine', status: 'running', uptime: '5d 12h 43m', pid: '1024' },
+    { name: 'Market Data Collector', status: 'running', uptime: '5d 12h 40m', pid: '1025' },
+    { name: 'Signal Generator', status: 'running', uptime: '3d 7h 22m', pid: '1028' },
+    { name: 'Portfolio Manager', status: 'running', uptime: '5d 12h 43m', pid: '1030' },
   ];
 
   const recentLogs = [
@@ -58,53 +28,11 @@ const SystemStatus = () => {
     { timestamp: '2025-04-07 11:50:22', level: 'INFO', message: 'Portfolio rebalancing complete' },
   ];
 
-  // Handle starting all processes
-  const handleStartAll = () => {
-    startProcesses(undefined, {
-      onSuccess: () => {
-        toast({
-          title: 'Success',
-          description: 'All processes started successfully',
-        });
-      },
-      onError: (err) => {
-        console.error('Failed to start processes:', err);
-        toast({
-          title: 'Error',
-          description: 'Failed to start processes',
-          variant: 'destructive',
-        });
-      }
-    });
-  };
-
-  // Handle stopping all processes
-  const handleStopAll = () => {
-    stopProcesses(undefined, {
-      onSuccess: () => {
-        toast({
-          title: 'Success',
-          description: 'All processes stopped successfully',
-        });
-      },
-      onError: (err) => {
-        console.error('Failed to stop processes:', err);
-        toast({
-          title: 'Error',
-          description: 'Failed to stop processes',
-          variant: 'destructive',
-        });
-      }
-    });
-  };
-
   return (
     <div className="flex-1 p-6 bg-brutal-background overflow-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-brutal-text tracking-tight">SYSTEM STATUS</h1>
-        <p className="text-brutal-text/70 text-sm">
-          {loading ? 'Loading...' : error ? 'Error loading status' : `Bot uptime: ${statusData?.uptime || 'Unknown'}`}
-        </p>
+        <p className="text-brutal-text/70 text-sm">Bot uptime: 5 days, 12 hours, 43 minutes</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -122,7 +50,7 @@ const SystemStatus = () => {
                   <div className="text-xs text-brutal-text/70">{metric.name}</div>
                   <div className="text-brutal-text font-mono text-lg">{metric.value}</div>
                   <div className={`text-xs ${
-                    metric.status === 'normal' ? 'text-brutal-info' :
+                    metric.status === 'normal' ? 'text-brutal-info' : 
                     metric.status === 'warning' ? 'text-brutal-warning' : 'text-brutal-error'
                   }`}>
                     {metric.status.toUpperCase()}
@@ -155,11 +83,11 @@ const SystemStatus = () => {
                     <TableCell className="font-mono text-brutal-text">{process.name}</TableCell>
                     <TableCell>
                       <span className="flex items-center">
-                        <span className={`h-2 w-2 rounded-full ${process.is_running ? 'bg-brutal-success' : 'bg-brutal-error'} mr-2`}></span>
+                        <span className="h-2 w-2 rounded-full bg-brutal-success mr-2"></span>
                         <span className="text-brutal-text">{process.status}</span>
                       </span>
                     </TableCell>
-                    <TableCell className="font-mono text-brutal-text">{statusData?.uptime || 'Unknown'}</TableCell>
+                    <TableCell className="font-mono text-brutal-text">{process.uptime}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -181,8 +109,8 @@ const SystemStatus = () => {
               <div key={index} className="mb-2">
                 <span className="text-brutal-text/70">{log.timestamp}</span>
                 <span className={`mx-2 px-1 ${
-                  log.level === 'INFO' ? 'text-brutal-info bg-brutal-info/10' :
-                  log.level === 'WARNING' ? 'text-brutal-warning bg-brutal-warning/10' :
+                  log.level === 'INFO' ? 'text-brutal-info bg-brutal-info/10' : 
+                  log.level === 'WARNING' ? 'text-brutal-warning bg-brutal-warning/10' : 
                   'text-brutal-error bg-brutal-error/10'
                 }`}>
                   {log.level}
@@ -203,19 +131,11 @@ const SystemStatus = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <button
-              className="p-3 border border-brutal-border bg-brutal-background hover:bg-brutal-info/20 text-brutal-text"
-              onClick={handleStartAll}
-              disabled={isStarting || isStopping}
-            >
-              {isStarting ? 'STARTING...' : 'START ALL'}
+            <button className="p-3 border border-brutal-border bg-brutal-background hover:bg-brutal-info/20 text-brutal-text">
+              START ALL
             </button>
-            <button
-              className="p-3 border border-brutal-border bg-brutal-background hover:bg-brutal-error/20 text-brutal-text"
-              onClick={handleStopAll}
-              disabled={isStarting || isStopping}
-            >
-              {isStopping ? 'STOPPING...' : 'STOP ALL'}
+            <button className="p-3 border border-brutal-border bg-brutal-background hover:bg-brutal-error/20 text-brutal-text">
+              STOP ALL
             </button>
             <button className="p-3 border border-brutal-border bg-brutal-background hover:bg-brutal-warning/20 text-brutal-text">
               RESTART ALL
