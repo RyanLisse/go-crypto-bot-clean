@@ -53,4 +53,18 @@ type AIService interface {
 
 	// DeleteSession deletes a session
 	DeleteSession(ctx context.Context, userID int, sessionID string) error
+
+	// Risk Management Methods
+
+	// ApplyRiskGuardrails applies risk guardrails to a trade recommendation
+	ApplyRiskGuardrails(ctx context.Context, userID int, recommendation *TradeRecommendation) (*GuardrailsResult, error)
+
+	// CreateTradeConfirmation creates a trade confirmation
+	CreateTradeConfirmation(ctx context.Context, userID int, trade *TradeRequest, recommendation *TradeRecommendation) (*TradeConfirmation, error)
+
+	// ConfirmTrade confirms a trade
+	ConfirmTrade(ctx context.Context, confirmationID string, approve bool) (*TradeConfirmation, error)
+
+	// ListPendingTradeConfirmations lists all pending trade confirmations for a user
+	ListPendingTradeConfirmations(ctx context.Context, userID int) ([]*TradeConfirmation, error)
 }

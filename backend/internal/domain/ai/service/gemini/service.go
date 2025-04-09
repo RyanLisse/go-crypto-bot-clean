@@ -25,6 +25,8 @@ type GeminiAIService struct {
 	RiskSvc          risk.Service
 	TemplateRegistry *templates.TemplateRegistry
 	FunctionRegistry *function.FunctionRegistry
+	RiskGuardrails   *service.AIRiskGuardrails
+	ConfirmationFlow *service.ConfirmationFlow
 }
 
 // NewGeminiAIService creates a new GeminiAIService

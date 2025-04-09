@@ -64,6 +64,27 @@ func createGeminiAIService(
 		return nil, fmt.Errorf("failed to create conversation memory repository: %w", err)
 	}
 
+	// Create confirmation repository
+	confirmationRepo, err := repository.NewGormConfirmationRepository(db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create confirmation repository: %w", err)
+	}
+
+	// Create risk guardrails
+	riskGuardrails := service.NewAIRiskGuardrails(riskSvc)
+
+	// Create confirmation flow
+	confirmationFlow := service.NewConfirmationFlow(confirmationRepo)
+
 	// Create Gemini AI service
-	return gemini.NewGeminiAIService(client, memoryRepo, portfolioSvc, tradeSvc, riskSvc)
+	aiService, err := gemini.NewGeminiAIService(client, memoryRepo, portfolioSvc, tradeSvc, riskSvc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Gemini AI service: %w", err)
+	}
+
+	// Set risk guardrails and confirmation flow
+	aiService.SetRiskGuardrails(riskGuardrails)
+	aiService.SetConfirmationFlow(confirmationFlow)
+
+	return aiService, nil
 }
