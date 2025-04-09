@@ -8,6 +8,7 @@ import (
 
 	"go-crypto-bot-clean/api/huma/auth"
 	"go-crypto-bot-clean/api/huma/strategy"
+	"go-crypto-bot-clean/api/huma/user"
 )
 
 // Config represents the configuration for the Huma API documentation.
@@ -37,8 +38,7 @@ func SetupHuma(router chi.Router, config Config) huma.API {
 	registerBacktestEndpoints(api, config.BasePath)
 	strategy.RegisterEndpoints(api, config.BasePath)
 	auth.RegisterEndpoints(api, config.BasePath)
-	// TODO: Implement these
-	// registerUserEndpoints(api, config.BasePath)
+	user.RegisterEndpoints(api, config.BasePath)
 
 	return api
 }

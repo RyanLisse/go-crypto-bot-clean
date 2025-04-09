@@ -15,11 +15,15 @@
     "ora": "^7.0.1",
     "task-master-ai": "^0.9.30"
   },
+  "devDependencies": {
+    "husky": "^9.0.11"
+  },
   "scripts": {
     "dev": "node scripts/dev.js",
     "list": "node scripts/dev.js list",
     "generate": "node scripts/dev.js generate",
-    "parse-prd": "node scripts/dev.js parse-prd"
+    "parse-prd": "node scripts/dev.js parse-prd",
+    "prepare": "husky install"
   },
   "type": "module"
 }
