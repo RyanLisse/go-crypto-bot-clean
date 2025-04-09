@@ -11,8 +11,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 )
 
-// RegisterEndpoints registers the authentication endpoints.
-func RegisterEndpoints(api huma.API, basePath string, authService *service.AuthService) {
+// RegisterAuthEndpoints registers the authentication endpoints with service implementation.
+func RegisterAuthEndpoints(api huma.API, basePath string, authService *service.AuthService) {
 	// POST /auth/login
 	huma.Register(api, huma.Operation{
 		OperationID: "login",

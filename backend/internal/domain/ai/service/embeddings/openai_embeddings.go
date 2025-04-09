@@ -31,7 +31,7 @@ func NewOpenAIEmbeddingsService(logger *zap.Logger) (*OpenAIEmbeddingsService, e
 	// Get model from environment variable or use default
 	model := os.Getenv("OPENAI_EMBEDDINGS_MODEL")
 	if model == "" {
-		model = openai.AdaEmbeddingV2 // Default to text-embedding-ada-002
+		model = string(openai.AdaEmbeddingV2) // Default to text-embedding-ada-002
 	}
 
 	return &OpenAIEmbeddingsService{
@@ -52,7 +52,7 @@ func (s *OpenAIEmbeddingsService) GenerateEmbedding(ctx context.Context, text st
 	// Create embedding request
 	req := openai.EmbeddingRequest{
 		Input: []string{text},
-		Model: s.model,
+		Model: openai.EmbeddingModel(s.model),
 	}
 
 	// Generate embedding
@@ -93,7 +93,7 @@ func (s *OpenAIEmbeddingsService) GenerateBatchEmbeddings(ctx context.Context, t
 	// Create embedding request
 	req := openai.EmbeddingRequest{
 		Input: validTexts,
-		Model: s.model,
+		Model: openai.EmbeddingModel(s.model),
 	}
 
 	// Generate embeddings

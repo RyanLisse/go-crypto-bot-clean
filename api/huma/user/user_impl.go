@@ -6,12 +6,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/danielgtaylor/huma/v2"
 	"go-crypto-bot-clean/api/service"
+
+	"github.com/danielgtaylor/huma/v2"
 )
 
-// RegisterEndpoints registers the user management endpoints.
-func RegisterEndpoints(api huma.API, basePath string, userService *service.UserService) {
+// RegisterUserEndpoints registers the user management endpoints with service implementation.
+func RegisterUserEndpoints(api huma.API, basePath string, userService *service.UserService) {
 	// GET /user/profile
 	huma.Register(api, huma.Operation{
 		OperationID: "get-user-profile",
@@ -119,9 +120,9 @@ func RegisterEndpoints(api huma.API, basePath string, userService *service.UserS
 		Description: "Updates the settings of the authenticated user",
 		Tags:        []string{"User"},
 	}, func(ctx context.Context, input *struct {
-		Theme               string `json:"theme,omitempty"`
-		Language            string `json:"language,omitempty"`
-		TimeZone            string `json:"timeZone,omitempty"`
+		Theme                string `json:"theme,omitempty"`
+		Language             string `json:"language,omitempty"`
+		TimeZone             string `json:"timeZone,omitempty"`
 		NotificationsEnabled string `json:"notificationsEnabled,omitempty"`
 		EmailNotifications   string `json:"emailNotifications,omitempty"`
 		PushNotifications    string `json:"pushNotifications,omitempty"`
@@ -135,9 +136,9 @@ func RegisterEndpoints(api huma.API, basePath string, userService *service.UserS
 
 		// Convert API request to service request
 		req := &service.UpdateSettingsRequest{
-			Theme:               input.Theme,
-			Language:            input.Language,
-			TimeZone:            input.TimeZone,
+			Theme:                input.Theme,
+			Language:             input.Language,
+			TimeZone:             input.TimeZone,
 			NotificationsEnabled: input.NotificationsEnabled,
 			EmailNotifications:   input.EmailNotifications,
 			PushNotifications:    input.PushNotifications,

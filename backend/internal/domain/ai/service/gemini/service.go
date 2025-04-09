@@ -9,6 +9,7 @@ import (
 	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service/function"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service/templates"
+	"go-crypto-bot-clean/backend/internal/domain/ai/similarity"
 	"go-crypto-bot-clean/backend/internal/domain/audit"
 	"go-crypto-bot-clean/backend/internal/domain/portfolio"
 	"go-crypto-bot-clean/backend/internal/domain/risk"
@@ -20,18 +21,19 @@ import (
 
 // GeminiAIService implements the AIService interface using Google's Gemini API
 type GeminiAIService struct {
-	Client           *genai.Client
-	MemoryRepo       repository.ConversationMemoryRepository
-	PortfolioSvc     portfolio.Service
-	TradeSvc         trade.Service
-	RiskSvc          risk.Service
-	TemplateRegistry *templates.TemplateRegistry
-	FunctionRegistry *function.FunctionRegistry
-	RiskGuardrails   *service.AIRiskGuardrails
-	ConfirmationFlow *service.ConfirmationFlow
-	SecurityService  *service.AISecurityService
-	AuditService     audit.Service
-	Logger           *zap.Logger
+	Client            *genai.Client
+	MemoryRepo        repository.ConversationMemoryRepository
+	PortfolioSvc      portfolio.Service
+	TradeSvc          trade.Service
+	RiskSvc           risk.Service
+	TemplateRegistry  *templates.TemplateRegistry
+	FunctionRegistry  *function.FunctionRegistry
+	RiskGuardrails    *service.AIRiskGuardrails
+	ConfirmationFlow  *service.ConfirmationFlow
+	SecurityService   *service.AISecurityService
+	AuditService      audit.Service
+	Logger            *zap.Logger
+	SimilarityService *similarity.Service
 }
 
 // NewGeminiAIService creates a new GeminiAIService

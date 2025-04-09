@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/danielgtaylor/huma/v2"
 	"go-crypto-bot-clean/api/service"
+
+	"github.com/danielgtaylor/huma/v2"
 )
 
-// registerBacktestEndpoints registers the backtest endpoints.
-func registerBacktestEndpoints(api huma.API, basePath string, services *service.Provider) {
+// registerBacktestEndpointsWithService registers the backtest endpoints with service implementation.
+func registerBacktestEndpointsWithService(api huma.API, basePath string, services *service.Provider) {
 	// POST /backtest
 	huma.Register(api, huma.Operation{
 		OperationID: "run-backtest",

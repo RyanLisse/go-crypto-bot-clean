@@ -3,6 +3,7 @@ package database
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -48,8 +49,19 @@ func NewDatabase(config Config) (*gorm.DB, error) {
 		gormLogLevel = logger.Info
 	}
 
+	// Get logger if not provided
+	zapLogger := config.Logger
+	if zapLogger == nil {
+		var loggerErr error
+		zapLogger, loggerErr = zap.NewProduction()
+		if loggerErr != nil {
+			return nil, fmt.Errorf("failed to create logger: %w", loggerErr)
+		}
+	}
+
+	// Use standard logger writer
 	gormLogger := logger.New(
-		logger.Writer{}, // Use default writer
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // Standard logger
 		logger.Config{
 			SlowThreshold:             200 * time.Millisecond,
 			LogLevel:                  gormLogLevel,
@@ -96,17 +108,10 @@ func NewDatabase(config Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// Get logger if not provided
-	zapLogger := config.Logger
-	if zapLogger == nil {
-		var loggerErr error
-		zapLogger, loggerErr = zap.NewProduction()
-		if loggerErr != nil {
-			sqlDB.Close()
-			return nil, fmt.Errorf("failed to create logger: %w", loggerErr)
-		}
+	// Log successful connection
+	if zapLogger != nil {
+		zapLogger.Info("Database connection established successfully", zap.String("path", config.Path))
 	}
-	zapLogger.Info("Database connection established successfully", zap.String("path", config.Path))
 
 	return db, nil
 }

@@ -4,73 +4,179 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"go-crypto-bot-clean/backend/internal/api/middleware/jwt"
 )
 
 func TestAuthMiddleware(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	// Create a JWT service
+	jwtService := jwt.NewService(
+		"test-access-secret",
+		"test-refresh-secret",
+		time.Hour,
+		time.Hour*24*7,
+		"test-issuer",
+	)
 
-	tests := []struct {
-		name           string
-		apiKey         string
-		validKeys      map[string]struct{}
-		expectedStatus int
-		expectAbort    bool
-	}{
-		{
-			name:           "valid API key",
-			apiKey:         "valid-key",
-			validKeys:      map[string]struct{}{"valid-key": {}},
-			expectedStatus: http.StatusOK,
-			expectAbort:    false,
-		},
-		{
-			name:           "invalid API key",
-			apiKey:         "invalid-key",
-			validKeys:      map[string]struct{}{"valid-key": {}},
-			expectedStatus: http.StatusUnauthorized,
-			expectAbort:    true,
-		},
-		{
-			name:           "missing API key",
-			apiKey:         "",
-			validKeys:      map[string]struct{}{"valid-key": {}},
-			expectedStatus: http.StatusUnauthorized,
-			expectAbort:    true,
-		},
-	}
+	// Create an auth middleware
+	authMiddleware := NewAuthMiddleware(jwtService)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create a test router with our middleware
-			router := gin.New()
-			router.Use(AuthMiddleware(tt.validKeys))
+	// Create a test handler
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID := GetUserID(r)
+		email := GetEmail(r)
+		roles := GetRoles(r)
 
-			// Add a handler after the middleware
-			router.GET("/test", func(c *gin.Context) {
-				c.Status(http.StatusOK)
-			})
+		assert.Equal(t, "user-123", userID, "User ID should match")
+		assert.Equal(t, "user@example.com", email, "Email should match")
+		assert.Equal(t, []string{"user", "admin"}, roles, "Roles should match")
 
-			// Create a test request
-			req := httptest.NewRequest(http.MethodGet, "/test", nil)
-			if tt.apiKey != "" {
-				req.Header.Set("X-API-Key", tt.apiKey)
-			}
-			w := httptest.NewRecorder()
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 
-			// Serve the request
-			router.ServeHTTP(w, req)
+	// Create a middleware chain
+	handler := authMiddleware.Authenticate(testHandler)
 
-			// Check the response
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectAbort {
-				assert.Contains(t, w.Body.String(), "unauthorized")
-				assert.Contains(t, w.Body.String(), "Invalid or missing API key")
-			} else {
-				assert.Empty(t, w.Body.String())
-			}
-		})
-	}
+	// Generate a valid token
+	token, _, err := jwtService.GenerateAccessToken("user-123", "user@example.com", []string{"user", "admin"})
+	assert.NoError(t, err, "Should not error when generating token")
+
+	// Test with a valid token
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code, "Should return 200 OK")
+	assert.Equal(t, "OK", rec.Body.String(), "Should return OK")
+
+	// Test with no Authorization header
+	req = httptest.NewRequest("GET", "/", nil)
+	rec = httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "Should return 401 Unauthorized")
+
+	// Test with invalid Authorization header format
+	req = httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Authorization", "InvalidFormat")
+	rec = httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "Should return 401 Unauthorized")
+
+	// Test with invalid token
+	req = httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Authorization", "Bearer invalid-token")
+	rec = httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "Should return 401 Unauthorized")
+}
+
+func TestRequireRole(t *testing.T) {
+	// Create a JWT service
+	jwtService := jwt.NewService(
+		"test-access-secret",
+		"test-refresh-secret",
+		time.Hour,
+		time.Hour*24*7,
+		"test-issuer",
+	)
+
+	// Create an auth middleware
+	authMiddleware := NewAuthMiddleware(jwtService)
+
+	// Create a test handler
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	// Create a middleware chain
+	handler := authMiddleware.Authenticate(authMiddleware.RequireRole("admin")(testHandler))
+
+	// Generate a token with admin role
+	adminToken, _, err := jwtService.GenerateAccessToken("user-123", "admin@example.com", []string{"admin"})
+	assert.NoError(t, err, "Should not error when generating token")
+
+	// Generate a token with user role
+	userToken, _, err := jwtService.GenerateAccessToken("user-456", "user@example.com", []string{"user"})
+	assert.NoError(t, err, "Should not error when generating token")
+
+	// Test with admin role
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code, "Should return 200 OK")
+	assert.Equal(t, "OK", rec.Body.String(), "Should return OK")
+
+	// Test with user role (should be forbidden)
+	req = httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	rec = httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code, "Should return 403 Forbidden")
+}
+
+func TestRequireAdmin(t *testing.T) {
+	// Create a JWT service
+	jwtService := jwt.NewService(
+		"test-access-secret",
+		"test-refresh-secret",
+		time.Hour,
+		time.Hour*24*7,
+		"test-issuer",
+	)
+
+	// Create an auth middleware
+	authMiddleware := NewAuthMiddleware(jwtService)
+
+	// Create a test handler
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	// Create a middleware chain
+	handler := authMiddleware.Authenticate(authMiddleware.RequireAdmin()(testHandler))
+
+	// Generate a token with admin role
+	adminToken, _, err := jwtService.GenerateAccessToken("user-123", "admin@example.com", []string{"admin"})
+	assert.NoError(t, err, "Should not error when generating token")
+
+	// Generate a token with user role
+	userToken, _, err := jwtService.GenerateAccessToken("user-456", "user@example.com", []string{"user"})
+	assert.NoError(t, err, "Should not error when generating token")
+
+	// Test with admin role
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code, "Should return 200 OK")
+	assert.Equal(t, "OK", rec.Body.String(), "Should return OK")
+
+	// Test with user role (should be forbidden)
+	req = httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	rec = httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code, "Should return 403 Forbidden")
 }

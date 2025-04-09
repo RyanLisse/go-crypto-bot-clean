@@ -1,6 +1,6 @@
 # Modern AI Integration for Go Crypto Bot
 
-This guide provides a comprehensive approach to implementing an AI-enhanced crypto trading bot using modern best practices. It integrates a Go backend with dependency injection, a Turso SQLite database, and advanced AI providers, alongside a React frontend using the Vercel AI SDK for a responsive chat interface.
+This guide provides a comprehensive approach to implementing an AI-enhanced crypto trading bot using modern best practices. It integrates a Go backend with dependency injection, GORM for database operations, and advanced AI providers, alongside a React frontend using the Vercel AI SDK and Drizzle ORM with Turso for a responsive chat interface.
 
 ## Architecture Overview
 
@@ -24,10 +24,12 @@ This guide provides a comprehensive approach to implementing an AI-enhanced cryp
 
 The architecture follows a clean separation of concerns, aligning with the project's dependency injection pattern:
 
-1. **React Frontend**: Handles user interactions and displays AI responses using the Vercel AI SDK for streaming capabilities
-2. **Go Backend**: Processes requests, enriches them with trading context, and communicates with the AI provider
+1. **React Frontend**: Handles user interactions and displays AI responses using the Vercel AI SDK for streaming capabilities and Drizzle ORM for data persistence
+2. **Go Backend**: Processes requests, enriches them with trading context, and communicates with the AI provider using GORM for all database operations
 3. **AI Provider**: Generates responses based on the provided context and user queries
-4. **Turso DB**: Stores conversation history, user preferences, and trading data
+4. **Database Layer**:
+   - Backend: Uses GORM with SQLite for all database operations including conversation history
+   - Frontend: Uses Drizzle ORM with Turso for client-side data persistence
 5. **Risk Management System**: Ensures all AI-suggested trades comply with risk parameters
 
 ---
@@ -43,13 +45,13 @@ Following the project's dependency injection pattern, we define a clear interfac
 type AIService interface {
     // GenerateResponse generates an AI response based on user message and context
     GenerateResponse(ctx context.Context, userID int, message string) (string, error)
-    
+
     // ExecuteFunction allows the AI to call predefined functions
     ExecuteFunction(ctx context.Context, userID int, functionName string, parameters map[string]interface{}) (interface{}, error)
-    
+
     // StoreConversation saves a conversation to the database
     StoreConversation(ctx context.Context, userID int, sessionID string, messages []Message) error
-    
+
     // RetrieveConversation gets a conversation from the database
     RetrieveConversation(ctx context.Context, userID int, sessionID string) (*ConversationMemory, error)
 }
@@ -63,7 +65,7 @@ The implementation connects to the selected AI provider and handles context enri
 // GeminiAIService implements the AIService interface using Google's Gemini API
 type GeminiAIService struct {
     client      *generativeai.Client
-    db          *sql.DB
+    db          *gorm.DB
     portfolioSvc portfolio.Service
     tradeSvc     trade.Service
     riskSvc      risk.Service
@@ -72,7 +74,7 @@ type GeminiAIService struct {
 // NewGeminiAIService creates a new GeminiAIService
 func NewGeminiAIService(
     client *generativeai.Client,
-    db *sql.DB,
+    db *gorm.DB,
     portfolioSvc portfolio.Service,
     tradeSvc trade.Service,
     riskSvc risk.Service,
@@ -105,28 +107,28 @@ func AIContextMiddleware(
                 http.Error(w, "User ID not found in context", http.StatusUnauthorized)
                 return
             }
-            
+
             // Gather portfolio context
             portfolio, err := portfolioSvc.GetSummary(r.Context(), userID)
             if err != nil {
                 log.Printf("Error fetching portfolio context: %v", err)
                 // Continue without portfolio context
             }
-            
+
             // Gather active trades context
             trades, err := tradeSvc.GetActiveTrades(r.Context(), userID)
             if err != nil {
                 log.Printf("Error fetching trades context: %v", err)
                 // Continue without trades context
             }
-            
+
             // Add context to request
             ctx := context.WithValue(r.Context(), "aiContext", map[string]interface{}{
                 "portfolio": portfolio,
                 "trades": trades,
                 "timestamp": time.Now().UTC(),
             })
-            
+
             // Pass to next handler
             next.ServeHTTP(w, r.WithContext(ctx))
         })
@@ -155,7 +157,7 @@ type TradeRecommendationPrompt struct {
 // GeneratePrompt generates a structured prompt for trade recommendations
 func (t *TradeRecommendationPrompt) GeneratePrompt() string {
     return fmt.Sprintf(`You are an AI trading assistant for a cryptocurrency bot.
-    
+
 CONTEXT:
 - Portfolio: %s
 - User Risk Profile: %s
@@ -291,7 +293,7 @@ func validateAITradeWithRiskSystem(
         RiskFactors:  []string{},
         Explanation:  "",
     }
-    
+
     // Check daily loss limit
     dailyLossCheck, err := riskSvc.CheckDailyLossLimit(ctx, userID)
     if err != nil {
@@ -301,7 +303,7 @@ func validateAITradeWithRiskSystem(
         assessment.RiskFactors = append(assessment.RiskFactors, "daily_loss_limit_exceeded")
         assessment.Explanation += fmt.Sprintf("Daily loss limit of %.2f%% reached. ", dailyLossCheck.Threshold)
     }
-    
+
     // Check maximum drawdown
     drawdownCheck, err := riskSvc.CheckMaximumDrawdown(ctx, userID)
     if err != nil {
@@ -311,7 +313,7 @@ func validateAITradeWithRiskSystem(
         assessment.RiskFactors = append(assessment.RiskFactors, "max_drawdown_exceeded")
         assessment.Explanation += fmt.Sprintf("Maximum drawdown of %.2f%% reached. ", drawdownCheck.Threshold)
     }
-    
+
     // Check exposure limit for the specific asset
     exposureCheck, err := riskSvc.CheckExposureLimit(ctx, userID, trade.Symbol)
     if err != nil {
@@ -319,51 +321,67 @@ func validateAITradeWithRiskSystem(
     }
     if !exposureCheck.Allowed {
         assessment.RiskFactors = append(assessment.RiskFactors, "exposure_limit_exceeded")
-        assessment.Explanation += fmt.Sprintf("Exposure limit of %.2f%% for %s reached. ", 
+        assessment.Explanation += fmt.Sprintf("Exposure limit of %.2f%% for %s reached. ",
             exposureCheck.Threshold, trade.Symbol)
     }
-    
+
     // Trade is allowed if no risk factors were triggered
     assessment.TradeAllowed = len(assessment.RiskFactors) == 0
-    
+
     return assessment, nil
 }
 ```
 
-### 1.7 Conversation Memory System
+### 1.7 Conversation Memory System with GORM
 
-Implement a sophisticated memory system for AI conversations to improve response quality:
+Implement a sophisticated memory system for AI conversations using GORM for database operations:
 
 ```go
 // ConversationMemory stores conversation history
 type ConversationMemory struct {
-    UserID       int       `json:"user_id"`
-    SessionID    string    `json:"session_id"`
-    Messages     []Message `json:"messages"`
-    Summary      string    `json:"summary"`
-    LastAccessed time.Time `json:"last_accessed"`
+    UserID       int       `json:"user_id" gorm:"primaryKey;column:user_id"`
+    SessionID    string    `json:"session_id" gorm:"primaryKey;column:session_id"`
+    MessagesJSON string    `json:"-" gorm:"column:messages_json"`
+    Summary      string    `json:"summary" gorm:"column:summary"`
+    LastAccessed time.Time `json:"last_accessed" gorm:"column:last_accessed;index"`
+    CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
+    UpdatedAt    time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+
+    // Virtual field for messages (not stored directly in database)
+    Messages     []Message `json:"messages" gorm:"-"`
 }
 
 type Message struct {
-    Role      string    `json:"role"` // "user" or "assistant"
-    Content   string    `json:"content"`
-    Timestamp time.Time `json:"timestamp"`
+    Role      string                 `json:"role"` // "user" or "assistant"
+    Content   string                 `json:"content"`
+    Timestamp time.Time              `json:"timestamp"`
     Metadata  map[string]interface{} `json:"metadata,omitempty"` // For tracking context, actions, etc.
 }
 
-// Database schema for conversation memory
-const createConversationMemoryTableSQL = `
-CREATE TABLE IF NOT EXISTS conversation_memories (
-    user_id INTEGER NOT NULL,
-    session_id TEXT NOT NULL,
-    messages_json TEXT NOT NULL,
-    summary TEXT,
-    last_accessed TIMESTAMP NOT NULL,
-    PRIMARY KEY (user_id, session_id)
-);
-CREATE INDEX IF NOT EXISTS idx_conversation_memories_user_id ON conversation_memories(user_id);
-CREATE INDEX IF NOT EXISTS idx_conversation_memories_last_accessed ON conversation_memories(last_accessed);
-`
+// TableName specifies the table name for GORM
+func (ConversationMemory) TableName() string {
+    return "conversation_memories"
+}
+
+// BeforeSave hook to serialize messages to JSON before saving
+func (c *ConversationMemory) BeforeSave(tx *gorm.DB) error {
+    messagesJSON, err := json.Marshal(c.Messages)
+    if err != nil {
+        return err
+    }
+    c.MessagesJSON = string(messagesJSON)
+    return nil
+}
+
+// AfterFind hook to deserialize messages from JSON after fetching
+func (c *ConversationMemory) AfterFind(tx *gorm.DB) error {
+    var messages []Message
+    if err := json.Unmarshal([]byte(c.MessagesJSON), &messages); err != nil {
+        return err
+    }
+    c.Messages = messages
+    return nil
+}
 ```
 
 ### 1.8 Chat API Endpoint
@@ -450,9 +468,37 @@ func ChatHandler(
 
 ---
 
-## 2. Frontend Implementation
+## 2. Frontend Implementation with Drizzle ORM
 
-### 2.1 React Chat Interface with Vercel AI SDK
+### 2.1 Drizzle Schema for Conversation History
+
+Define the schema for storing conversation history in the frontend:
+
+```typescript
+// src/db/schema/conversations.ts
+import { sqliteTable, text, integer, blob } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import { users } from './users';
+
+export const conversations = sqliteTable('conversations', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  title: text('title').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const conversationMessages = sqliteTable('conversation_messages', {
+  id: text('id').primaryKey(),
+  conversationId: text('conversation_id').notNull().references(() => conversations.id),
+  role: text('role').notNull(), // 'user' or 'assistant'
+  content: text('content').notNull(),
+  timestamp: integer('timestamp', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  metadata: blob('metadata', { mode: 'json' }),
+});
+```
+
+### 2.2 React Chat Interface with Vercel AI SDK
 
 Create a responsive and interactive chat interface using the latest Vercel AI SDK features:
 
@@ -464,7 +510,7 @@ import { CryptoChart, PortfolioCard } from '../components';
 
 export function TradingAssistant() {
   const [visualMode, setVisualMode] = useState('chat'); // 'chat', 'chart', 'portfolio'
-  
+
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
     api: '/api/chat',
     headers: {
@@ -503,7 +549,7 @@ export function TradingAssistant() {
           </div>
         ))}
       </div>
-      
+
       <form onSubmit={handleSubmit} className="input-form">
         <input
           value={input}
@@ -520,7 +566,7 @@ export function TradingAssistant() {
 }
 ```
 
-### 2.2 Frontend API Client
+### 2.3 Frontend API Client with Drizzle Integration
 
 Create a client for interacting with the backend API:
 
@@ -530,6 +576,22 @@ export async function sendChatMessage(message, sessionId = null) {
   const token = localStorage.getItem('token');
   if (!token) {
     throw new Error('Authentication required');
+  }
+
+  // Store message locally using Drizzle
+  if (sessionId) {
+    try {
+      await db.insert(conversationMessages).values({
+        id: crypto.randomUUID(),
+        conversationId: sessionId,
+        role: 'user',
+        content: message,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to store message locally:', error);
+      // Continue with API call even if local storage fails
+    }
   }
 
   const response = await fetch('/api/chat', {
@@ -548,7 +610,24 @@ export async function sendChatMessage(message, sessionId = null) {
     throw new Error(`API error: ${response.status}`);
   }
 
-  return response.json();
+  const result = await response.json();
+
+  // Store AI response locally using Drizzle
+  if (sessionId) {
+    try {
+      await db.insert(conversationMessages).values({
+        id: crypto.randomUUID(),
+        conversationId: sessionId,
+        role: 'assistant',
+        content: result.output,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to store AI response locally:', error);
+    }
+  }
+
+  return result;
 }
 
 export async function executeTradingFunction(functionName, parameters) {
@@ -577,7 +656,7 @@ export async function executeTradingFunction(functionName, parameters) {
 }
 ```
 
-### 2.3 Data Visualization Components
+### 2.4 Data Visualization Components
 
 Create components for visualizing trading data:
 
@@ -598,12 +677,12 @@ export function CryptoChart({ data }) {
           <Legend />
           <Line type="monotone" dataKey="price" stroke="#8884d8" activeDot={{ r: 8 }} />
           {data.indicators && data.indicators.map((indicator, index) => (
-            <Line 
-              key={indicator.name} 
-              type="monotone" 
-              dataKey={indicator.key} 
-              stroke={indicator.color} 
-              strokeDasharray={indicator.dashed ? "5 5" : "0"} 
+            <Line
+              key={indicator.name}
+              type="monotone"
+              dataKey={indicator.key}
+              stroke={indicator.color}
+              strokeDasharray={indicator.dashed ? "5 5" : "0"}
             />
           ))}
         </LineChart>

@@ -2,9 +2,7 @@ package api
 
 import (
 	"database/sql"
-	"log"
 
-	"go-crypto-bot-clean/backend/internal/domain/ai/factory"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 )
 
@@ -12,15 +10,9 @@ import (
 func (d *Dependencies) InitializeAIService(
 	db *sql.DB,
 ) {
-	// Create AI service
-	aiSvc, err := factory.CreateAIService(db)
-	if err != nil {
-		log.Printf("Failed to create AI service: %v", err)
-		return
-	}
-
-	// Store AI service in dependencies
-	d.AIService = aiSvc
+	// Create mock AI service
+	d.logger.Info("Using mock AI service")
+	d.AIService = &MockAIService{}
 }
 
 // GetAIService returns the AI service

@@ -2,9 +2,9 @@ package service
 
 import (
 	"go-crypto-bot-clean/api/repository"
-	"go-crypto-bot-clean/backend/internal/auth"
-	"go-crypto-bot-clean/backend/internal/backtest"
-	"go-crypto-bot-clean/backend/internal/domain/strategy"
+	"go-crypto-bot-clean/backend/pkg/auth"
+	"go-crypto-bot-clean/backend/pkg/backtest"
+	"go-crypto-bot-clean/backend/pkg/strategy"
 )
 
 // Provider provides access to all services
@@ -25,8 +25,8 @@ func NewProvider(
 	backtestRepo repository.BacktestRepository,
 ) *Provider {
 	return &Provider{
-		BacktestService: NewBacktestService(backtestService, backtestRepo),
-		StrategyService: NewStrategyService(strategyFactory, strategyRepo),
+		BacktestService: NewBacktestService(backtestService),
+		StrategyService: NewStrategyService(strategyFactory),
 		AuthService:     NewAuthService(authService, userRepo),
 		UserService:     NewUserService(userRepo),
 	}

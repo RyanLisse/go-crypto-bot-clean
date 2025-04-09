@@ -6,12 +6,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/danielgtaylor/huma/v2"
 	"go-crypto-bot-clean/api/service"
+
+	"github.com/danielgtaylor/huma/v2"
 )
 
-// RegisterEndpoints registers the strategy endpoints.
-func RegisterEndpoints(api huma.API, basePath string, strategyService *service.StrategyService) {
+// RegisterStrategyEndpoints registers the strategy endpoints with service implementation.
+func RegisterStrategyEndpoints(api huma.API, basePath string, strategyService *service.StrategyService) {
 	// GET /strategy
 	huma.Register(api, huma.Operation{
 		OperationID: "list-strategies",

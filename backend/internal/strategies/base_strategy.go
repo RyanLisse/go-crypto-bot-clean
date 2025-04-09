@@ -244,21 +244,39 @@ func (s *BaseStrategy) CalculateIndicator(symbol string, indicator string, perio
 		result, err = indicators.RSI(prices, period)
 	case "bollinger_middle":
 		_, middle, _, err := indicators.BollingerBands(prices, period, 2.0)
+		if err != nil {
+			return nil, err
+		}
 		result = middle
 	case "bollinger_upper":
 		upper, _, _, err := indicators.BollingerBands(prices, period, 2.0)
+		if err != nil {
+			return nil, err
+		}
 		result = upper
 	case "bollinger_lower":
 		_, _, lower, err := indicators.BollingerBands(prices, period, 2.0)
+		if err != nil {
+			return nil, err
+		}
 		result = lower
 	case "macd":
 		macd, _, _, err := indicators.MACD(prices, 12, 26, 9)
+		if err != nil {
+			return nil, err
+		}
 		result = macd
 	case "macd_signal":
 		_, signal, _, err := indicators.MACD(prices, 12, 26, 9)
+		if err != nil {
+			return nil, err
+		}
 		result = signal
 	case "macd_histogram":
 		_, _, histogram, err := indicators.MACD(prices, 12, 26, 9)
+		if err != nil {
+			return nil, err
+		}
 		result = histogram
 	default:
 		return nil, fmt.Errorf("unsupported indicator: %s", indicator)

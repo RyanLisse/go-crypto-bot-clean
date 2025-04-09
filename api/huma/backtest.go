@@ -10,6 +10,7 @@ import (
 )
 
 // registerBacktestEndpoints registers the backtest endpoints.
+// Deprecated: Use registerBacktestEndpointsWithService instead.
 func registerBacktestEndpoints(api huma.API, basePath string) {
 	// POST /backtest
 	huma.Register(api, huma.Operation{

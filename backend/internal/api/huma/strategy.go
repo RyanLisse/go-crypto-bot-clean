@@ -8,57 +8,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 )
 
-// StrategyResponse represents a trading strategy
-type StrategyResponse struct {
-	Body struct {
-		ID          string    `json:"id" doc:"Unique identifier for the strategy" example:"breakout"`
-		Name        string    `json:"name" doc:"Name of the strategy" example:"Breakout Strategy"`
-		Description string    `json:"description" doc:"Description of the strategy" example:"A strategy that trades breakouts from support and resistance levels"`
-		Parameters  []struct {
-			Name        string      `json:"name" doc:"Name of the parameter" example:"lookbackPeriod"`
-			Type        string      `json:"type" doc:"Type of the parameter" example:"integer" enum:"integer,float,boolean,string,array"`
-			Description string      `json:"description" doc:"Description of the parameter" example:"Number of periods to look back for support/resistance"`
-			Default     interface{} `json:"default" doc:"Default value of the parameter" example:"20"`
-			Min         interface{} `json:"min,omitempty" doc:"Minimum value of the parameter" example:"5"`
-			Max         interface{} `json:"max,omitempty" doc:"Maximum value of the parameter" example:"100"`
-			Options     []string    `json:"options,omitempty" doc:"Available options for the parameter" example:"[\"option1\", \"option2\"]"`
-			Required    bool        `json:"required" doc:"Whether the parameter is required" example:"true"`
-		} `json:"parameters" doc:"Parameters of the strategy"`
-		Performance struct {
-			WinRate      float64 `json:"winRate" doc:"Win rate percentage" example:"65.0"`
-			ProfitFactor float64 `json:"profitFactor" doc:"Profit factor" example:"2.1"`
-			SharpeRatio  float64 `json:"sharpeRatio" doc:"Sharpe ratio" example:"1.5"`
-			MaxDrawdown  float64 `json:"maxDrawdown" doc:"Maximum drawdown percentage" example:"15.0"`
-		} `json:"performance" doc:"Performance metrics of the strategy"`
-		IsEnabled  bool      `json:"isEnabled" doc:"Whether the strategy is enabled" example:"true"`
-		CreatedAt  time.Time `json:"createdAt" doc:"Time when the strategy was created" example:"2023-01-01T00:00:00Z"`
-		UpdatedAt  time.Time `json:"updatedAt" doc:"Time when the strategy was last updated" example:"2023-01-02T00:00:00Z"`
-	}
-}
-
-// StrategyListResponse represents a list of trading strategies
-type StrategyListResponse struct {
-	Body struct {
-		Strategies []struct {
-			ID          string  `json:"id" doc:"Unique identifier for the strategy" example:"breakout"`
-			Name        string  `json:"name" doc:"Name of the strategy" example:"Breakout Strategy"`
-			Description string  `json:"description" doc:"Description of the strategy" example:"A strategy that trades breakouts from support and resistance levels"`
-			WinRate     float64 `json:"winRate" doc:"Win rate percentage" example:"65.0"`
-			IsEnabled   bool    `json:"isEnabled" doc:"Whether the strategy is enabled" example:"true"`
-		} `json:"strategies" doc:"List of strategies"`
-		Count     int       `json:"count" doc:"Number of strategies" example:"3"`
-		Timestamp time.Time `json:"timestamp" doc:"Timestamp of the response" example:"2023-02-02T10:00:00Z"`
-	}
-}
-
-// StrategyConfigRequest represents a request to update strategy configuration
-type StrategyConfigRequest struct {
-	Body struct {
-		Parameters map[string]interface{} `json:"parameters" doc:"Parameters of the strategy" example:"{\"lookbackPeriod\": 20, \"breakoutThreshold\": 2.5}" binding:"required"`
-		IsEnabled  bool                   `json:"isEnabled" doc:"Whether the strategy is enabled" example:"true"`
-	}
-}
-
 // registerStrategyEndpoints registers the strategy endpoints.
 func registerStrategyEndpoints(api huma.API, basePath string) {
 	// GET /strategy
@@ -70,10 +19,86 @@ func registerStrategyEndpoints(api huma.API, basePath string) {
 		Description: "Returns a list of available trading strategies",
 		Tags:        []string{"Strategy"},
 	}, func(ctx context.Context, input *struct {
-		Enabled *bool `query:"enabled" doc:"Filter by enabled status" example:"true"`
-	}) (*StrategyListResponse, error) {
-		// This is just a placeholder for documentation purposes
-		return nil, nil
+		Enabled string `query:"enabled"`
+	}) (*struct {
+		Body struct {
+			Strategies []struct {
+				ID          string  `json:"id"`
+				Name        string  `json:"name"`
+				Description string  `json:"description"`
+				WinRate     float64 `json:"winRate"`
+				IsEnabled   bool    `json:"isEnabled"`
+			} `json:"strategies"`
+			Count     int       `json:"count"`
+			Timestamp time.Time `json:"timestamp"`
+		}
+	}, error) {
+		resp := &struct {
+			Body struct {
+				Strategies []struct {
+					ID          string  `json:"id"`
+					Name        string  `json:"name"`
+					Description string  `json:"description"`
+					WinRate     float64 `json:"winRate"`
+					IsEnabled   bool    `json:"isEnabled"`
+				} `json:"strategies"`
+				Count     int       `json:"count"`
+				Timestamp time.Time `json:"timestamp"`
+			}
+		}{}
+
+		// Add some sample strategies
+		resp.Body.Strategies = []struct {
+			ID          string  `json:"id"`
+			Name        string  `json:"name"`
+			Description string  `json:"description"`
+			WinRate     float64 `json:"winRate"`
+			IsEnabled   bool    `json:"isEnabled"`
+		}{
+			{
+				ID:          "breakout",
+				Name:        "Breakout Strategy",
+				Description: "A strategy that trades breakouts from support and resistance levels",
+				WinRate:     65.0,
+				IsEnabled:   true,
+			},
+			{
+				ID:          "volume-spike",
+				Name:        "Volume Spike Strategy",
+				Description: "A strategy that trades based on unusual volume spikes",
+				WinRate:     58.0,
+				IsEnabled:   false,
+			},
+			{
+				ID:          "new-coin",
+				Name:        "New Coin Strategy",
+				Description: "A strategy that trades newly listed coins",
+				WinRate:     72.0,
+				IsEnabled:   true,
+			},
+		}
+
+		// Filter by enabled status if provided
+		if input.Enabled != "" {
+			filteredStrategies := []struct {
+				ID          string  `json:"id"`
+				Name        string  `json:"name"`
+				Description string  `json:"description"`
+				WinRate     float64 `json:"winRate"`
+				IsEnabled   bool    `json:"isEnabled"`
+			}{}
+			for _, strategy := range resp.Body.Strategies {
+				isEnabled := input.Enabled == "true"
+				if strategy.IsEnabled == isEnabled {
+					filteredStrategies = append(filteredStrategies, strategy)
+				}
+			}
+			resp.Body.Strategies = filteredStrategies
+		}
+
+		resp.Body.Count = len(resp.Body.Strategies)
+		resp.Body.Timestamp = time.Now()
+		return resp, nil
 	})
 
 	// GET /strategy/{id}
@@ -85,10 +110,213 @@ func registerStrategyEndpoints(api huma.API, basePath string) {
 		Description: "Returns details of a specific trading strategy",
 		Tags:        []string{"Strategy"},
 	}, func(ctx context.Context, input *struct {
-		ID string `path:"id" doc:"Strategy ID" example:"breakout"`
-	}) (*StrategyResponse, error) {
-		// This is just a placeholder for documentation purposes
-		return nil, nil
+		ID string `path:"id"`
+	}) (*struct {
+		Body struct {
+			ID          string `json:"id"`
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			Parameters  []struct {
+				Name        string      `json:"name"`
+				Type        string      `json:"type"`
+				Description string      `json:"description"`
+				Default     interface{} `json:"default"`
+				Min         interface{} `json:"min,omitempty"`
+				Max         interface{} `json:"max,omitempty"`
+				Options     []string    `json:"options,omitempty"`
+				Required    bool        `json:"required"`
+			} `json:"parameters"`
+			Performance struct {
+				WinRate      float64 `json:"winRate"`
+				ProfitFactor float64 `json:"profitFactor"`
+				SharpeRatio  float64 `json:"sharpeRatio"`
+				MaxDrawdown  float64 `json:"maxDrawdown"`
+			} `json:"performance"`
+			IsEnabled bool      `json:"isEnabled"`
+			CreatedAt time.Time `json:"createdAt"`
+			UpdatedAt time.Time `json:"updatedAt"`
+		}
+	}, error) {
+		resp := &struct {
+			Body struct {
+				ID          string `json:"id"`
+				Name        string `json:"name"`
+				Description string `json:"description"`
+				Parameters  []struct {
+					Name        string      `json:"name"`
+					Type        string      `json:"type"`
+					Description string      `json:"description"`
+					Default     interface{} `json:"default"`
+					Min         interface{} `json:"min,omitempty"`
+					Max         interface{} `json:"max,omitempty"`
+					Options     []string    `json:"options,omitempty"`
+					Required    bool        `json:"required"`
+				} `json:"parameters"`
+				Performance struct {
+					WinRate      float64 `json:"winRate"`
+					ProfitFactor float64 `json:"profitFactor"`
+					SharpeRatio  float64 `json:"sharpeRatio"`
+					MaxDrawdown  float64 `json:"maxDrawdown"`
+				} `json:"performance"`
+				IsEnabled bool      `json:"isEnabled"`
+				CreatedAt time.Time `json:"createdAt"`
+				UpdatedAt time.Time `json:"updatedAt"`
+			}
+		}{}
+
+		// Set strategy details based on ID
+		switch input.ID {
+		case "breakout":
+			resp.Body.ID = "breakout"
+			resp.Body.Name = "Breakout Strategy"
+			resp.Body.Description = "A strategy that trades breakouts from support and resistance levels"
+			resp.Body.Parameters = []struct {
+				Name        string      `json:"name"`
+				Type        string      `json:"type"`
+				Description string      `json:"description"`
+				Default     interface{} `json:"default"`
+				Min         interface{} `json:"min,omitempty"`
+				Max         interface{} `json:"max,omitempty"`
+				Options     []string    `json:"options,omitempty"`
+				Required    bool        `json:"required"`
+			}{
+				{
+					Name:        "lookbackPeriod",
+					Type:        "integer",
+					Description: "Number of periods to look back for support/resistance",
+					Default:     20,
+					Min:         5,
+					Max:         100,
+					Required:    true,
+				},
+				{
+					Name:        "breakoutThreshold",
+					Type:        "float",
+					Description: "Threshold for breakout detection",
+					Default:     2.0,
+					Min:         0.5,
+					Max:         5.0,
+					Required:    true,
+				},
+				{
+					Name:        "confirmationPeriods",
+					Type:        "integer",
+					Description: "Number of periods to confirm breakout",
+					Default:     3,
+					Min:         1,
+					Max:         10,
+					Required:    false,
+				},
+			}
+			resp.Body.Performance.WinRate = 65.0
+			resp.Body.Performance.ProfitFactor = 2.1
+			resp.Body.Performance.SharpeRatio = 1.5
+			resp.Body.Performance.MaxDrawdown = 15.0
+			resp.Body.IsEnabled = true
+		case "volume-spike":
+			resp.Body.ID = "volume-spike"
+			resp.Body.Name = "Volume Spike Strategy"
+			resp.Body.Description = "A strategy that trades based on unusual volume spikes"
+			resp.Body.Parameters = []struct {
+				Name        string      `json:"name"`
+				Type        string      `json:"type"`
+				Description string      `json:"description"`
+				Default     interface{} `json:"default"`
+				Min         interface{} `json:"min,omitempty"`
+				Max         interface{} `json:"max,omitempty"`
+				Options     []string    `json:"options,omitempty"`
+				Required    bool        `json:"required"`
+			}{
+				{
+					Name:        "volumeMultiplier",
+					Type:        "float",
+					Description: "Multiplier for average volume to detect spike",
+					Default:     3.0,
+					Min:         1.5,
+					Max:         10.0,
+					Required:    true,
+				},
+				{
+					Name:        "averagePeriod",
+					Type:        "integer",
+					Description: "Number of periods to calculate average volume",
+					Default:     24,
+					Min:         6,
+					Max:         72,
+					Required:    true,
+				},
+				{
+					Name:        "priceChangeThreshold",
+					Type:        "float",
+					Description: "Minimum price change percentage to consider",
+					Default:     1.0,
+					Min:         0.1,
+					Max:         5.0,
+					Required:    false,
+				},
+			}
+			resp.Body.Performance.WinRate = 58.0
+			resp.Body.Performance.ProfitFactor = 1.8
+			resp.Body.Performance.SharpeRatio = 1.2
+			resp.Body.Performance.MaxDrawdown = 18.0
+			resp.Body.IsEnabled = false
+		case "new-coin":
+			resp.Body.ID = "new-coin"
+			resp.Body.Name = "New Coin Strategy"
+			resp.Body.Description = "A strategy that trades newly listed coins"
+			resp.Body.Parameters = []struct {
+				Name        string      `json:"name"`
+				Type        string      `json:"type"`
+				Description string      `json:"description"`
+				Default     interface{} `json:"default"`
+				Min         interface{} `json:"min,omitempty"`
+				Max         interface{} `json:"max,omitempty"`
+				Options     []string    `json:"options,omitempty"`
+				Required    bool        `json:"required"`
+			}{
+				{
+					Name:        "maxAgeHours",
+					Type:        "integer",
+					Description: "Maximum age of coin in hours",
+					Default:     24,
+					Min:         1,
+					Max:         72,
+					Required:    true,
+				},
+				{
+					Name:        "minVolume",
+					Type:        "float",
+					Description: "Minimum volume in USDT",
+					Default:     100000.0,
+					Min:         10000.0,
+					Max:         1000000.0,
+					Required:    true,
+				},
+				{
+					Name:        "entryType",
+					Type:        "string",
+					Description: "Type of entry strategy",
+					Default:     "immediate",
+					Options:     []string{"immediate", "pullback", "breakout"},
+					Required:    true,
+				},
+			}
+			resp.Body.Performance.WinRate = 72.0
+			resp.Body.Performance.ProfitFactor = 2.5
+			resp.Body.Performance.SharpeRatio = 1.8
+			resp.Body.Performance.MaxDrawdown = 12.0
+			resp.Body.IsEnabled = true
+		default:
+			// Return a default strategy if ID not found
+			resp.Body.ID = input.ID
+			resp.Body.Name = "Unknown Strategy"
+			resp.Body.Description = "Strategy not found"
+			resp.Body.IsEnabled = false
+		}
+
+		resp.Body.CreatedAt = time.Now().AddDate(0, -3, 0)
+		resp.Body.UpdatedAt = time.Now().AddDate(0, 0, -5)
+		return resp, nil
 	})
 
 	// PUT /strategy/{id}
@@ -100,11 +328,32 @@ func registerStrategyEndpoints(api huma.API, basePath string) {
 		Description: "Updates the configuration of a specific trading strategy",
 		Tags:        []string{"Strategy"},
 	}, func(ctx context.Context, input *struct {
-		ID string `path:"id" doc:"Strategy ID" example:"breakout"`
-		StrategyConfigRequest
-	}) (*StrategyResponse, error) {
-		// This is just a placeholder for documentation purposes
-		return nil, nil
+		ID   string `path:"id"`
+		Body struct {
+			Parameters map[string]interface{} `json:"parameters"`
+			IsEnabled  bool                   `json:"isEnabled"`
+		}
+	}) (*struct {
+		Body struct {
+			ID         string                 `json:"id"`
+			Parameters map[string]interface{} `json:"parameters"`
+			IsEnabled  bool                   `json:"isEnabled"`
+			UpdatedAt  time.Time              `json:"updatedAt"`
+		}
+	}, error) {
+		resp := &struct {
+			Body struct {
+				ID         string                 `json:"id"`
+				Parameters map[string]interface{} `json:"parameters"`
+				IsEnabled  bool                   `json:"isEnabled"`
+				UpdatedAt  time.Time              `json:"updatedAt"`
+			}
+		}{}
+		resp.Body.ID = input.ID
+		resp.Body.Parameters = input.Body.Parameters
+		resp.Body.IsEnabled = input.Body.IsEnabled
+		resp.Body.UpdatedAt = time.Now()
+		return resp, nil
 	})
 
 	// POST /strategy/{id}/enable
@@ -116,16 +365,25 @@ func registerStrategyEndpoints(api huma.API, basePath string) {
 		Description: "Enables a specific trading strategy",
 		Tags:        []string{"Strategy"},
 	}, func(ctx context.Context, input *struct {
-		ID string `path:"id" doc:"Strategy ID" example:"breakout"`
+		ID string `path:"id"`
 	}) (*struct {
 		Body struct {
-			ID        string    `json:"id" doc:"Unique identifier for the strategy" example:"breakout"`
-			IsEnabled bool      `json:"isEnabled" doc:"Whether the strategy is enabled" example:"true"`
-			UpdatedAt time.Time `json:"updatedAt" doc:"Time when the strategy was updated" example:"2023-02-02T10:00:00Z"`
+			ID        string    `json:"id"`
+			IsEnabled bool      `json:"isEnabled"`
+			UpdatedAt time.Time `json:"updatedAt"`
 		}
 	}, error) {
-		// This is just a placeholder for documentation purposes
-		return nil, nil
+		resp := &struct {
+			Body struct {
+				ID        string    `json:"id"`
+				IsEnabled bool      `json:"isEnabled"`
+				UpdatedAt time.Time `json:"updatedAt"`
+			}
+		}{}
+		resp.Body.ID = input.ID
+		resp.Body.IsEnabled = true
+		resp.Body.UpdatedAt = time.Now()
+		return resp, nil
 	})
 
 	// POST /strategy/{id}/disable
@@ -137,15 +395,24 @@ func registerStrategyEndpoints(api huma.API, basePath string) {
 		Description: "Disables a specific trading strategy",
 		Tags:        []string{"Strategy"},
 	}, func(ctx context.Context, input *struct {
-		ID string `path:"id" doc:"Strategy ID" example:"breakout"`
+		ID string `path:"id"`
 	}) (*struct {
 		Body struct {
-			ID        string    `json:"id" doc:"Unique identifier for the strategy" example:"breakout"`
-			IsEnabled bool      `json:"isEnabled" doc:"Whether the strategy is enabled" example:"false"`
-			UpdatedAt time.Time `json:"updatedAt" doc:"Time when the strategy was updated" example:"2023-02-02T10:00:00Z"`
+			ID        string    `json:"id"`
+			IsEnabled bool      `json:"isEnabled"`
+			UpdatedAt time.Time `json:"updatedAt"`
 		}
 	}, error) {
-		// This is just a placeholder for documentation purposes
-		return nil, nil
+		resp := &struct {
+			Body struct {
+				ID        string    `json:"id"`
+				IsEnabled bool      `json:"isEnabled"`
+				UpdatedAt time.Time `json:"updatedAt"`
+			}
+		}{}
+		resp.Body.ID = input.ID
+		resp.Body.IsEnabled = false
+		resp.Body.UpdatedAt = time.Now()
+		return resp, nil
 	})
 }

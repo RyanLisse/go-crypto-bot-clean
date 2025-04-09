@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"go.uber.org/zap"
 )
@@ -25,8 +24,8 @@ type ContentValidator struct {
 
 // ValidationResult represents the result of content validation
 type ValidationResult struct {
-	Valid       bool
-	Violations  []ContentViolation
+	Valid            bool
+	Violations       []ContentViolation
 	SanitizedContent string
 }
 

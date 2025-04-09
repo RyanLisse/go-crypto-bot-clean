@@ -11,7 +11,7 @@ import (
 	"go-crypto-bot-clean/api/middleware/jwt"
 	"go-crypto-bot-clean/api/models"
 	"go-crypto-bot-clean/api/repository"
-	"go-crypto-bot-clean/backend/internal/auth"
+	"go-crypto-bot-clean/backend/pkg/auth"
 )
 
 // AuthService provides authentication functionality for the API

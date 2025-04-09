@@ -6,6 +6,7 @@ import (
 
 	"go-crypto-bot-clean/backend/internal/domain/ai/service/function"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service/templates"
+	"go-crypto-bot-clean/backend/internal/domain/ai/types"
 )
 
 // Message represents a single message in a conversation
@@ -67,4 +68,10 @@ type AIService interface {
 
 	// ListPendingTradeConfirmations lists all pending trade confirmations for a user
 	ListPendingTradeConfirmations(ctx context.Context, userID int) ([]*TradeConfirmation, error)
+
+	// FindSimilarMessages finds messages similar to the given query
+	FindSimilarMessages(ctx context.Context, query string, limit int) ([]types.SimilarMessage, error)
+
+	// IndexMessage indexes a message for similarity search
+	IndexMessage(ctx context.Context, conversationID, messageID, content string, metadata map[string]interface{}) error
 }

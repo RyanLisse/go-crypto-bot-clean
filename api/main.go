@@ -17,9 +17,9 @@ import (
 	"go-crypto-bot-clean/api/middleware/jwt"
 	"go-crypto-bot-clean/api/repository"
 	"go-crypto-bot-clean/api/service"
-	"go-crypto-bot-clean/backend/internal/auth"
-	"go-crypto-bot-clean/backend/internal/backtest"
-	"go-crypto-bot-clean/backend/internal/domain/strategy"
+	"go-crypto-bot-clean/backend/pkg/auth"
+	"go-crypto-bot-clean/backend/pkg/backtest"
+	"go-crypto-bot-clean/backend/pkg/strategy"
 )
 
 func main() {
@@ -70,8 +70,8 @@ func main() {
 
 	// Initialize services
 	backtestService := backtest.NewService()
-	strategyFactory := strategy.NewStrategyFactory()
-	authService := auth.NewDisabledService() // Use disabled auth service for development
+	strategyFactory := strategy.NewFactory()
+	authService := auth.NewService("dummy-secret-key") // Use a dummy secret key for development
 
 	// Initialize JWT service
 	accessSecret := getEnv("JWT_ACCESS_SECRET", "default-access-secret")
@@ -99,9 +99,9 @@ func main() {
 
 	// Create service provider
 	serviceProvider := service.NewProvider(
-		backtestService,
-		strategyFactory,
-		authService,
+		&backtestService, // Convert to pointer to interface
+		&strategyFactory, // Convert to pointer to interface
+		&authService,     // Convert to pointer to interface
 		userRepo,
 		strategyRepo,
 		backtestRepo,

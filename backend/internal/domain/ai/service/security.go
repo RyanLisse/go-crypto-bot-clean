@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"go-crypto-bot-clean/backend/internal/domain/audit"
 	"go-crypto-bot-clean/backend/internal/domain/security"
@@ -45,14 +44,14 @@ func DefaultSecurityConfig() SecurityConfig {
 
 // AISecurityService provides security features for AI services
 type AISecurityService struct {
-	config          SecurityConfig
+	config           SecurityConfig
 	contentValidator *ContentValidator
 }
 
 // NewAISecurityService creates a new AI security service
 func NewAISecurityService(config SecurityConfig) *AISecurityService {
 	return &AISecurityService{
-		config:          config,
+		config:           config,
 		contentValidator: NewContentValidator(config.Logger),
 	}
 }
@@ -118,7 +117,7 @@ func (s *AISecurityService) ValidateOutput(ctx context.Context, output string) (
 
 	// Validate and sanitize content
 	sanitized, err := s.contentValidator.ValidateAndSanitize(ctx, output)
-	
+
 	// Log if output was sanitized
 	if sanitized != output {
 		s.config.Logger.Info("Output sanitized",

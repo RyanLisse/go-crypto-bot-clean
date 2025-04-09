@@ -77,7 +77,7 @@ func (r *embeddingsRepositoryImpl) StoreEmbedding(
 	}
 
 	// Create embedding record
-	embedding := schema.ConversationEmbedding{
+	embeddingRecord := schema.ConversationEmbedding{
 		ConversationID:  conversationID,
 		MessageID:       messageID,
 		Content:         content,
@@ -87,7 +87,7 @@ func (r *embeddingsRepositoryImpl) StoreEmbedding(
 	}
 
 	// Store embedding in database
-	if err := r.db.WithContext(ctx).Create(&embedding).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(&embeddingRecord).Error; err != nil {
 		return fmt.Errorf("failed to store embedding: %w", err)
 	}
 
@@ -123,17 +123,17 @@ func (r *embeddingsRepositoryImpl) FindSimilarEmbeddings(
 
 	// Execute the query
 	err := r.db.WithContext(ctx).Raw(`
-		SELECT 
-			e.conversation_id, 
-			e.message_id, 
-			e.content, 
+		SELECT
+			e.conversation_id,
+			e.message_id,
+			e.content,
 			e.metadata,
 			vector_distance_cos(e.embedding_vector, ?) as distance
-		FROM 
+		FROM
 			vector_top_k('idx_conversation_embeddings_vector', ?, ?) as v
-		JOIN 
+		JOIN
 			conversation_embeddings e ON e.id = v.id
-		ORDER BY 
+		ORDER BY
 			distance ASC
 	`, embeddingBytes, embeddingBytes, limit).Scan(&results).Error
 

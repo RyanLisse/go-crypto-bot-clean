@@ -36,10 +36,10 @@ func SetupHuma(router chi.Router, config Config, services *service.Provider) hum
 	api := humachi.New(router, huma.DefaultConfig(config.Title, config.Version))
 
 	// Register endpoints
-	registerBacktestEndpoints(api, config.BasePath, services)
-	strategy.RegisterEndpoints(api, config.BasePath, services.StrategyService)
-	auth.RegisterEndpoints(api, config.BasePath, services.AuthService)
-	user.RegisterEndpoints(api, config.BasePath, services.UserService)
+	registerBacktestEndpointsWithService(api, config.BasePath, services)
+	strategy.RegisterStrategyEndpoints(api, config.BasePath, services.StrategyService)
+	auth.RegisterAuthEndpoints(api, config.BasePath, services.AuthService)
+	user.RegisterUserEndpoints(api, config.BasePath, services.UserService)
 
 	return api
 }

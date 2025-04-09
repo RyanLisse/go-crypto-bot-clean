@@ -3,7 +3,6 @@
 package mocks
 
 import (
-	service "go-crypto-bot-clean/backend/internal/domain/risk/service"
 	context "context"
 
 	mock "github.com/stretchr/testify/mock"
@@ -15,23 +14,23 @@ type RiskService struct {
 }
 
 // CheckDailyLossLimit provides a mock function with given fields: ctx, userID
-func (_m *RiskService) CheckDailyLossLimit(ctx context.Context, userID int) (*service.RiskCheck, error) {
+func (_m *RiskService) CheckDailyLossLimit(ctx context.Context, userID int) (*RiskCheck, error) {
 	ret := _m.Called(ctx, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CheckDailyLossLimit")
 	}
 
-	var r0 *service.RiskCheck
+	var r0 *RiskCheck
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int) (*service.RiskCheck, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int) (*RiskCheck, error)); ok {
 		return rf(ctx, userID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int) *service.RiskCheck); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int) *RiskCheck); ok {
 		r0 = rf(ctx, userID)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*service.RiskCheck)
+			r0 = ret.Get(0).(*RiskCheck)
 		}
 	}
 
@@ -45,23 +44,23 @@ func (_m *RiskService) CheckDailyLossLimit(ctx context.Context, userID int) (*se
 }
 
 // CheckExposureLimit provides a mock function with given fields: ctx, userID, symbol
-func (_m *RiskService) CheckExposureLimit(ctx context.Context, userID int, symbol string) (*service.RiskCheck, error) {
+func (_m *RiskService) CheckExposureLimit(ctx context.Context, userID int, symbol string) (*RiskCheck, error) {
 	ret := _m.Called(ctx, userID, symbol)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CheckExposureLimit")
 	}
 
-	var r0 *service.RiskCheck
+	var r0 *RiskCheck
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int, string) (*service.RiskCheck, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int, string) (*RiskCheck, error)); ok {
 		return rf(ctx, userID, symbol)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int, string) *service.RiskCheck); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int, string) *RiskCheck); ok {
 		r0 = rf(ctx, userID, symbol)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*service.RiskCheck)
+			r0 = ret.Get(0).(*RiskCheck)
 		}
 	}
 
@@ -75,23 +74,23 @@ func (_m *RiskService) CheckExposureLimit(ctx context.Context, userID int, symbo
 }
 
 // CheckMaximumDrawdown provides a mock function with given fields: ctx, userID
-func (_m *RiskService) CheckMaximumDrawdown(ctx context.Context, userID int) (*service.RiskCheck, error) {
+func (_m *RiskService) CheckMaximumDrawdown(ctx context.Context, userID int) (*RiskCheck, error) {
 	ret := _m.Called(ctx, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CheckMaximumDrawdown")
 	}
 
-	var r0 *service.RiskCheck
+	var r0 *RiskCheck
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int) (*service.RiskCheck, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int) (*RiskCheck, error)); ok {
 		return rf(ctx, userID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int) *service.RiskCheck); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int) *RiskCheck); ok {
 		r0 = rf(ctx, userID)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*service.RiskCheck)
+			r0 = ret.Get(0).(*RiskCheck)
 		}
 	}
 

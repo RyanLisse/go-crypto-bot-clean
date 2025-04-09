@@ -28,18 +28,18 @@ type ErrorResponse struct {
 // ErrorCtxKey is the context key for storing errors
 const ErrorCtxKey = "error"
 
-type responseWriter struct {
+type errorResponseWriter struct {
 	http.ResponseWriter
 	status int
 	size   int64
 }
 
-func (rw *responseWriter) WriteHeader(code int) {
+func (rw *errorResponseWriter) WriteHeader(code int) {
 	rw.status = code
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-func (rw *responseWriter) Write(b []byte) (int, error) {
+func (rw *errorResponseWriter) Write(b []byte) (int, error) {
 	size, err := rw.ResponseWriter.Write(b)
 	rw.size += int64(size)
 	return size, err
@@ -50,7 +50,7 @@ func ErrorHandlingMiddleware(logger *zap.Logger) func(http.Handler) http.Handler
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
+			rw := &errorResponseWriter{ResponseWriter: w, status: http.StatusOK}
 
 			// Generate request ID if not present
 			requestID := r.Header.Get("X-Request-ID")

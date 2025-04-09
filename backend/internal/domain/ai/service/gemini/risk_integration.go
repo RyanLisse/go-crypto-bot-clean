@@ -28,13 +28,13 @@ func (s *GeminiAIService) ApplyRiskGuardrails(
 	}
 
 	// Get account balance from portfolio service
-	portfolio, err := s.PortfolioSvc.GetPortfolio(ctx, userID)
+	portfolioValue, err := s.PortfolioSvc.GetPortfolioValue(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get portfolio: %w", err)
+		return nil, fmt.Errorf("failed to get portfolio value: %w", err)
 	}
 
 	// Apply guardrails
-	return s.RiskGuardrails.ApplyGuardrails(ctx, userID, recommendation, portfolio.TotalValue)
+	return s.RiskGuardrails.ApplyGuardrails(ctx, userID, recommendation, portfolioValue)
 }
 
 // CreateTradeConfirmation creates a trade confirmation
@@ -48,8 +48,11 @@ func (s *GeminiAIService) CreateTradeConfirmation(
 		return nil, fmt.Errorf("confirmation flow not set")
 	}
 
+	// Create risk service adapter
+	riskAdapter := service.NewRiskServiceAdapter(s.RiskSvc)
+
 	// Validate trade with risk system
-	assessment, err := service.ValidateAITradeWithRiskSystem(ctx, trade, userID, s.RiskSvc)
+	assessment, err := service.ValidateAITradeWithRiskSystem(ctx, trade, userID, riskAdapter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate trade: %w", err)
 	}
@@ -57,7 +60,7 @@ func (s *GeminiAIService) CreateTradeConfirmation(
 	// Check if trade requires confirmation
 	requiresConfirmation, reason := s.ConfirmationFlow.RequiresConfirmation(
 		ctx, trade, recommendation, assessment)
-	
+
 	if !requiresConfirmation {
 		return nil, nil // No confirmation required
 	}
