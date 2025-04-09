@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/danielgtaylor/huma/v2 v2.0.0
 	github.com/go-chi/chi/v5 v5.0.10
+	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.8.4
 )
 
@@ -18,7 +19,6 @@ require (
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/goccy/go-yaml v1.11.0 // indirect
-	github.com/google/uuid v1.3.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect

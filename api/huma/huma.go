@@ -30,9 +30,9 @@ func SetupHuma(router chi.Router, config Config) huma.API {
 	// Create a new Huma API
 	api := humachi.New(router, huma.DefaultConfig(config.Title, config.Version))
 
-	// Register endpoints
-	registerBacktestEndpoints(api, config.BasePath)
-	// Uncomment these when implemented
+	// TODO: Register endpoints
+	// These functions need to be implemented
+	// registerBacktestEndpoints(api, config.BasePath)
 	// registerStrategyEndpoints(api, config.BasePath)
 	// registerAuthEndpoints(api, config.BasePath)
 	// registerUserEndpoints(api, config.BasePath)
