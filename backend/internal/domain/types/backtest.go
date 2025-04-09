@@ -2,67 +2,100 @@ package types
 
 import (
 	"time"
+
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
-// BacktestRequest represents the parameters for running a backtest
+// BacktestRequest represents a request to run a backtest
 type BacktestRequest struct {
-	UserID         string                 `json:"userId" validate:"required"`
-	Strategy       string                 `json:"strategy" validate:"required"`
-	Symbol         string                 `json:"symbol" validate:"required"`
-	Timeframe      string                 `json:"timeframe" validate:"required"`
-	StartTime      time.Time              `json:"startTime" validate:"required"`
-	EndTime        time.Time              `json:"endTime" validate:"required"`
-	InitialCapital float64                `json:"initialCapital" validate:"required,gt=0"`
-	Parameters     map[string]interface{} `json:"parameters,omitempty"`
+	UserID         string                 `json:"user_id"`
+	StrategyName   string                 `json:"strategy_name"`
+	Symbol         string                 `json:"symbol"`
+	Timeframe      string                 `json:"timeframe"`
+	StartTime      time.Time              `json:"start_time"`
+	EndTime        time.Time              `json:"end_time"`
+	InitialCapital float64                `json:"initial_capital"`
+	PositionSize   float64                `json:"position_size"`
+	MaxPositions   int                    `json:"max_positions"`
+	Parameters     map[string]interface{} `json:"parameters"`
+}
+
+// BacktestConfig holds configuration for a backtest run
+type BacktestConfig struct {
+	InitialCapital float64                `json:"initial_capital"`
+	PositionSize   float64                `json:"position_size"`
+	MaxPositions   int                    `json:"max_positions"`
+	Commission     float64                `json:"commission"`
+	Slippage       float64                `json:"slippage"`
+	DataFeed       string                 `json:"data_feed"`
+	Parameters     map[string]interface{} `json:"parameters"`
 }
 
 // BacktestTrade represents a trade executed during backtesting
 type BacktestTrade struct {
 	Symbol        string    `json:"symbol"`
-	Side          string    `json:"side"` // "BUY" or "SELL"
-	EntryPrice    float64   `json:"entryPrice"`
-	ExitPrice     float64   `json:"exitPrice,omitempty"`
+	Side          string    `json:"side"`
+	EntryPrice    float64   `json:"entry_price"`
+	ExitPrice     float64   `json:"exit_price"`
 	Quantity      float64   `json:"quantity"`
-	EntryTime     time.Time `json:"entryTime"`
-	ExitTime      time.Time `json:"exitTime,omitempty"`
-	ProfitLoss    float64   `json:"profitLoss"`
-	ProfitLossPct float64   `json:"profitLossPct"`
+	EntryTime     time.Time `json:"entry_time"`
+	ExitTime      time.Time `json:"exit_time"`
+	PnL           float64   `json:"pnl"`
+	PnLPercent    float64   `json:"pnl_percent"`
+	Commission    float64   `json:"commission"`
+	Slippage      float64   `json:"slippage"`
+	NetPnL        float64   `json:"net_pnl"`
+	NetPnLPercent float64   `json:"net_pnl_percent"`
 }
 
-// BacktestMetrics represents the performance metrics from a backtest
+// BacktestMetrics represents performance metrics from a backtest
 type BacktestMetrics struct {
-	TotalTrades      int       `json:"totalTrades"`
-	WinningTrades    int       `json:"winningTrades"`
-	LosingTrades     int       `json:"losingTrades"`
-	WinRate          float64   `json:"winRate"`
-	AverageWin       float64   `json:"averageWin"`
-	AverageLoss      float64   `json:"averageLoss"`
-	LargestWin       float64   `json:"largestWin"`
-	LargestLoss      float64   `json:"largestLoss"`
-	ProfitFactor     float64   `json:"profitFactor"`
-	SharpeRatio      float64   `json:"sharpeRatio"`
-	MaxDrawdown      float64   `json:"maxDrawdown"`
-	MaxDrawdownPct   float64   `json:"maxDrawdownPct"`
-	AnnualizedReturn float64   `json:"annualizedReturn"`
-	TotalReturn      float64   `json:"totalReturn"`
-	TotalReturnPct   float64   `json:"totalReturnPct"`
-	DailyReturns     []float64 `json:"dailyReturns,omitempty"`
+	TotalTrades        int     `json:"total_trades"`
+	WinningTrades      int     `json:"winning_trades"`
+	LosingTrades       int     `json:"losing_trades"`
+	WinRate            float64 `json:"win_rate"`
+	AverageWin         float64 `json:"average_win"`
+	AverageLoss        float64 `json:"average_loss"`
+	LargestWin         float64 `json:"largest_win"`
+	LargestLoss        float64 `json:"largest_loss"`
+	ProfitFactor       float64 `json:"profit_factor"`
+	SharpeRatio        float64 `json:"sharpe_ratio"`
+	MaxDrawdown        float64 `json:"max_drawdown"`
+	MaxDrawdownPercent float64 `json:"max_drawdown_percent"`
+	TotalPnL           float64 `json:"total_pnl"`
+	NetPnL             float64 `json:"net_pnl"`
+	ReturnPercent      float64 `json:"return_percent"`
 }
 
-// BacktestResult represents the complete results of a backtest
-type BacktestResult struct {
-	ID             string                 `json:"id"`
-	UserID         string                 `json:"userId"`
-	Strategy       string                 `json:"strategy"`
-	Symbol         string                 `json:"symbol"`
-	Timeframe      string                 `json:"timeframe"`
-	StartTime      time.Time              `json:"startTime"`
-	EndTime        time.Time              `json:"endTime"`
-	InitialCapital float64                `json:"initialCapital"`
-	FinalCapital   float64                `json:"finalCapital"`
-	Parameters     map[string]interface{} `json:"parameters,omitempty"`
-	Metrics        BacktestMetrics        `json:"metrics"`
-	Trades         []BacktestTrade        `json:"trades"`
-	CreatedAt      time.Time              `json:"createdAt"`
-	UpdatedAt      time.Time              `json:"updatedAt"`
+// BacktestStrategy is an interface that strategies must implement for backtesting
+type BacktestStrategy interface {
+	Reset()
+	SetConfig(config *BacktestConfig)
+	GetConfig() *BacktestConfig
+	OnHistoricalCandleUpdate(candle *models.Candle) (*Signal, error)
+	OnHistoricalTickerUpdate(ticker *models.Ticker) (*Signal, error)
+	OnHistoricalTradeUpdate(trade *models.Trade) (*Signal, error)
+	OnHistoricalMarketDepthUpdate(depth *models.OrderBook) (*Signal, error)
+}
+
+// PerformanceAnalyzer is an interface for analyzing backtest performance
+type PerformanceAnalyzer interface {
+	AddTrade(trade *BacktestTrade)
+	AddEquityPoint(point *EquityPoint)
+	CalculateMetrics() *BacktestMetrics
+	GetTrades() []*BacktestTrade
+	GetEquityCurve() []*EquityPoint
+	GetDrawdownCurve() []*DrawdownPoint
+}
+
+// EquityPoint represents a point on the equity curve
+type EquityPoint struct {
+	Timestamp time.Time `json:"timestamp"`
+	Equity    float64   `json:"equity"`
+}
+
+// DrawdownPoint represents a point on the drawdown curve
+type DrawdownPoint struct {
+	Timestamp time.Time `json:"timestamp"`
+	Drawdown  float64   `json:"drawdown"`
 }

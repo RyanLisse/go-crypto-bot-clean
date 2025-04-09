@@ -3,11 +3,16 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"go-crypto-bot-clean/backend/internal/auth"
+	"go-crypto-bot-clean/backend/internal/logging"
+
+	"go.uber.org/zap"
 )
 
 // RequestIDKey is the key type for request ID in context
@@ -24,47 +29,149 @@ func GetRequestID(ctx context.Context) string {
 	return "unknown"
 }
 
+// RecoveryOptions configures the recovery middleware
+type RecoveryOptions struct {
+	Logger              *zap.Logger
+	EnableStackTrace    bool
+	RedactHeaders       []string
+	RedactParams        []string
+	MaxStackLines       int
+	CircuitBreaker      *CircuitBreaker
+	GracefulDegradation *GracefulDegradation
+}
+
+// DefaultRecoveryOptions returns the default recovery options
+func DefaultRecoveryOptions() RecoveryOptions {
+	return RecoveryOptions{
+		Logger:              nil, // Will use default logger if nil
+		EnableStackTrace:    true,
+		RedactHeaders:       []string{"Authorization", "Cookie", "X-API-Key"},
+		RedactParams:        []string{"password", "token", "key", "secret"},
+		MaxStackLines:       50,
+		CircuitBreaker:      nil,
+		GracefulDegradation: nil,
+	}
+}
+
 // RecoveryMiddleware recovers from panics and returns an appropriate error response
-func RecoveryMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				// Get stack trace
-				stack := debug.Stack()
-				stackTrace := processStackTrace(stack, 10) // Limit to 10 frames
+func RecoveryMiddleware(options ...RecoveryOptions) func(http.Handler) http.Handler {
+	// Use default options if none provided
+	opts := DefaultRecoveryOptions()
+	if len(options) > 0 {
+		opts = options[0]
+	}
 
-				// Determine error type and status
-				errorType, _, statusCode := determineErrorType(err)
+	// Use default logger if none provided
+	logger := opts.Logger
+	if logger == nil {
+		logger = logging.Logger.Logger
+	}
 
-				// Get sanitized request info
-				reqInfo := getSanitizedRequestInfo(r, []string{"Authorization", "Cookie"}, []string{"token", "password"})
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if err := recover(); err != nil {
+					// Get stack trace
+					stack := debug.Stack()
 
-				// Create error response with metadata in details
-				metadata := map[string]interface{}{
-					"stack_trace": stackTrace,
-					"request":     reqInfo,
+					// Process stack trace if enabled
+					var stackTrace string
+					if opts.EnableStackTrace {
+						stackTrace = processStackTrace(stack, opts.MaxStackLines)
+					} else {
+						stackTrace = "<stack trace disabled>"
+					}
+
+					// Get sanitized request info
+					reqInfo := getSanitizedRequestInfo(r, opts.RedactHeaders, opts.RedactParams)
+
+					// Get user info from context if available
+					var userInfo map[string]interface{}
+					if user, ok := auth.GetUserFromContext(r.Context()); ok {
+						userInfo = map[string]interface{}{
+							"id":       user.ID,
+							"email":    user.Email,
+							"username": user.Username,
+							"roles":    user.Roles,
+						}
+					}
+
+					// Determine error type and code
+					errorType, errorCode, statusCode := determineErrorType(err)
+
+					// Record error in circuit breaker and graceful degradation if available
+					if opts.CircuitBreaker != nil {
+						opts.CircuitBreaker.RecordFailure()
+					}
+					if opts.GracefulDegradation != nil {
+						opts.GracefulDegradation.RecordError()
+					}
+
+					// Log the panic with context information
+					logger.Error("Panic recovered in request handler",
+						zap.String("error_type", errorType),
+						zap.Any("error", err),
+						zap.String("stack_trace", stackTrace),
+						zap.String("path", r.URL.Path),
+						zap.String("method", r.Method),
+						zap.Any("request", reqInfo),
+						zap.Any("user", userInfo),
+						zap.String("request_id", GetRequestID(r.Context())),
+					)
+
+					// Create appropriate error response
+					var authError *auth.AuthError
+					switch e := err.(type) {
+					case *auth.AuthError:
+						// Use the existing auth error
+						authError = e
+						// Ensure request ID is set
+						if authError.RequestID == "" {
+							authError.RequestID = GetRequestID(r.Context())
+						}
+					default:
+						// Create a new auth error
+						authError = auth.NewAuthError(
+							auth.ErrorType(errorType),
+							"An unexpected error occurred",
+							statusCode,
+						).WithDetails(map[string]interface{}{
+							"error":       fmt.Sprintf("%v", err),
+							"error_type":  errorType,
+							"error_code":  errorCode,
+							"stack_trace": stackTrace,
+							"request":     reqInfo,
+						}).WithHelp("Please try again later or contact support if the issue persists")
+						authError.RequestID = GetRequestID(r.Context())
+					}
+
+					// Create error response
+					errResp := auth.ErrorResponse{
+						Error:     authError,
+						RequestID: GetRequestID(r.Context()),
+						Timestamp: time.Now().UTC(),
+						Path:      r.URL.Path,
+						Method:    r.Method,
+					}
+
+					// Set response headers
+					w.Header().Set("Content-Type", "application/json")
+					w.Header().Set("X-Request-ID", GetRequestID(r.Context()))
+					w.WriteHeader(authError.Code)
+
+					// Write error response
+					if err := WriteJSON(w, errResp); err != nil {
+						logger.Error("Failed to write error response",
+							zap.Error(err),
+							zap.String("request_id", GetRequestID(r.Context())),
+						)
+					}
 				}
+			}()
 
-				// Create error response
-				errResp := auth.NewAuthError(
-					auth.ErrorType(errorType),
-					"An unexpected error occurred",
-					statusCode,
-				).WithDetails(metadata).
-					WithHelp("Please try again later or contact support if the issue persists").
-					WithRequestID(GetRequestID(r.Context()))
-
-				// Set response headers
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(statusCode)
-
-				// Write error response
-				errResp.WriteJSON(w)
-			}
-		}()
-
-		next.ServeHTTP(w, r)
-	})
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // WriteJSON writes a JSON response with proper error handling

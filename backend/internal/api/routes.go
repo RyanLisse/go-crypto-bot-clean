@@ -1,9 +1,12 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
+	"net/http"
+
 	"go-crypto-bot-clean/backend/internal/api/handlers"
 	"go-crypto-bot-clean/backend/internal/api/middleware"
+
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -37,7 +40,10 @@ func SetupRoutes(
 	// Middleware
 	router.Use(middleware.LoggingMiddleware(loggerAdapter))
 	router.Use(middleware.CORSMiddleware())
-	router.Use(middleware.RecoveryMiddleware(loggerAdapter))
+	router.Use(gin.WrapH(middleware.RecoveryMiddleware(middleware.RecoveryOptions{
+		Logger:           logger,
+		EnableStackTrace: true,
+	})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))))
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")

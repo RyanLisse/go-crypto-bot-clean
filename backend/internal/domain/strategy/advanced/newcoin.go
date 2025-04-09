@@ -9,68 +9,30 @@ import (
 	"go-crypto-bot-clean/backend/internal/domain/types"
 )
 
-// NewCoinStrategy configuration parameters
+// NewCoinConfig represents the configuration for the NewCoinStrategy
 type NewCoinConfig struct {
-	MinVolume         float64 `json:"min_volume"`          // Minimum volume threshold
-	MinPrice          float64 `json:"min_price"`           // Minimum price threshold
-	MaxPrice          float64 `json:"max_price"`           // Maximum price threshold
-	EntryDelay        int     `json:"entry_delay"`         // Delay in minutes before entering after detection
-	StopLossPercent   float64 `json:"stop_loss_percent"`   // Stop loss percentage
-	TakeProfitPercent float64 `json:"take_profit_percent"` // Take profit percentage
-	PositionSize      float64 `json:"position_size"`       // Position size as percentage of portfolio
-	MaxAge            int     `json:"max_age"`             // Maximum age in hours to consider a coin "new"
+	MinVolume         float64 `json:"minVolume"`         // Minimum volume threshold
+	MinPrice          float64 `json:"minPrice"`          // Minimum price threshold
+	MaxPrice          float64 `json:"maxPrice"`          // Maximum price threshold
+	EntryDelay        int     `json:"entryDelay"`        // Delay in minutes before entry
+	StopLossPercent   float64 `json:"stopLossPercent"`   // Stop loss percentage
+	TakeProfitPercent float64 `json:"takeProfitPercent"` // Take profit percentage
+	PositionSize      float64 `json:"positionSize"`      // Position size as percentage of capital
+	MaxAge            int     `json:"maxAge"`            // Maximum age in minutes to track a coin
 }
 
 // NewCoinStrategy implements a strategy for trading newly listed coins
 type NewCoinStrategy struct {
-	config        NewCoinConfig
+	config        *NewCoinConfig
 	detectedCoins map[string]time.Time // Map of detected coins and their first seen timestamp
 }
 
-// NewNewCoinStrategy creates a new instance of NewCoinStrategy
-func NewNewCoinStrategy(config map[string]interface{}) (*NewCoinStrategy, error) {
-	// Parse and validate configuration
-	cfg := NewCoinConfig{
-		MinVolume:         1000.0,  // Default $1000 minimum volume
-		MinPrice:          0.00001, // Default minimum price
-		MaxPrice:          10.0,    // Default maximum price
-		EntryDelay:        5,       // Default 5 minutes delay
-		StopLossPercent:   5.0,     // Default 5% stop loss
-		TakeProfitPercent: 10.0,    // Default 10% take profit
-		PositionSize:      1.0,     // Default 1% of portfolio
-		MaxAge:            24,      // Default 24 hours
-	}
-
-	// Override defaults with provided config
-	if v, ok := config["min_volume"].(float64); ok {
-		cfg.MinVolume = v
-	}
-	if v, ok := config["min_price"].(float64); ok {
-		cfg.MinPrice = v
-	}
-	if v, ok := config["max_price"].(float64); ok {
-		cfg.MaxPrice = v
-	}
-	if v, ok := config["entry_delay"].(int); ok {
-		cfg.EntryDelay = v
-	}
-	if v, ok := config["stop_loss_percent"].(float64); ok {
-		cfg.StopLossPercent = v
-	}
-	if v, ok := config["take_profit_percent"].(float64); ok {
-		cfg.TakeProfitPercent = v
-	}
-	if v, ok := config["position_size"].(float64); ok {
-		cfg.PositionSize = v
-	}
-	if v, ok := config["max_age"].(int); ok {
-		cfg.MaxAge = v
-	}
-
+// NewNewCoinStrategy creates a new NewCoinStrategy instance
+func NewNewCoinStrategy(config *NewCoinConfig) *NewCoinStrategy {
 	return &NewCoinStrategy{
-		config:        cfg,
+		config:        config,
 		detectedCoins: make(map[string]time.Time),
-	}, nil
+	}
 }
 
 // GetName returns the name of the strategy
@@ -78,84 +40,133 @@ func (s *NewCoinStrategy) GetName() string {
 	return "NewCoinStrategy"
 }
 
-// Initialize prepares the strategy
+// Initialize prepares the strategy with initial configuration
 func (s *NewCoinStrategy) Initialize(ctx context.Context, config map[string]interface{}) error {
-	// Already initialized in constructor
+	// Convert config to NewCoinConfig
+	if config == nil {
+		return fmt.Errorf("config is required")
+	}
+
+	// Set default values if not provided
+	s.config = &NewCoinConfig{
+		MinVolume:         1000,    // Default minimum volume
+		MinPrice:          0.00001, // Default minimum price
+		MaxPrice:          1.0,     // Default maximum price
+		EntryDelay:        5,       // Default 5 minutes delay
+		StopLossPercent:   5.0,     // Default 5% stop loss
+		TakeProfitPercent: 10.0,    // Default 10% take profit
+		PositionSize:      1.0,     // Default 1% position size
+		MaxAge:            60,      // Default 60 minutes tracking
+	}
+
+	// Override defaults with provided values
+	if v, ok := config["minVolume"].(float64); ok {
+		s.config.MinVolume = v
+	}
+	if v, ok := config["minPrice"].(float64); ok {
+		s.config.MinPrice = v
+	}
+	if v, ok := config["maxPrice"].(float64); ok {
+		s.config.MaxPrice = v
+	}
+	if v, ok := config["entryDelay"].(int); ok {
+		s.config.EntryDelay = v
+	}
+	if v, ok := config["stopLossPercent"].(float64); ok {
+		s.config.StopLossPercent = v
+	}
+	if v, ok := config["takeProfitPercent"].(float64); ok {
+		s.config.TakeProfitPercent = v
+	}
+	if v, ok := config["positionSize"].(float64); ok {
+		s.config.PositionSize = v
+	}
+	if v, ok := config["maxAge"].(int); ok {
+		s.config.MaxAge = v
+	}
+
 	return nil
 }
 
 // UpdateParameters updates the strategy parameters
 func (s *NewCoinStrategy) UpdateParameters(ctx context.Context, params map[string]interface{}) error {
-	newStrategy, err := NewNewCoinStrategy(params)
-	if err != nil {
-		return err
-	}
-	s.config = newStrategy.config
-	return nil
+	return s.Initialize(ctx, params)
 }
 
-// OnTickerUpdate processes a new ticker update
+// OnTickerUpdate processes a new ticker update and may generate a signal
 func (s *NewCoinStrategy) OnTickerUpdate(ctx context.Context, ticker *models.Ticker) (*types.Signal, error) {
-	// Check if this is a new coin we haven't seen before
+	if ticker == nil {
+		return nil, fmt.Errorf("ticker is nil")
+	}
+
+	// Check if we've seen this coin before
 	firstSeen, exists := s.detectedCoins[ticker.Symbol]
+	now := time.Now()
+
+	// If we haven't seen this coin before and it meets our criteria, track it
 	if !exists {
-		s.detectedCoins[ticker.Symbol] = time.Now()
-		return nil, nil // Just record it for now
+		if ticker.Volume >= s.config.MinVolume &&
+			ticker.Price >= s.config.MinPrice &&
+			ticker.Price <= s.config.MaxPrice {
+			s.detectedCoins[ticker.Symbol] = now
+			return nil, nil // No signal yet, just started tracking
+		}
+		return nil, nil // Not interested in this coin
 	}
 
-	// Check if the coin is still within our "new" window
-	if time.Since(firstSeen).Hours() > float64(s.config.MaxAge) {
-		delete(s.detectedCoins, ticker.Symbol) // Remove old coins
+	// Calculate how long we've been tracking this coin
+	trackingDuration := now.Sub(firstSeen)
+
+	// Remove old coins from tracking
+	if trackingDuration.Minutes() > float64(s.config.MaxAge) {
+		delete(s.detectedCoins, ticker.Symbol)
 		return nil, nil
 	}
 
-	// Check if it meets our criteria
-	if ticker.Price < s.config.MinPrice || ticker.Price > s.config.MaxPrice {
-		return nil, nil
+	// Check if it's time to enter a position
+	if trackingDuration.Minutes() >= float64(s.config.EntryDelay) {
+		// Generate buy signal
+		stopLoss := ticker.Price * (1 - s.config.StopLossPercent/100)
+		takeProfit := ticker.Price * (1 + s.config.TakeProfitPercent/100)
+
+		signal := &types.Signal{
+			Symbol:          ticker.Symbol,
+			Type:            types.BUY,
+			Confidence:      0.8, // High confidence for new listings
+			Price:           ticker.Price,
+			StopLoss:        stopLoss,
+			TakeProfit:      takeProfit,
+			Timestamp:       now,
+			ExpirationTime:  now.Add(time.Hour), // Signal valid for 1 hour
+			RecommendedSize: s.config.PositionSize,
+			Metadata: map[string]interface{}{
+				"strategy":     "NewCoin",
+				"trackingTime": trackingDuration.Minutes(),
+				"volume":       ticker.Volume,
+			},
+		}
+
+		// Remove from tracking after generating signal
+		delete(s.detectedCoins, ticker.Symbol)
+		return signal, nil
 	}
 
-	if ticker.Volume < s.config.MinVolume {
-		return nil, nil
-	}
-
-	// Check if enough time has passed since detection
-	if time.Since(firstSeen).Minutes() < float64(s.config.EntryDelay) {
-		return nil, nil
-	}
-
-	// Generate buy signal
-	signal := &types.Signal{
-		Symbol:          ticker.Symbol,
-		Type:            types.SignalBuy,
-		Confidence:      0.8, // High confidence for new coins meeting criteria
-		Price:           ticker.Price,
-		StopLoss:        ticker.Price * (1 - s.config.StopLossPercent/100),
-		TakeProfit:      ticker.Price * (1 + s.config.TakeProfitPercent/100),
-		Timestamp:       time.Now(),
-		ExpirationTime:  time.Now().Add(1 * time.Hour),
-		RecommendedSize: s.config.PositionSize,
-		Metadata: map[string]interface{}{
-			"strategy":  "NewCoin",
-			"firstSeen": firstSeen,
-		},
-	}
-
-	return signal, nil
-}
-
-// OnCandleUpdate processes a new candle
-func (s *NewCoinStrategy) OnCandleUpdate(ctx context.Context, candle *models.Candle) (*types.Signal, error) {
-	// We primarily work with ticker updates, but could add volume analysis here
 	return nil, nil
 }
 
-// OnTradeUpdate processes a new trade
+// OnCandleUpdate processes a new candle and may generate a signal
+func (s *NewCoinStrategy) OnCandleUpdate(ctx context.Context, candle *models.Candle) (*types.Signal, error) {
+	// Not used for this strategy
+	return nil, nil
+}
+
+// OnTradeUpdate processes a new trade and may generate a signal
 func (s *NewCoinStrategy) OnTradeUpdate(ctx context.Context, trade *models.Trade) (*types.Signal, error) {
 	// Not used for this strategy
 	return nil, nil
 }
 
-// OnMarketDepthUpdate processes a new market depth update
+// OnMarketDepthUpdate processes a new market depth update and may generate a signal
 func (s *NewCoinStrategy) OnMarketDepthUpdate(ctx context.Context, depth *models.OrderBook) (*types.Signal, error) {
 	// Not used for this strategy
 	return nil, nil
@@ -174,10 +185,10 @@ func (s *NewCoinStrategy) GetTimeframes() []string {
 
 // GetRequiredDataTypes returns the types of data this strategy needs
 func (s *NewCoinStrategy) GetRequiredDataTypes() []string {
-	return []string{"ticker", "volume"}
+	return []string{"ticker"}
 }
 
 // PerformBacktest runs a backtest of the strategy
-func (s *NewCoinStrategy) PerformBacktest(ctx context.Context, historicalData []*models.Candle, params map[string]interface{}) ([]*types.Signal, *models.BacktestResult, error) {
+func (s *NewCoinStrategy) PerformBacktest(ctx context.Context, historicalData []*models.Candle, params map[string]interface{}) ([]*types.Signal, *types.BacktestResult, error) {
 	return nil, nil, fmt.Errorf("backtesting not implemented for NewCoinStrategy")
 }
