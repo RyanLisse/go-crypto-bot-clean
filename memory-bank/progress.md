@@ -142,6 +142,16 @@
 3. ✅ Backtesting Framework (10a-backtesting-framework.md)
 4. ✅ Notification Service (11a-notification-service.md)
 
+### Authentication Middleware Implementation (May 2025)
+- Created JWT token generation and validation service
+- Implemented authentication middleware with role-based access control
+- Added comprehensive tests for JWT and authentication functionality
+- Updated main application to include JWT service and authentication middleware
+- Implemented protected routes using the authentication middleware
+- Added environment variable configuration for JWT secrets and settings
+- Implemented proper error handling for authentication failures
+- Created a clean separation between authentication and business logic
+
 ### API Integration with Business Logic (May 2025)
 - Created service layer to connect API endpoints to business logic
 - Implemented service connectors for backtest, strategy, auth, and user management
@@ -153,6 +163,9 @@
 - Added middleware for logging and error recovery
 
 ### Recent Achievements
+- Implemented authentication middleware using JWT tokens for securing the API endpoints
+- Added role-based access control to restrict access to certain endpoints
+- Created JWT token generation and validation service with proper security features
 - Connected API endpoints to business logic with a service layer
 - Implemented service connectors for backtest, strategy, auth, and user management
 - Created a main entry point for the API server with proper service initialization
@@ -192,7 +205,6 @@
   - Comprehensive documentation and examples
 
 ### Upcoming Work
-- Implement authentication middleware to secure the API
 - Add database integration for persistent storage
 - Implement real-time updates using WebSockets
 - Create integration tests for the API endpoints
