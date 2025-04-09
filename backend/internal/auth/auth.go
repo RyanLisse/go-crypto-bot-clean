@@ -280,6 +280,15 @@ func stringValue(s *string) string {
 // DisabledService is a no-op implementation of the auth service
 type DisabledService struct{}
 
+// Authenticate for DisabledService returns an error indicating the service is disabled
+func (s *DisabledService) Authenticate(r *http.Request) (*UserData, error) {
+	return nil, NewAuthError(
+		ErrorTypeServiceUnavailable,
+		"Authentication service is disabled",
+		http.StatusServiceUnavailable,
+	).WithHelp("The authentication service is currently disabled. Authentication cannot be performed.")
+}
+
 // AuthMiddleware for DisabledService allows all requests through
 func (s *DisabledService) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -287,36 +296,82 @@ func (s *DisabledService) AuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// RequireRole for DisabledService allows all requests through
-func (s *DisabledService) RequireRole(role string, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r)
-	})
+// RequireRole for DisabledService returns an error indicating the service is disabled
+func (s *DisabledService) RequireRole(role string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Create an error response indicating the service is disabled
+			err := NewAuthError(
+				ErrorTypeServiceUnavailable,
+				"Authentication service is disabled",
+				http.StatusServiceUnavailable,
+			).WithDetails(map[string]interface{}{
+				"requested_role": role,
+				"service_status": "disabled",
+			}).WithHelp("The authentication service is currently disabled. Role checks cannot be performed.")
+
+			// Write the error response
+			err.WriteJSON(w)
+		})
+	}
 }
 
-// RequirePermission for DisabledService allows all requests through
+// RequirePermission for DisabledService returns an error indicating the service is disabled
 func (s *DisabledService) RequirePermission(permission string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
+			// Create an error response indicating the service is disabled
+			err := NewAuthError(
+				ErrorTypeServiceUnavailable,
+				"Authentication service is disabled",
+				http.StatusServiceUnavailable,
+			).WithDetails(map[string]interface{}{
+				"requested_permission": permission,
+				"service_status":       "disabled",
+			}).WithHelp("The authentication service is currently disabled. Permission checks cannot be performed.")
+
+			// Write the error response
+			err.WriteJSON(w)
 		})
 	}
 }
 
-// RequireAnyPermission for DisabledService allows all requests through
+// RequireAnyPermission for DisabledService returns an error indicating the service is disabled
 func (s *DisabledService) RequireAnyPermission(permissions ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
+			// Create an error response indicating the service is disabled
+			err := NewAuthError(
+				ErrorTypeServiceUnavailable,
+				"Authentication service is disabled",
+				http.StatusServiceUnavailable,
+			).WithDetails(map[string]interface{}{
+				"requested_permissions": permissions,
+				"service_status":        "disabled",
+			}).WithHelp("The authentication service is currently disabled. Permission checks cannot be performed.")
+
+			// Write the error response
+			err.WriteJSON(w)
 		})
 	}
 }
 
-// RequireAllPermissions for DisabledService allows all requests through
+// RequireAllPermissions for DisabledService returns an error indicating the service is disabled
 func (s *DisabledService) RequireAllPermissions(permissions ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
+			// Create an error response indicating the service is disabled
+			err := NewAuthError(
+				ErrorTypeServiceUnavailable,
+				"Authentication service is disabled",
+				http.StatusServiceUnavailable,
+			).WithDetails(map[string]interface{}{
+				"required_permissions": permissions,
+				"service_status":       "disabled",
+			}).WithHelp("The authentication service is currently disabled. Permission checks cannot be performed.")
+
+			// Write the error response
+			err.WriteJSON(w)
 		})
 	}
 }
