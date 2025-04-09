@@ -223,6 +223,19 @@ func SetupHuma(router chi.Router, config Config) huma.API {
 	// Register status endpoints
 	registerStatusEndpoints(api, config.BasePath)
 
+	// TODO: Implement these endpoints
+	// // Register backtest endpoints
+	// registerBacktestEndpoints(api, config.BasePath)
+	//
+	// // Register strategy endpoints
+	// registerStrategyEndpoints(api, config.BasePath)
+	//
+	// // Register auth endpoints
+	// registerAuthEndpoints(api, config.BasePath)
+	//
+	// // Register user endpoints
+	// registerUserEndpoints(api, config.BasePath)
+
 	return api
 }
 

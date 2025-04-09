@@ -40,14 +40,14 @@ type Service struct {
 }
 
 // Authenticate validates the request and returns user data
-func (s *Service) Authenticate(ctx context.Context, r *http.Request) (*UserData, error) {
-	sessionClaims, ok := clerk.SessionClaimsFromContext(ctx)
+func (s *Service) Authenticate(r *http.Request) (*UserData, error) {
+	sessionClaims, ok := clerk.SessionClaimsFromContext(r.Context())
 	if !ok {
 		return nil, ErrUnauthorized
 	}
 
 	// Get user data using the user service
-	usr, err := user.Get(ctx, sessionClaims.Subject)
+	usr, err := user.Get(r.Context(), sessionClaims.Subject)
 	if err != nil {
 		return nil, NewAuthError(ErrorTypeInvalidToken, "Failed to get user data", http.StatusUnauthorized)
 	}

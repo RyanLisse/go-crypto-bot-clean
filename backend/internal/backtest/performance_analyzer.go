@@ -420,3 +420,93 @@ func (a *DefaultPerformanceAnalyzer) RunMonteCarloSimulation(result *BacktestRes
 
 	return simulations, nil
 }
+
+// AnalyzeRegimes analyzes performance in different market regimes
+func (a *DefaultPerformanceAnalyzer) AnalyzeRegimes(result *BacktestResult, benchmarkReturns map[string]float64) (map[string]map[string]float64, error) {
+	// Define regimes based on benchmark returns
+	// For example: Bull market (>1%), Sideways (-1% to 1%), Bear market (<-1%)
+	regimes := map[string]map[string]float64{
+		"bull":     make(map[string]float64),
+		"sideways": make(map[string]float64),
+		"bear":     make(map[string]float64),
+	}
+
+	// Calculate monthly returns for the strategy
+	monthlyReturns, err := a.CalculateMonthlyReturns(result)
+	if err != nil {
+		return nil, err
+	}
+
+	// Categorize returns by regime
+	for month, benchmarkReturn := range benchmarkReturns {
+		strategyReturn, exists := monthlyReturns[month]
+		if !exists {
+			continue
+		}
+
+		if benchmarkReturn > 1.0 {
+			regimes["bull"][month] = strategyReturn
+		} else if benchmarkReturn < -1.0 {
+			regimes["bear"][month] = strategyReturn
+		} else {
+			regimes["sideways"][month] = strategyReturn
+		}
+	}
+
+	return regimes, nil
+}
+
+// CalculateCorrelation calculates correlation between strategy returns and benchmark returns
+func (a *DefaultPerformanceAnalyzer) CalculateCorrelation(result *BacktestResult, benchmarkReturns map[string]float64) (float64, error) {
+	// Calculate monthly returns for the strategy
+	monthlyReturns, err := a.CalculateMonthlyReturns(result)
+	if err != nil {
+		return 0, err
+	}
+
+	// Extract matching months
+	var strategyReturnValues []float64
+	var benchmarkReturnValues []float64
+
+	for month, benchmarkReturn := range benchmarkReturns {
+		strategyReturn, exists := monthlyReturns[month]
+		if exists {
+			strategyReturnValues = append(strategyReturnValues, strategyReturn)
+			benchmarkReturnValues = append(benchmarkReturnValues, benchmarkReturn)
+		}
+	}
+
+	// Calculate correlation
+	if len(strategyReturnValues) < 2 {
+		return 0, nil
+	}
+
+	return calculateCorrelation(strategyReturnValues, benchmarkReturnValues), nil
+}
+
+// Helper function to calculate correlation between two series
+func calculateCorrelation(x, y []float64) float64 {
+	if len(x) != len(y) || len(x) == 0 {
+		return 0
+	}
+
+	n := float64(len(x))
+	var sumX, sumY, sumXY, sumX2, sumY2 float64
+
+	for i := 0; i < len(x); i++ {
+		sumX += x[i]
+		sumY += y[i]
+		sumXY += x[i] * y[i]
+		sumX2 += x[i] * x[i]
+		sumY2 += y[i] * y[i]
+	}
+
+	numerator := sumXY - (sumX * sumY / n)
+	denominator := math.Sqrt((sumX2 - (sumX * sumX / n)) * (sumY2 - (sumY * sumY / n)))
+
+	if denominator == 0 {
+		return 0
+	}
+
+	return numerator / denominator
+}

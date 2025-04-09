@@ -175,7 +175,7 @@ func (s *BaseStrategy) CalculateIndicator(symbol string, indicator string, perio
 	case "rsi":
 		return indicators.RSI(prices, period)
 	case "bollinger":
-		upper, middle, lower, err := indicators.BollingerBands(prices, period, 2.0)
+		_, middle, _, err := indicators.BollingerBands(prices, period, 2.0)
 		if err != nil {
 			return nil, err
 		}

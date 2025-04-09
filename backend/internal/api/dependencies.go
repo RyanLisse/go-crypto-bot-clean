@@ -67,16 +67,7 @@ func NewDependencies(cfg *config.Config) (*Dependencies, error) {
 	deps.logger = logger
 
 	// Initialize auth service
-	authService, err := auth.NewService(auth.Config{
-		ClerkSecretKey: cfg.Auth.ClerkSecretKey,
-	})
-	if err != nil {
-		deps.logger.Error("failed to initialize auth service",
-			zap.String("error", err.Error()),
-		)
-		// Fall back to disabled auth service
-		authService = &auth.DisabledService{}
-	}
+	authService := auth.NewService(cfg.Auth.ClerkSecretKey)
 	deps.AuthService = authService
 
 	// Initialize API keys
