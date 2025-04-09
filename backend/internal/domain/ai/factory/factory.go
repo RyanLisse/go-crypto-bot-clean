@@ -8,6 +8,7 @@ import (
 	"go-crypto-bot-clean/backend/internal/domain/ai/repository"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service/gemini"
+	"go-crypto-bot-clean/backend/internal/domain/audit"
 	"go-crypto-bot-clean/backend/internal/domain/portfolio"
 	"go-crypto-bot-clean/backend/internal/domain/risk"
 	"go-crypto-bot-clean/backend/internal/domain/trade"
@@ -23,6 +24,7 @@ func CreateAIService(
 	portfolioSvc portfolio.Service,
 	tradeSvc trade.Service,
 	riskSvc risk.Service,
+	auditSvc audit.Service,
 ) (service.AIService, error) {
 	// Get AI provider from environment variable
 	aiProvider := os.Getenv("AI_PROVIDER")
@@ -32,7 +34,7 @@ func CreateAIService(
 
 	switch aiProvider {
 	case "gemini":
-		return createGeminiAIService(db, portfolioSvc, tradeSvc, riskSvc)
+		return createGeminiAIService(db, portfolioSvc, tradeSvc, riskSvc, auditSvc)
 	// Add other providers as needed
 	default:
 		return nil, fmt.Errorf("unsupported AI provider: %s", aiProvider)
@@ -45,6 +47,7 @@ func createGeminiAIService(
 	portfolioSvc portfolio.Service,
 	tradeSvc trade.Service,
 	riskSvc risk.Service,
+	auditSvc audit.Service,
 ) (service.AIService, error) {
 	// Get API key from environment variable
 	apiKey := os.Getenv("GEMINI_API_KEY")
@@ -85,6 +88,7 @@ func createGeminiAIService(
 	// Set risk guardrails and confirmation flow
 	aiService.SetRiskGuardrails(riskGuardrails)
 	aiService.SetConfirmationFlow(confirmationFlow)
+	aiService.AuditService = auditSvc
 
 	return aiService, nil
 }

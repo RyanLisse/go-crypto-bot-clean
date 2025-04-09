@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go-crypto-bot-clean/backend/internal/api/handlers"
 	"go-crypto-bot-clean/backend/internal/api/middleware"
 	"go-crypto-bot-clean/backend/internal/api/websocket"
@@ -16,7 +15,13 @@ import (
 	"go-crypto-bot-clean/backend/internal/core/newcoin"
 	"go-crypto-bot-clean/backend/internal/core/status"
 	"go-crypto-bot-clean/backend/internal/core/trade"
+	"go-crypto-bot-clean/backend/internal/domain/audit"
 	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/security"
+
+	"github.com/gin-gonic/gin"
+
+	"go.uber.org/zap"
 )
 
 // Helper function to convert time.Time to *time.Time
@@ -49,6 +54,11 @@ type ServerDependencies struct {
 		Rate     float64
 		Capacity float64
 	}
+
+	// Security dependencies
+	AuditService      audit.Service
+	EncryptionService security.EncryptionService
+	ZapLogger         *zap.Logger
 }
 
 // NewServerDependencies initializes server dependencies.
