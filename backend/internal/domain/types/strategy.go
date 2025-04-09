@@ -66,5 +66,5 @@ type Strategy interface {
 	GetRequiredDataTypes() []string
 
 	// PerformBacktest runs a backtest of the strategy on historical data
-	PerformBacktest(ctx context.Context, historicalData []*models.Candle, params map[string]interface{}) ([]*Signal, *BacktestResult, error)
+	PerformBacktest(ctx context.Context, historicalData []*models.Candle, params map[string]interface{}) ([]*Signal, interface{}, error)
 }

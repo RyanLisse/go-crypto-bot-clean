@@ -612,24 +612,21 @@ func (e *EventDrivenEngine) updateEquity(timestamp time.Time) {
 func (e *EventDrivenEngine) saveBacktestResult(result *BacktestResult) error {
 	// Create a database model from the backtest result
 	backtestResult := models.BacktestResult{
-		ID:                 uuid.New().String(),
-		StrategyID:         "event_driven_strategy", // This should be configurable
-		StartTime:          result.StartTime,
-		EndTime:            result.EndTime,
-		InitialBalance:     result.InitialCapital,
-		FinalBalance:       result.FinalCapital,
-		ProfitLoss:         result.FinalCapital - result.InitialCapital,
-		ProfitLossPercent:  (result.FinalCapital - result.InitialCapital) / result.InitialCapital * 100,
-		TotalTrades:        len(result.Trades),
-		WinningTrades:      result.PerformanceMetrics.WinningTrades,
-		LosingTrades:       result.PerformanceMetrics.LosingTrades,
-		WinRate:            result.PerformanceMetrics.WinRate,
-		AverageWin:         result.PerformanceMetrics.AverageProfitTrade,
-		AverageLoss:        result.PerformanceMetrics.AverageLossTrade,
-		MaxDrawdown:        result.PerformanceMetrics.MaxDrawdown,
-		MaxDrawdownPercent: result.PerformanceMetrics.MaxDrawdownPercent,
-		SharpeRatio:        result.PerformanceMetrics.SharpeRatio,
-		SortinoRatio:       result.PerformanceMetrics.SortinoRatio,
+		ID:             uuid.New().String(),
+		Strategy:       "event_driven_strategy", // This should be configurable
+		StartTime:      result.StartTime,
+		EndTime:        result.EndTime,
+		InitialCapital: result.InitialCapital,
+		FinalCapital:   result.FinalCapital,
+		TotalTrades:    len(result.Trades),
+		WinningTrades:  result.PerformanceMetrics.WinningTrades,
+		LosingTrades:   result.PerformanceMetrics.LosingTrades,
+		WinRate:        result.PerformanceMetrics.WinRate,
+		ProfitFactor:   result.PerformanceMetrics.ProfitFactor,
+		MaxDrawdown:    result.PerformanceMetrics.MaxDrawdown,
+		SharpeRatio:    result.PerformanceMetrics.SharpeRatio,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}
 
 	// Save to database

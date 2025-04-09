@@ -189,6 +189,6 @@ func (s *NewCoinStrategy) GetRequiredDataTypes() []string {
 }
 
 // PerformBacktest runs a backtest of the strategy
-func (s *NewCoinStrategy) PerformBacktest(ctx context.Context, historicalData []*models.Candle, params map[string]interface{}) ([]*types.Signal, *types.BacktestResult, error) {
+func (s *NewCoinStrategy) PerformBacktest(ctx context.Context, historicalData []*models.Candle, params map[string]interface{}) ([]*types.Signal, interface{}, error) {
 	return nil, nil, fmt.Errorf("backtesting not implemented for NewCoinStrategy")
 }

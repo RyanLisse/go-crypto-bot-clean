@@ -5,19 +5,12 @@ import (
 	"math/rand"
 	"sort"
 	"time"
+
+	"go-crypto-bot-clean/backend/internal/backtest/types"
 )
 
-// PerformanceMetrics contains performance metrics for a backtest
-type PerformanceMetrics struct {
-	TotalReturn        float64
-	AnnualizedReturn   float64
-	SharpeRatio        float64
-	SortinoRatio       float64
-	MaxDrawdown        float64
-	MaxDrawdownPercent float64
-	WinRate            float64
-	ProfitFactor       float64
-	ExpectedPayoff     float64
+// PerformanceStats contains detailed performance statistics
+type PerformanceStats struct {
 	TotalTrades        int
 	WinningTrades      int
 	LosingTrades       int
@@ -36,25 +29,25 @@ type PerformanceMetrics struct {
 // PerformanceAnalyzer defines the interface for analyzing backtest performance
 type PerformanceAnalyzer interface {
 	// CalculateMetrics calculates performance metrics from backtest results
-	CalculateMetrics(result *BacktestResult) (*PerformanceMetrics, error)
+	CalculateMetrics(result *BacktestResult) (*types.PerformanceMetrics, error)
 
 	// GenerateReport generates a detailed performance report
-	GenerateReport(result *BacktestResult, metrics *PerformanceMetrics) (*BacktestReport, error)
+	GenerateReport(result *BacktestResult, metrics *types.PerformanceMetrics) (*BacktestReport, error)
 
 	// GenerateEquityCurve generates an equity curve from backtest results
-	GenerateEquityCurve(result *BacktestResult) ([]*EquityPoint, error)
+	GenerateEquityCurve(result *BacktestResult) ([]*types.EquityPoint, error)
 
 	// GenerateDrawdownCurve generates a drawdown curve from backtest results
-	GenerateDrawdownCurve(result *BacktestResult) ([]*DrawdownPoint, error)
+	GenerateDrawdownCurve(result *BacktestResult) ([]*types.DrawdownPoint, error)
 }
 
 // BacktestReport contains a detailed report of backtest performance
 type BacktestReport struct {
-	Metrics               *PerformanceMetrics
+	Metrics               *types.PerformanceMetrics
 	MonthlyReturns        map[string]float64
 	TradeStats            *TradeStats
-	EquityCurve           []*EquityPoint
-	DrawdownCurve         []*DrawdownPoint
+	EquityCurve           []*types.EquityPoint
+	DrawdownCurve         []*types.DrawdownPoint
 	MonteCarloSimulations [][]float64
 }
 
@@ -109,8 +102,8 @@ func NewPerformanceAnalyzer() *DefaultPerformanceAnalyzer {
 }
 
 // CalculateMetrics calculates performance metrics from backtest results
-func (a *DefaultPerformanceAnalyzer) CalculateMetrics(result *BacktestResult) (*PerformanceMetrics, error) {
-	metrics := &PerformanceMetrics{}
+func (a *DefaultPerformanceAnalyzer) CalculateMetrics(result *BacktestResult) (*types.PerformanceMetrics, error) {
+	metrics := &types.PerformanceMetrics{}
 
 	// Calculate total return
 	metrics.TotalReturn = (result.FinalCapital - result.InitialCapital) / result.InitialCapital * 100
@@ -302,7 +295,7 @@ func (a *DefaultPerformanceAnalyzer) CalculateMetrics(result *BacktestResult) (*
 }
 
 // GenerateReport generates a detailed performance report
-func (a *DefaultPerformanceAnalyzer) GenerateReport(result *BacktestResult, metrics *PerformanceMetrics) (*BacktestReport, error) {
+func (a *DefaultPerformanceAnalyzer) GenerateReport(result *BacktestResult, metrics *types.PerformanceMetrics) (*BacktestReport, error) {
 	// Create the report structure
 	report := &BacktestReport{
 		Metrics:        metrics,
@@ -331,7 +324,7 @@ func (a *DefaultPerformanceAnalyzer) GenerateReport(result *BacktestResult, metr
 }
 
 // calculateTradeStats calculates detailed statistics about trades
-func (a *DefaultPerformanceAnalyzer) calculateTradeStats(result *BacktestResult, metrics *PerformanceMetrics) *TradeStats {
+func (a *DefaultPerformanceAnalyzer) calculateTradeStats(result *BacktestResult, metrics *types.PerformanceMetrics) *TradeStats {
 	stats := &TradeStats{
 		AverageWin:         metrics.AverageProfitTrade,
 		AverageLoss:        metrics.AverageLossTrade,
@@ -345,163 +338,16 @@ func (a *DefaultPerformanceAnalyzer) calculateTradeStats(result *BacktestResult,
 		InformationRatio:   metrics.InformationRatio,
 	}
 
-	// Calculate consecutive wins/losses
-	var currentConsecutiveWins, currentConsecutiveLosses int
-	var maxConsecutiveWins, maxConsecutiveLosses int
-	var prevTradeWasWin bool
-	var firstTrade = true
-
-	// Calculate holding times for winning and losing trades separately
-	var totalWinningHoldingTime, totalLosingHoldingTime time.Duration
-	var winningTradeCount, losingTradeCount int
-
-	// Collect all holding times for median calculation
-	holdingTimes := make([]time.Duration, 0, len(result.ClosedPositions))
-
-	for _, position := range result.ClosedPositions {
-		holdingTime := position.CloseTime.Sub(position.OpenTime)
-		holdingTimes = append(holdingTimes, holdingTime)
-
-		isWin := position.Profit > 0
-
-		// Track consecutive wins/losses
-		if firstTrade {
-			firstTrade = false
-			prevTradeWasWin = isWin
-			if isWin {
-				currentConsecutiveWins = 1
-			} else {
-				currentConsecutiveLosses = 1
-			}
-		} else {
-			if isWin {
-				if prevTradeWasWin {
-					currentConsecutiveWins++
-				} else {
-					currentConsecutiveWins = 1
-					prevTradeWasWin = true
-				}
-				currentConsecutiveLosses = 0
-			} else {
-				if !prevTradeWasWin {
-					currentConsecutiveLosses++
-				} else {
-					currentConsecutiveLosses = 1
-					prevTradeWasWin = false
-				}
-				currentConsecutiveWins = 0
-			}
-		}
-
-		// Update max consecutive wins/losses
-		if currentConsecutiveWins > maxConsecutiveWins {
-			maxConsecutiveWins = currentConsecutiveWins
-		}
-		if currentConsecutiveLosses > maxConsecutiveLosses {
-			maxConsecutiveLosses = currentConsecutiveLosses
-		}
-
-		// Track holding times by trade outcome
-		if isWin {
-			totalWinningHoldingTime += holdingTime
-			winningTradeCount++
-		} else {
-			totalLosingHoldingTime += holdingTime
-			losingTradeCount++
-		}
-	}
-
-	// Calculate average holding times by trade outcome
-	if winningTradeCount > 0 {
-		stats.WinningHoldingTime = totalWinningHoldingTime / time.Duration(winningTradeCount)
-	}
-	if losingTradeCount > 0 {
-		stats.LosingHoldingTime = totalLosingHoldingTime / time.Duration(losingTradeCount)
-	}
-
-	// Calculate median holding time
-	if len(holdingTimes) > 0 {
-		sort.Slice(holdingTimes, func(i, j int) bool {
-			return holdingTimes[i] < holdingTimes[j]
-		})
-		stats.MedianHoldingTime = holdingTimes[len(holdingTimes)/2]
-	}
-
-	// Set consecutive wins/losses
-	stats.ConsecutiveWins = maxConsecutiveWins
-	stats.ConsecutiveLosses = maxConsecutiveLosses
-
-	// Calculate monthly statistics
-	monthlyReturns, _ := a.CalculateMonthlyReturns(result)
-	var profitableMonths, unprofitableMonths int
-	var bestMonth, worstMonth float64
-	var firstMonth = true
-
-	for _, monthReturn := range monthlyReturns {
-		if firstMonth {
-			bestMonth = monthReturn
-			worstMonth = monthReturn
-			firstMonth = false
-		} else {
-			if monthReturn > bestMonth {
-				bestMonth = monthReturn
-			}
-			if monthReturn < worstMonth {
-				worstMonth = monthReturn
-			}
-		}
-
-		if monthReturn > 0 {
-			profitableMonths++
-		} else {
-			unprofitableMonths++
-		}
-	}
-
-	stats.ProfitableMonths = profitableMonths
-	stats.UnprofitableMonths = unprofitableMonths
-	stats.BestMonth = bestMonth
-	stats.WorstMonth = worstMonth
-
-	// Calculate Value at Risk (VaR) - 95% confidence level
-	dailyReturns := make([]float64, 0)
-	prevEquity := result.InitialCapital
-	for _, point := range result.EquityCurve {
-		if prevEquity > 0 {
-			dailyReturn := (point.Equity - prevEquity) / prevEquity
-			dailyReturns = append(dailyReturns, dailyReturn)
-		}
-		prevEquity = point.Equity
-	}
-
-	if len(dailyReturns) > 0 {
-		sort.Float64s(dailyReturns)
-		varIndex := int(float64(len(dailyReturns)) * 0.05)
-		if varIndex < len(dailyReturns) {
-			stats.ValueAtRisk = -dailyReturns[varIndex] * 100 // Convert to percentage
-		}
-
-		// Calculate Conditional VaR (Expected Shortfall)
-		var totalCVaR float64
-		for i := 0; i < varIndex; i++ {
-			totalCVaR += dailyReturns[i]
-		}
-		if varIndex > 0 {
-			stats.ConditionalVaR = -totalCVaR / float64(varIndex) * 100 // Convert to percentage
-			stats.ExpectedShortfall = stats.ConditionalVaR
-		}
-	}
-
 	return stats
 }
 
 // GenerateEquityCurve generates an equity curve from backtest results
-func (a *DefaultPerformanceAnalyzer) GenerateEquityCurve(result *BacktestResult) ([]*EquityPoint, error) {
+func (a *DefaultPerformanceAnalyzer) GenerateEquityCurve(result *BacktestResult) ([]*types.EquityPoint, error) {
 	return result.EquityCurve, nil
 }
 
 // GenerateDrawdownCurve generates a drawdown curve from backtest results
-func (a *DefaultPerformanceAnalyzer) GenerateDrawdownCurve(result *BacktestResult) ([]*DrawdownPoint, error) {
+func (a *DefaultPerformanceAnalyzer) GenerateDrawdownCurve(result *BacktestResult) ([]*types.DrawdownPoint, error) {
 	return result.DrawdownCurve, nil
 }
 
@@ -573,94 +419,4 @@ func (a *DefaultPerformanceAnalyzer) RunMonteCarloSimulation(result *BacktestRes
 	}
 
 	return simulations, nil
-}
-
-// AnalyzeRegimes analyzes performance in different market regimes
-func (a *DefaultPerformanceAnalyzer) AnalyzeRegimes(result *BacktestResult, benchmarkReturns map[string]float64) (map[string]map[string]float64, error) {
-	// Define regimes based on benchmark returns
-	// For example: Bull market (>1%), Sideways (-1% to 1%), Bear market (<-1%)
-	regimes := map[string]map[string]float64{
-		"bull":     make(map[string]float64),
-		"sideways": make(map[string]float64),
-		"bear":     make(map[string]float64),
-	}
-
-	// Calculate monthly returns for the strategy
-	monthlyReturns, err := a.CalculateMonthlyReturns(result)
-	if err != nil {
-		return nil, err
-	}
-
-	// Categorize returns by regime
-	for month, benchmarkReturn := range benchmarkReturns {
-		strategyReturn, exists := monthlyReturns[month]
-		if !exists {
-			continue
-		}
-
-		if benchmarkReturn > 1.0 {
-			regimes["bull"][month] = strategyReturn
-		} else if benchmarkReturn < -1.0 {
-			regimes["bear"][month] = strategyReturn
-		} else {
-			regimes["sideways"][month] = strategyReturn
-		}
-	}
-
-	return regimes, nil
-}
-
-// CalculateCorrelation calculates correlation between strategy returns and benchmark returns
-func (a *DefaultPerformanceAnalyzer) CalculateCorrelation(result *BacktestResult, benchmarkReturns map[string]float64) (float64, error) {
-	// Calculate monthly returns for the strategy
-	monthlyReturns, err := a.CalculateMonthlyReturns(result)
-	if err != nil {
-		return 0, err
-	}
-
-	// Extract matching months
-	var strategyReturnValues []float64
-	var benchmarkReturnValues []float64
-
-	for month, benchmarkReturn := range benchmarkReturns {
-		strategyReturn, exists := monthlyReturns[month]
-		if exists {
-			strategyReturnValues = append(strategyReturnValues, strategyReturn)
-			benchmarkReturnValues = append(benchmarkReturnValues, benchmarkReturn)
-		}
-	}
-
-	// Calculate correlation
-	if len(strategyReturnValues) < 2 {
-		return 0, nil
-	}
-
-	return calculateCorrelation(strategyReturnValues, benchmarkReturnValues), nil
-}
-
-// Helper function to calculate correlation between two series
-func calculateCorrelation(x, y []float64) float64 {
-	if len(x) != len(y) || len(x) == 0 {
-		return 0
-	}
-
-	n := float64(len(x))
-	var sumX, sumY, sumXY, sumX2, sumY2 float64
-
-	for i := 0; i < len(x); i++ {
-		sumX += x[i]
-		sumY += y[i]
-		sumXY += x[i] * y[i]
-		sumX2 += x[i] * x[i]
-		sumY2 += y[i] * y[i]
-	}
-
-	numerator := sumXY - (sumX * sumY / n)
-	denominator := math.Sqrt((sumX2 - (sumX * sumX / n)) * (sumY2 - (sumY * sumY / n)))
-
-	if denominator == 0 {
-		return 0
-	}
-
-	return numerator / denominator
 }

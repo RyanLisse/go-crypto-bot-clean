@@ -30,3 +30,8 @@ func (f *StrategyFactory) CreateStrategy(name string) (BacktestStrategy, error) 
 	}
 	return creator(), nil
 }
+
+// RegisterDefaultStrategies registers the default strategies
+func (f *StrategyFactory) RegisterDefaultStrategies() {
+	// This will be implemented by the strategies package
+}

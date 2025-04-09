@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"go-crypto-bot-clean/backend/internal/auth"
-	"go-crypto-bot-clean/backend/internal/logging"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -39,11 +38,11 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 		// Create a test request
 		req := httptest.NewRequest("GET", "/test", nil)
-		
+
 		// Add request ID to context
 		ctx := context.WithValue(req.Context(), RequestIDContextKey, "test-request-id")
 		req = req.WithContext(ctx)
-		
+
 		rec := httptest.NewRecorder()
 
 		// Call the handler
@@ -51,12 +50,12 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-		
+
 		// Parse response body
 		var errResp auth.ErrorResponse
 		err := json.Unmarshal(rec.Body.Bytes(), &errResp)
 		assert.NoError(t, err)
-		
+
 		// Verify error response fields
 		assert.Equal(t, "internal_error", string(errResp.Error.Type))
 		assert.Contains(t, errResp.Error.Message, "unexpected error")
@@ -81,11 +80,11 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 		// Create a test request
 		req := httptest.NewRequest("GET", "/auth/test", nil)
-		
+
 		// Add request ID to context
 		ctx := context.WithValue(req.Context(), RequestIDContextKey, "test-request-id")
 		req = req.WithContext(ctx)
-		
+
 		rec := httptest.NewRecorder()
 
 		// Call the handler
@@ -93,12 +92,12 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
-		
+
 		// Parse response body
 		var errResp auth.ErrorResponse
 		err := json.Unmarshal(rec.Body.Bytes(), &errResp)
 		assert.NoError(t, err)
-		
+
 		// Verify error response fields
 		assert.Equal(t, string(auth.ErrorTypeUnauthorized), string(errResp.Error.Type))
 		assert.Equal(t, "Invalid token", errResp.Error.Message)
@@ -118,11 +117,11 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 		// Create a test request
 		req := httptest.NewRequest("GET", "/auth/token", nil)
-		
+
 		// Add request ID to context
 		ctx := context.WithValue(req.Context(), RequestIDContextKey, "test-request-id")
 		req = req.WithContext(ctx)
-		
+
 		rec := httptest.NewRecorder()
 
 		// Call the handler
@@ -130,12 +129,12 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
-		
+
 		// Parse response body
 		var errResp auth.ErrorResponse
 		err := json.Unmarshal(rec.Body.Bytes(), &errResp)
 		assert.NoError(t, err)
-		
+
 		// Verify error response fields
 		assert.Equal(t, "expired_token", string(errResp.Error.Type))
 		assert.Contains(t, errResp.Error.Message, "unexpected error")
@@ -145,7 +144,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 	t.Run("should include user info in logs when available", func(t *testing.T) {
 		// Create a buffer to capture logs
 		var buf bytes.Buffer
-		
+
 		// Create a logger that writes to the buffer
 		core := zapcore.NewCore(
 			zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
@@ -153,7 +152,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 			zapcore.DebugLevel,
 		)
 		testLogger := zap.New(core)
-		
+
 		// Create recovery middleware with test options
 		testOpts := DefaultRecoveryOptions()
 		testOpts.Logger = testLogger
@@ -170,7 +169,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 			}
 			ctx := context.WithValue(r.Context(), auth.UserContextKey, user)
 			r = r.WithContext(ctx)
-			
+
 			// Then panic
 			panic("test panic with user")
 		})
@@ -180,11 +179,11 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 		// Create a test request
 		req := httptest.NewRequest("GET", "/user/profile", nil)
-		
+
 		// Add request ID to context
 		ctx := context.WithValue(req.Context(), RequestIDContextKey, "test-request-id")
 		req = req.WithContext(ctx)
-		
+
 		rec := httptest.NewRecorder()
 
 		// Call the handler
@@ -209,11 +208,11 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 		// Create a test request
 		req := httptest.NewRequest("GET", "/normal", nil)
-		
+
 		// Add request ID to context
 		ctx := context.WithValue(req.Context(), RequestIDContextKey, "test-request-id")
 		req = req.WithContext(ctx)
-		
+
 		rec := httptest.NewRecorder()
 
 		// Call the handler
@@ -259,7 +258,7 @@ func TestRecoveryMiddlewareWithCircuitBreaker(t *testing.T) {
 
 	// Circuit should now be open
 	assert.Equal(t, CircuitOpen, cb.GetState())
-	
+
 	// Reset the circuit breaker for other tests
 	cb.Reset()
 }
@@ -298,7 +297,7 @@ func TestRecoveryMiddlewareWithGracefulDegradation(t *testing.T) {
 
 	// Service should now be in read-only mode
 	assert.Equal(t, ReadOnlyMode, gd.GetMode())
-	
+
 	// Reset the service mode for other tests
 	gd.SetMode(NormalMode)
 	gd.ResetErrorCount()

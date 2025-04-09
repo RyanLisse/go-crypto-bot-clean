@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	"go-crypto-bot-clean/backend/internal/backtest"
+	"go-crypto-bot-clean/backend/internal/backtest/types"
 	"go-crypto-bot-clean/backend/internal/domain/models"
 	"go-crypto-bot-clean/backend/internal/indicators"
 )
 
 // MovingAverageCrossoverStrategy implements a simple moving average crossover strategy
 type MovingAverageCrossoverStrategy struct {
-	backtest.BaseStrategy
+	Name              string
 	FastPeriod        int
 	SlowPeriod        int
 	RiskPercentage    float64
@@ -25,7 +25,7 @@ type MovingAverageCrossoverStrategy struct {
 // NewMovingAverageCrossoverStrategy creates a new MovingAverageCrossoverStrategy
 func NewMovingAverageCrossoverStrategy(fastPeriod, slowPeriod int, riskPercentage, stopLossPercent, takeProfitPercent float64) *MovingAverageCrossoverStrategy {
 	return &MovingAverageCrossoverStrategy{
-		BaseStrategy:      backtest.BaseStrategy{ /* No Name field */ },
+		Name:              "Moving Average Crossover",
 		FastPeriod:        fastPeriod,
 		SlowPeriod:        slowPeriod,
 		RiskPercentage:    riskPercentage,
@@ -38,11 +38,6 @@ func NewMovingAverageCrossoverStrategy(fastPeriod, slowPeriod int, riskPercentag
 
 // Initialize initializes the strategy with backtest-specific parameters
 func (s *MovingAverageCrossoverStrategy) Initialize(ctx context.Context, config map[string]interface{}) error {
-	err := s.BaseStrategy.Initialize(ctx, config)
-	if err != nil {
-		return err
-	}
-
 	// Override parameters from config if provided
 	if fastPeriod, ok := config["fast_period"].(int); ok {
 		s.FastPeriod = fastPeriod
@@ -64,7 +59,7 @@ func (s *MovingAverageCrossoverStrategy) Initialize(ctx context.Context, config 
 }
 
 // OnTick is called for each new data point (candle, ticker, etc.)
-func (s *MovingAverageCrossoverStrategy) OnTick(ctx context.Context, symbol string, timestamp time.Time, data interface{}) ([]*backtest.Signal, error) {
+func (s *MovingAverageCrossoverStrategy) OnTick(ctx context.Context, symbol string, timestamp time.Time, data interface{}) ([]*types.Signal, error) {
 	// Check if data is a Kline
 	kline, ok := data.(*models.Kline)
 	if !ok {
@@ -94,7 +89,7 @@ func (s *MovingAverageCrossoverStrategy) OnTick(ctx context.Context, symbol stri
 	}
 
 	// Check for crossover
-	var signals []*backtest.Signal
+	var signals []*types.Signal
 
 	// Get the current and previous values
 	currentFastMA := fastMA[len(fastMA)-1]
@@ -112,7 +107,7 @@ func (s *MovingAverageCrossoverStrategy) OnTick(ctx context.Context, symbol stri
 	if previousFastMA <= previousSlowMA && currentFastMA > currentSlowMA {
 		// Only generate a buy signal if we don't already have a position
 		if !s.Positions[symbol] {
-			signal := &backtest.Signal{
+			signal := &types.Signal{
 				Symbol:    symbol,
 				Side:      "BUY",
 				Quantity:  1.0, // Will be adjusted by position sizing
@@ -128,7 +123,7 @@ func (s *MovingAverageCrossoverStrategy) OnTick(ctx context.Context, symbol stri
 	if previousFastMA >= previousSlowMA && currentFastMA < currentSlowMA {
 		// Only generate a sell signal if we have a position
 		if s.Positions[symbol] {
-			signal := &backtest.Signal{
+			signal := &types.Signal{
 				Symbol:    symbol,
 				Side:      "SELL",
 				Quantity:  1.0, // Will be adjusted to match the position size

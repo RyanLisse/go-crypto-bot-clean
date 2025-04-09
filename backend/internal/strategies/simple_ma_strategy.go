@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"go-crypto-bot-clean/backend/internal/backtest"
+	"go-crypto-bot-clean/backend/internal/backtest/types"
 	"go-crypto-bot-clean/backend/internal/domain/models"
 
 	"go.uber.org/zap"
@@ -12,7 +12,7 @@ import (
 
 // SimpleMAStrategy implements a simple moving average crossover strategy
 type SimpleMAStrategy struct {
-	backtest.BaseStrategy
+	Name        string
 	ShortPeriod int
 	LongPeriod  int
 	shortMA     map[string][]float64
@@ -29,25 +29,20 @@ func NewSimpleMAStrategy(shortPeriod, longPeriod int, logger *zap.Logger) *Simpl
 	}
 
 	return &SimpleMAStrategy{
-		BaseStrategy: backtest.BaseStrategy{ /* No Name field */ },
-		ShortPeriod:  shortPeriod,
-		LongPeriod:   longPeriod,
-		shortMA:      make(map[string][]float64),
-		longMA:       make(map[string][]float64),
-		prices:       make(map[string][]float64),
-		position:     make(map[string]bool),
-		logger:       logger,
+		Name:        "Simple Moving Average",
+		ShortPeriod: shortPeriod,
+		LongPeriod:  longPeriod,
+		shortMA:     make(map[string][]float64),
+		longMA:      make(map[string][]float64),
+		prices:      make(map[string][]float64),
+		position:    make(map[string]bool),
+		logger:      logger,
 	}
 }
 
 // Initialize initializes the strategy with backtest-specific parameters
 // It now accepts interface{} to match the BacktestStrategy interface
 func (s *SimpleMAStrategy) Initialize(ctx context.Context, config interface{}) error {
-	// Optionally call base initialize if BaseStrategy requires it
-	err := s.BaseStrategy.Initialize(ctx, config)
-	if err != nil {
-		return err
-	}
 
 	// Attempt to cast config to the expected map type
 	if configMap, ok := config.(map[string]interface{}); ok && configMap != nil {
@@ -69,7 +64,7 @@ func (s *SimpleMAStrategy) Initialize(ctx context.Context, config interface{}) e
 }
 
 // OnTick is called for each new data point (candle, ticker, etc.)
-func (s *SimpleMAStrategy) OnTick(ctx context.Context, symbol string, timestamp time.Time, data interface{}) ([]*backtest.Signal, error) {
+func (s *SimpleMAStrategy) OnTick(ctx context.Context, symbol string, timestamp time.Time, data interface{}) ([]*types.Signal, error) {
 	// Check if data is a Kline
 	kline, ok := data.(*models.Kline)
 	if !ok {
@@ -96,7 +91,7 @@ func (s *SimpleMAStrategy) OnTick(ctx context.Context, symbol string, timestamp 
 	s.longMA[symbol] = append(s.longMA[symbol], longMA)
 
 	// Generate signals
-	var signals []*backtest.Signal
+	var signals []*types.Signal
 
 	// We need enough data to calculate both moving averages
 	if len(s.prices[symbol]) >= s.LongPeriod {
@@ -117,7 +112,7 @@ func (s *SimpleMAStrategy) OnTick(ctx context.Context, symbol string, timestamp 
 					zap.Float64("long_ma", currentLongMA),
 				)
 
-				signals = append(signals, &backtest.Signal{
+				signals = append(signals, &types.Signal{
 					Symbol:    symbol,
 					Side:      "BUY",
 					Quantity:  1.0, // Fixed quantity for simplicity
@@ -139,7 +134,7 @@ func (s *SimpleMAStrategy) OnTick(ctx context.Context, symbol string, timestamp 
 					zap.Float64("long_ma", currentLongMA),
 				)
 
-				signals = append(signals, &backtest.Signal{
+				signals = append(signals, &types.Signal{
 					Symbol:    symbol,
 					Side:      "SELL",
 					Quantity:  1.0, // Fixed quantity for simplicity
@@ -181,6 +176,35 @@ func (s *SimpleMAStrategy) OnPositionClosed(ctx context.Context, position *model
 		zap.Time("close_time", position.CloseTime),
 	)
 	return nil
+}
+
+// ClosePositions is called at the end of backtesting to close any open positions
+func (s *SimpleMAStrategy) ClosePositions(ctx context.Context) ([]*types.Signal, error) {
+	var signals []*types.Signal
+
+	// Close any open positions
+	for symbol, isOpen := range s.position {
+		if isOpen {
+			s.logger.Info("Closing position at end of backtest",
+				zap.String("symbol", symbol),
+			)
+
+			// Create a sell signal to close the position
+			signals = append(signals, &types.Signal{
+				Symbol:    symbol,
+				Side:      "SELL",
+				Quantity:  1.0, // Will be adjusted based on actual position size
+				Price:     0.0, // Will be filled in with current price
+				Timestamp: time.Now(),
+				Reason:    "End of backtest",
+			})
+
+			// Mark position as closed
+			s.position[symbol] = false
+		}
+	}
+
+	return signals, nil
 }
 
 // calculateSMA calculates the simple moving average for a given period

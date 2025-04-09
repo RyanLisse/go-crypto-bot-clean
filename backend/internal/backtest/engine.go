@@ -293,7 +293,7 @@ func (e *Engine) createOrder(signal *Signal) *models.Order {
 	return &models.Order{
 		ID:        uuid.New().String(),
 		Symbol:    signal.Symbol,
-		Side:      signal.Side,
+		Side:      models.OrderSide(signal.Side),
 		Type:      models.OrderTypeMarket,
 		Quantity:  signal.Quantity,
 		Price:     signal.Price,

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"go-crypto-bot-clean/backend/internal/backtest/types"
 	"go-crypto-bot-clean/backend/internal/domain/models"
-	"go-crypto-bot-clean/backend/internal/trading"
 
 	"go.uber.org/zap"
 )
@@ -63,23 +63,32 @@ type BacktestResult struct {
 	PerformanceMetrics *PerformanceMetrics
 }
 
-// Signal is an alias for trading.Signal
-type Signal = trading.Signal
+// Signal is an alias for types.Signal
+type Signal = types.Signal
 
-// BacktestStrategy is an alias for trading.Strategy
-type BacktestStrategy = trading.Strategy
+// BacktestStrategy defines the interface for backtesting strategies
+type BacktestStrategy interface {
+	// Initialize sets up the strategy with any required configuration
+	Initialize(ctx context.Context, config interface{}) error
 
-// EquityPoint represents a point on the equity curve
-type EquityPoint struct {
-	Timestamp time.Time
-	Equity    float64
+	// OnTick processes a new tick of market data and returns any trading signals
+	OnTick(ctx context.Context, symbol string, timestamp time.Time, data interface{}) ([]*Signal, error)
+
+	// OnOrderFilled is called when an order has been filled
+	OnOrderFilled(ctx context.Context, order *models.Order) error
+
+	// ClosePositions is called at the end of backtesting to close any open positions
+	ClosePositions(ctx context.Context) ([]*Signal, error)
 }
 
-// DrawdownPoint represents a point on the drawdown curve
-type DrawdownPoint struct {
-	Timestamp time.Time
-	Drawdown  float64
-}
+// EquityPoint is an alias for types.EquityPoint
+type EquityPoint = types.EquityPoint
+
+// DrawdownPoint is an alias for types.DrawdownPoint
+type DrawdownPoint = types.DrawdownPoint
+
+// PerformanceMetrics is an alias for types.PerformanceMetrics
+type PerformanceMetrics = types.PerformanceMetrics
 
 // DataProvider defines the interface for historical data providers
 type DataProvider interface {

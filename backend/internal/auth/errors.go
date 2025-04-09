@@ -31,6 +31,9 @@ const (
 	ErrorTypeInvalidScope       ErrorType = "invalid_scope"
 	ErrorTypeAccountLocked      ErrorType = "account_locked"
 	ErrorTypeAccountDisabled    ErrorType = "account_disabled"
+	ErrorTypeTimeout            ErrorType = "timeout"
+	ErrorTypeReadOnly           ErrorType = "read_only"
+	ErrorTypeMaintenance        ErrorType = "maintenance"
 )
 
 // ErrorResponse represents the standardized error response structure

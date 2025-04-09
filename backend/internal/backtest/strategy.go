@@ -79,7 +79,7 @@ func (s *BaseStrategy) extractPrice(data interface{}) float64 {
 	case *models.Kline:
 		return v.Close
 	case *models.Candle:
-		return v.Close
+		return v.ClosePrice
 	case *models.Ticker:
 		return v.Price
 	case *models.Trade:
@@ -145,7 +145,7 @@ func (s *BaseStrategy) ClosePositions(ctx context.Context) ([]*Signal, error) {
 			// Create a sell signal to close the position
 			signal := &Signal{
 				Symbol:    symbol,
-				Side:      models.OrderSideSell,
+				Side:      "SELL",
 				Quantity:  0, // Will be filled in by the backtester based on position size
 				Price:     0, // Will be filled in by the backtester based on current price
 				Timestamp: time.Now(),
@@ -282,7 +282,7 @@ func (s *DefaultStrategy) OnTick(ctx context.Context, symbol string, timestamp t
 
 			signal := &Signal{
 				Symbol:    symbol,
-				Side:      models.OrderSideBuy,
+				Side:      "BUY",
 				Quantity:  1.0, // Will be adjusted by position sizing
 				Price:     prices[len(prices)-1],
 				Timestamp: timestamp,
@@ -306,7 +306,7 @@ func (s *DefaultStrategy) OnTick(ctx context.Context, symbol string, timestamp t
 
 			signal := &Signal{
 				Symbol:    symbol,
-				Side:      models.OrderSideSell,
+				Side:      "SELL",
 				Quantity:  1.0, // Will be adjusted based on position size
 				Price:     prices[len(prices)-1],
 				Timestamp: timestamp,
