@@ -142,7 +142,20 @@
 3. ✅ Backtesting Framework (10a-backtesting-framework.md)
 4. ✅ Notification Service (11a-notification-service.md)
 
+### API Integration with Business Logic (May 2025)
+- Created service layer to connect API endpoints to business logic
+- Implemented service connectors for backtest, strategy, auth, and user management
+- Added conversion between API models and business logic models
+- Implemented proper error handling and validation
+- Created a clean separation between API handlers and business logic
+- Used a service provider pattern to manage service dependencies
+- Created a main entry point for the API server with proper service initialization
+- Added middleware for logging and error recovery
+
 ### Recent Achievements
+- Connected API endpoints to business logic with a service layer
+- Implemented service connectors for backtest, strategy, auth, and user management
+- Created a main entry point for the API server with proper service initialization
 - Implemented strategy factory for managing trading strategies
 - Added Huma integration for OpenAPI documentation
 - Created comprehensive API documentation with interactive UI
@@ -179,6 +192,11 @@
   - Comprehensive documentation and examples
 
 ### Upcoming Work
+- Implement authentication middleware to secure the API
+- Add database integration for persistent storage
+- Implement real-time updates using WebSockets
+- Create integration tests for the API endpoints
+- Add monitoring and logging for production use
 - Enhance the backtesting framework with visualization tools for equity curves and drawdowns
 - Implement Monte Carlo simulation for strategy robustness testing
 - Create parameter optimization framework for backtesting
