@@ -27,6 +27,7 @@ func RegisterAIRoutesWithChi(
 		// Chat and function endpoints
 		r.Post("/chat", handlers.ChatHandler(aiSvc))
 		r.Post("/function", handlers.FunctionHandler(aiSvc))
+		r.Post("/insights", handlers.AIInsightsHandler(aiSvc))
 
 		// Risk management endpoints
 		r.Route("/risk", func(r chi.Router) {

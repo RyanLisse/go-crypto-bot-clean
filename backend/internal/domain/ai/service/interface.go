@@ -74,4 +74,7 @@ type AIService interface {
 
 	// IndexMessage indexes a message for similarity search
 	IndexMessage(ctx context.Context, conversationID, messageID, content string, metadata map[string]interface{}) error
+
+	// GenerateInsights generates AI insights based on portfolio and trade history
+	GenerateInsights(ctx context.Context, userID int, portfolio map[string]interface{}, tradeHistory []map[string]interface{}, insightTypes []string) ([]Insight, error)
 }
