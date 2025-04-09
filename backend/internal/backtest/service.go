@@ -7,6 +7,9 @@ import (
 	"time"
 
 	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/strategies"
+
+	"go.uber.org/zap"
 )
 
 // Service provides backtest functionality
@@ -17,8 +20,11 @@ type Service struct {
 
 // NewService creates a new backtest service
 func NewService() *Service {
-	factory := NewStrategyFactory()
-	factory.RegisterStrategy("default", NewDefaultStrategy)
+	logger, _ := zap.NewProduction()
+	factory := strategies.NewStrategyFactory(logger)
+
+	// Register all available strategies
+	factory.RegisterDefaultStrategies()
 
 	return &Service{
 		backtests: make(map[string]*BacktestResult),
@@ -41,7 +47,7 @@ type BacktestRequestConfig struct {
 // Note: This is currently a mock implementation
 func (s *Service) RunBacktest(ctx context.Context, reqConfig *BacktestRequestConfig) (*BacktestResult, error) {
 	// Create strategy instance from factory
-	strategy, err := s.factory.CreateStrategy(reqConfig.Strategy)
+	strategy, err := s.factory.CreateStrategy(ctx, reqConfig.Strategy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create strategy '%s': %w", reqConfig.Strategy, err)
 	}

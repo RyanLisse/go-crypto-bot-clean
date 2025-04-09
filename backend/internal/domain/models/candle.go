@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// Candle represents a price candle (OHLCV)
+// Candle represents a candlestick in a chart
 type Candle struct {
 	ID          string    `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
 	Symbol      string    `gorm:"index;not null;size:20" json:"symbol"`
@@ -30,7 +30,7 @@ type PriceUpdate struct {
 	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
-// MarketTrade represents a market trade (different from Trade in trade.go)
+// MarketTrade represents a trade that occurred on the exchange
 type MarketTrade struct {
 	ID        string    `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
 	TradeID   string    `gorm:"uniqueIndex;size:50" json:"trade_id"` // Exchange-generated trade ID
@@ -44,18 +44,18 @@ type MarketTrade struct {
 	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
-// CandleOrderBookEntry represents a single entry in the order book (different from OrderBookEntry in orderbook.go)
+// CandleOrderBookEntry represents a single entry in the order book
 type CandleOrderBookEntry struct {
-	ID           string    `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
-	OrderBookID  string    `gorm:"index;not null" json:"order_book_id"`
-	Type         string    `gorm:"type:varchar(4);not null" json:"type"` // bid or ask
-	Price        float64   `gorm:"not null" json:"price"`
-	Quantity     float64   `gorm:"not null" json:"quantity"`
-	CreatedAt    time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt    time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	ID          string    `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
+	OrderBookID string    `gorm:"index;not null" json:"order_book_id"`
+	Type        string    `gorm:"type:varchar(4);not null" json:"type"` // bid or ask
+	Price       float64   `gorm:"not null" json:"price"`
+	Quantity    float64   `gorm:"not null" json:"quantity"`
+	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
-// OrderBook represents the market depth
+// OrderBook represents the current state of the order book
 type OrderBook struct {
 	ID        string                 `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
 	Symbol    string                 `gorm:"index;not null;size:20" json:"symbol"`
@@ -64,28 +64,4 @@ type OrderBook struct {
 	Asks      []CandleOrderBookEntry `gorm:"foreignKey:OrderBookID" json:"asks"`
 	CreatedAt time.Time              `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time              `gorm:"autoUpdateTime" json:"updated_at"`
-}
-
-// BacktestResult represents the result of a strategy backtest
-type BacktestResult struct {
-	ID                 string    `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
-	StrategyID         string    `gorm:"index;not null" json:"strategy_id"`
-	StartTime          time.Time `gorm:"not null" json:"start_time"`
-	EndTime            time.Time `gorm:"not null" json:"end_time"`
-	InitialBalance     float64   `gorm:"not null" json:"initial_balance"`
-	FinalBalance       float64   `gorm:"not null" json:"final_balance"`
-	ProfitLoss         float64   `gorm:"not null" json:"profit_loss"`
-	ProfitLossPercent  float64   `gorm:"not null" json:"profit_loss_percent"`
-	TotalTrades        int       `gorm:"not null" json:"total_trades"`
-	WinningTrades      int       `gorm:"not null" json:"winning_trades"`
-	LosingTrades       int       `gorm:"not null" json:"losing_trades"`
-	WinRate            float64   `gorm:"not null" json:"win_rate"`
-	AverageWin         float64   `gorm:"not null" json:"average_win"`
-	AverageLoss        float64   `gorm:"not null" json:"average_loss"`
-	MaxDrawdown        float64   `gorm:"not null" json:"max_drawdown"`
-	MaxDrawdownPercent float64   `gorm:"not null" json:"max_drawdown_percent"`
-	SharpeRatio        float64   `gorm:"not null" json:"sharpe_ratio"`
-	SortinoRatio       float64   `gorm:"not null" json:"sortino_ratio"`
-	CreatedAt          time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt          time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }

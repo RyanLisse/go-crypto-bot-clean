@@ -334,53 +334,63 @@ func (e *EventDrivenEngine) processMarketEvent(ctx context.Context, event *Event
 
 // processSignalEvent processes a signal event
 func (e *EventDrivenEngine) processSignalEvent(ctx context.Context, event *Event) error {
-	signal, ok := event.Data.(*Signal)
-	if !ok {
-		return fmt.Errorf("invalid signal event data")
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		signal, ok := event.Data.(*Signal)
+		if !ok {
+			return fmt.Errorf("invalid signal event data")
+		}
+
+		// Create order from signal
+		order := e.createOrder(signal)
+
+		// Create order event
+		orderEvent := &Event{
+			Type:      EventTypeOrder,
+			Timestamp: event.Timestamp,
+			Symbol:    signal.Symbol,
+			Data:      order,
+		}
+
+		// Add to event queue
+		e.eventQueue = append(e.eventQueue, orderEvent)
+
+		return nil
 	}
-
-	// Create order from signal
-	order := e.createOrder(signal)
-
-	// Create order event
-	orderEvent := &Event{
-		Type:      EventTypeOrder,
-		Timestamp: event.Timestamp,
-		Symbol:    signal.Symbol,
-		Data:      order,
-	}
-
-	// Add to event queue
-	e.eventQueue = append(e.eventQueue, orderEvent)
-
-	return nil
 }
 
 // processOrderEvent processes an order event
 func (e *EventDrivenEngine) processOrderEvent(ctx context.Context, event *Event) error {
-	order, ok := event.Data.(*models.Order)
-	if !ok {
-		return fmt.Errorf("invalid order event data")
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		order, ok := event.Data.(*models.Order)
+		if !ok {
+			return fmt.Errorf("invalid order event data")
+		}
+
+		// Execute the order
+		filledOrder, err := e.executeOrder(order)
+		if err != nil {
+			return fmt.Errorf("error executing order: %w", err)
+		}
+
+		// Create order filled event
+		orderFilledEvent := &Event{
+			Type:      EventTypeOrderFilled,
+			Timestamp: event.Timestamp,
+			Symbol:    order.Symbol,
+			Data:      filledOrder,
+		}
+
+		// Add to event queue
+		e.eventQueue = append(e.eventQueue, orderFilledEvent)
+
+		return nil
 	}
-
-	// Execute the order
-	filledOrder, err := e.executeOrder(order)
-	if err != nil {
-		return fmt.Errorf("error executing order: %w", err)
-	}
-
-	// Create order filled event
-	orderFilledEvent := &Event{
-		Type:      EventTypeOrderFilled,
-		Timestamp: event.Timestamp,
-		Symbol:    order.Symbol,
-		Data:      filledOrder,
-	}
-
-	// Add to event queue
-	e.eventQueue = append(e.eventQueue, orderFilledEvent)
-
-	return nil
 }
 
 // processOrderFilledEvent handles the order filled event
@@ -407,26 +417,36 @@ func (e *EventDrivenEngine) processOrderFilledEvent(ctx context.Context, event *
 // processPositionOpenEvent handles the position open event
 // (This function seems unused based on current flow, might be for future extension)
 func (e *EventDrivenEngine) processPositionOpenEvent(ctx context.Context, event *Event) error {
-	// Implementation depends on how position open events are generated and used
-	e.logger.Debug("Processing position open event", zap.Any("event", event))
-	return nil
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		// Implementation depends on how position open events are generated and used
+		e.logger.Debug("Processing position open event", zap.Any("event", event))
+		return nil
+	}
 }
 
 // processPositionCloseEvent handles the position close event
 // (This function seems unused based on current flow, might be for future extension)
 func (e *EventDrivenEngine) processPositionCloseEvent(ctx context.Context, event *Event) error {
-	// Implementation depends on how position close events are generated and used
-	closedPosition, ok := event.Data.(*models.ClosedPosition)
-	if !ok {
-		return fmt.Errorf("invalid data type for position close event: %T", event.Data)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		// Implementation depends on how position close events are generated and used
+		closedPosition, ok := event.Data.(*models.ClosedPosition)
+		if !ok {
+			return fmt.Errorf("invalid data type for position close event: %T", event.Data)
+		}
+		e.logger.Debug("Processing position close event", zap.Any("closedPosition", closedPosition))
+
+		// Potentially notify the strategy about the closed position here if needed,
+		// but OnPositionClosed is not part of the EventDrivenStrategy interface.
+		// Consider adding it to the interface if required by strategies.
+
+		return nil
 	}
-	e.logger.Debug("Processing position close event", zap.Any("closedPosition", closedPosition))
-
-	// Potentially notify the strategy about the closed position here if needed,
-	// but OnPositionClosed is not part of the EventDrivenStrategy interface.
-	// Consider adding it to the interface if required by strategies.
-
-	return nil
 }
 
 // createOrder creates an order from a signal

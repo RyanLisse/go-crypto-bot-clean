@@ -33,11 +33,13 @@ func setupTestDB(t *testing.T) {
 
 // setupTestLogger initializes a Nop logger for testing
 func setupTestLogger(t *testing.T) {
+	t.Helper()
 	testLogger = zap.NewNop()
 }
 
 // setupTestConfig initializes a default RiskManagerConfig for testing
 func setupTestConfig(t *testing.T) {
+	t.Helper()
 	testConfig = &RiskManagerConfig{
 		MaxRiskPerTrade:     1.0,  // 1%
 		MaxPositionSize:     10.0, // 10%

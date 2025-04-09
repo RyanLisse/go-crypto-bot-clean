@@ -67,7 +67,10 @@ func main() {
 
 func serveAPI(cfg *config.Config, port string) {
 	// Initialize dependencies
-	deps := api.NewDependencies(cfg)
+	deps, err := api.NewDependencies(cfg)
+	if err != nil {
+		log.Fatalf("Failed to initialize dependencies: %v", err)
+	}
 
 	// Create server
 	server := api.NewServer(deps, ":"+port)

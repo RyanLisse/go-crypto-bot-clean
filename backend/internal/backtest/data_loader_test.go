@@ -62,12 +62,13 @@ func TestDataPreprocessing(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Test CSV data with missing values and outliers
+	// Using more realistic price movements with an obvious outlier
 	csvContent := `timestamp,open,high,low,close,volume
-2023-01-01T00:00:00Z,100.0,105.0,95.0,102.0,1000.0
-2023-01-01T01:00:00Z,102.0,107.0,101.0,106.0,1200.0
-2023-01-01T02:00:00Z,106.0,110.0,104.0,108.0,1500.0
-2023-01-01T03:00:00Z,108.0,1000.0,104.0,110.0,1300.0
-2023-01-01T05:00:00Z,112.0,115.0,110.0,114.0,1400.0
+2023-01-01T00:00:00Z,100.0,102.0,98.0,101.0,1000.0
+2023-01-01T01:00:00Z,101.0,103.0,99.0,102.0,1200.0
+2023-01-01T02:00:00Z,102.0,104.0,100.0,103.0,1100.0
+2023-01-01T03:00:00Z,103.0,150.0,101.0,104.0,1300.0
+2023-01-01T05:00:00Z,105.0,107.0,103.0,106.0,1200.0
 `
 	// Write test CSV file
 	symbol := "BTCUSDT"
@@ -95,17 +96,25 @@ func TestDataPreprocessing(t *testing.T) {
 	assert.Equal(t, symbol, dataset.Symbol)
 	assert.Equal(t, interval, dataset.Interval)
 
-	// Should have 6 klines (0h, 1h, 2h, 3h, 4h, 5h) with 4h being interpolated
+	// Should have 6 klines (0h through 5h) with 4h being interpolated
 	assert.Len(t, dataset.Klines, 6)
 
 	// Check that the outlier at 3h was fixed
 	outlierKline := dataset.Klines[3]
-	// The original value was 1000.0, so after fixing it should be much lower
-	assert.True(t, outlierKline.High < 200.0, "Outlier should have been fixed")
-	// Print the actual value for debugging
-	t.Logf("Fixed outlier high value: %.2f", outlierKline.High)
+	assert.Less(t, outlierKline.High, 150.0, "Outlier high value should have been reduced")
+	assert.Greater(t, outlierKline.High, 100.0, "Outlier high value should still be reasonable")
+	assert.Equal(t, 103.0, outlierKline.Open, "Non-outlier values should remain unchanged")
+	assert.Equal(t, 101.0, outlierKline.Low, "Non-outlier values should remain unchanged")
+	assert.Equal(t, 104.0, outlierKline.Close, "Non-outlier values should remain unchanged")
 
 	// Check that the missing value at 4h was interpolated
 	missingKline := dataset.Klines[4]
-	assert.NotNil(t, missingKline, "Missing kline should have been interpolated")
+	require.NotNil(t, missingKline, "Missing kline should have been interpolated")
+
+	// Verify interpolated values are reasonable
+	assert.InDelta(t, 104.5, missingKline.Open, 0.1, "Interpolated open price should be halfway between surrounding values")
+	assert.InDelta(t, 105.5, missingKline.Close, 0.1, "Interpolated close price should be halfway between surrounding values")
+	assert.True(t, missingKline.High > missingKline.Open && missingKline.High > missingKline.Close, "Interpolated high should be above open and close")
+	assert.True(t, missingKline.Low < missingKline.Open && missingKline.Low < missingKline.Close, "Interpolated low should be below open and close")
+	assert.InDelta(t, 1250.0, missingKline.Volume, 100.0, "Interpolated volume should be reasonable")
 }

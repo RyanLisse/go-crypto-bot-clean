@@ -5,6 +5,9 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import BacktestChart, { EquityPoint, DrawdownPoint } from '@/components/charts/BacktestChart';
 import PerformanceMetrics from '@/components/charts/PerformanceMetrics';
+import MonthlyReturnsChart, { MonthlyReturn } from '@/components/charts/MonthlyReturnsChart';
+import TradeDistributionChart from '@/components/charts/TradeDistributionChart';
+import MonteCarloChart from '@/components/charts/MonteCarloChart';
 
 type BacktestResult = {
   id: number;
@@ -102,6 +105,8 @@ const Backtesting = () => {
   const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
   const [drawdownCurve, setDrawdownCurve] = useState<DrawdownPoint[]>([]);
   const [performanceMetrics, setPerformanceMetrics] = useState<BacktestMetrics | null>(null);
+  const [monthlyReturns, setMonthlyReturns] = useState<MonthlyReturn[]>([]);
+  const [monteCarloSimulations, setMonteCarloSimulations] = useState<number[][]>([]);
 
   const handleRunBacktest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,6 +162,34 @@ const Backtesting = () => {
 
       setEquityCurve(mockEquityCurve);
       setDrawdownCurve(mockDrawdownCurve);
+
+      // Generate mock monthly returns
+      const mockMonthlyReturns: MonthlyReturn[] = [
+        { month: '2023-01', return: 5.2 },
+        { month: '2023-02', return: -2.1 },
+        { month: '2023-03', return: 3.8 },
+        { month: '2023-04', return: 1.5 },
+        { month: '2023-05', return: -1.2 },
+        { month: '2023-06', return: 4.3 }
+      ];
+      setMonthlyReturns(mockMonthlyReturns);
+
+      // Generate mock Monte Carlo simulations
+      const mockSimulations: number[][] = [];
+      for (let i = 0; i < 10; i++) {
+        const simulation: number[] = [initialCap];
+        let simEquity = initialCap;
+
+        for (let j = 0; j < 180; j++) {
+          // Random daily change with slight variation between simulations
+          const dailyChange = (Math.random() * 5 - 2 + (i - 5) * 0.1) / 100;
+          simEquity = simEquity * (1 + dailyChange);
+          simulation.push(simEquity);
+        }
+
+        mockSimulations.push(simulation);
+      }
+      setMonteCarloSimulations(mockSimulations);
 
       // Generate mock performance metrics
       const finalEquity = mockEquityCurve[mockEquityCurve.length - 1].equity;
@@ -359,6 +392,35 @@ const Backtesting = () => {
                   {performanceMetrics && (
                     <div className="mb-6">
                       <PerformanceMetrics metrics={performanceMetrics} />
+                    </div>
+                  )}
+
+                  {/* Monthly Returns Chart */}
+                  {monthlyReturns.length > 0 && (
+                    <div className="mb-6">
+                      <MonthlyReturnsChart monthlyReturns={monthlyReturns} />
+                    </div>
+                  )}
+
+                  {/* Trade Distribution Chart */}
+                  {performanceMetrics && (
+                    <div className="mb-6">
+                      <TradeDistributionChart
+                        winningTrades={performanceMetrics.winningTrades}
+                        losingTrades={performanceMetrics.losingTrades}
+                        averageProfitTrade={performanceMetrics.averageProfitTrade}
+                        averageLossTrade={performanceMetrics.averageLossTrade}
+                      />
+                    </div>
+                  )}
+
+                  {/* Monte Carlo Simulation Chart */}
+                  {monteCarloSimulations.length > 0 && (
+                    <div className="mb-6">
+                      <MonteCarloChart
+                        simulations={monteCarloSimulations}
+                        initialCapital={parseFloat(initialCapital)}
+                      />
                     </div>
                   )}
 

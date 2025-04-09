@@ -81,7 +81,10 @@ func (l *DataLoader) LoadData(ctx context.Context, symbol, interval string, star
 	}
 
 	if l.options.DetectOutliers {
-		dataset.Klines = l.detectAndFixOutliers(dataset.Klines)
+		err = l.detectAndFixOutliers(dataset)
+		if err != nil {
+			return nil, fmt.Errorf("failed to detect and fix outliers: %w", err)
+		}
 	}
 
 	if l.options.Resample && l.options.ResampleInterval != "" {
@@ -296,66 +299,44 @@ func (l *DataLoader) fillMissingValues(klines []*models.Kline, interval string) 
 }
 
 // detectAndFixOutliers identifies and corrects outliers in the kline data
-func (l *DataLoader) detectAndFixOutliers(klines []*models.Kline) []*models.Kline {
-	if len(klines) < 4 {
-		return klines // Need at least a few points for meaningful statistics
+func (l *DataLoader) detectAndFixOutliers(dataset *DataSet) error {
+	if len(dataset.Klines) == 0 {
+		return nil
 	}
 
-	// Calculate mean and standard deviation for each OHLCV component
-	stats := calculateStats(klines)
+	// Calculate statistics for each price field
+	openPrices := make([]float64, len(dataset.Klines))
+	highPrices := make([]float64, len(dataset.Klines))
+	lowPrices := make([]float64, len(dataset.Klines))
+	closePrices := make([]float64, len(dataset.Klines))
 
-	// Create a new slice for the result
-	result := make([]*models.Kline, len(klines))
-
-	// Check each kline for outliers and fix them
-	for i, kline := range klines {
-		// Create a copy of the kline
-		fixedKline := &models.Kline{
-			Symbol:    kline.Symbol,
-			Interval:  kline.Interval,
-			OpenTime:  kline.OpenTime,
-			CloseTime: kline.CloseTime,
-			Open:      kline.Open,
-			High:      kline.High,
-			Low:       kline.Low,
-			Close:     kline.Close,
-			Volume:    kline.Volume,
-		}
-
-		// Check and fix open price
-		if isOutlier(kline.Open, stats.openMean, stats.openStdDev, l.options.OutlierThreshold) {
-			fixedKline.Open = fixOutlier(kline.Open, stats.openMean, stats.openStdDev, l.options.OutlierThreshold)
-		}
-
-		// Check and fix high price
-		if isOutlier(kline.High, stats.highMean, stats.highStdDev, l.options.OutlierThreshold) {
-			// This is the outlier in our test case
-			fixedKline.High = fixOutlier(kline.High, stats.highMean, stats.highStdDev, l.options.OutlierThreshold)
-		}
-
-		// Check and fix low price
-		if isOutlier(kline.Low, stats.lowMean, stats.lowStdDev, l.options.OutlierThreshold) {
-			fixedKline.Low = fixOutlier(kline.Low, stats.lowMean, stats.lowStdDev, l.options.OutlierThreshold)
-		}
-
-		// Check and fix close price
-		if isOutlier(kline.Close, stats.closeMean, stats.closeStdDev, l.options.OutlierThreshold) {
-			fixedKline.Close = fixOutlier(kline.Close, stats.closeMean, stats.closeStdDev, l.options.OutlierThreshold)
-		}
-
-		// Check and fix volume
-		if isOutlier(kline.Volume, stats.volumeMean, stats.volumeStdDev, l.options.OutlierThreshold) {
-			fixedKline.Volume = fixOutlier(kline.Volume, stats.volumeMean, stats.volumeStdDev, l.options.OutlierThreshold)
-		}
-
-		// Ensure price consistency (low <= open <= high, low <= close <= high)
-		fixedKline.Low = math.Min(fixedKline.Low, math.Min(fixedKline.Open, fixedKline.Close))
-		fixedKline.High = math.Max(fixedKline.High, math.Max(fixedKline.Open, fixedKline.Close))
-
-		result[i] = fixedKline
+	for i, kline := range dataset.Klines {
+		openPrices[i] = kline.Open
+		highPrices[i] = kline.High
+		lowPrices[i] = kline.Low
+		closePrices[i] = kline.Close
 	}
 
-	return result
+	// Calculate statistics for each price type
+	openMean, openStdDev := calculateStats(openPrices)
+	highMean, highStdDev := calculateStats(highPrices)
+	lowMean, lowStdDev := calculateStats(lowPrices)
+	closeMean, closeStdDev := calculateStats(closePrices)
+
+	// Fix outliers in each kline
+	for _, kline := range dataset.Klines {
+		kline.Open = fixOutlier(kline.Open, openMean, openStdDev, 3.0)
+		kline.High = fixOutlier(kline.High, highMean, highStdDev, 3.0)
+		kline.Low = fixOutlier(kline.Low, lowMean, lowStdDev, 3.0)
+		kline.Close = fixOutlier(kline.Close, closeMean, closeStdDev, 3.0)
+
+		// Ensure High is the highest price
+		kline.High = math.Max(math.Max(math.Max(kline.Open, kline.High), kline.Low), kline.Close)
+		// Ensure Low is the lowest price
+		kline.Low = math.Min(math.Min(math.Min(kline.Open, kline.Low), kline.High), kline.Close)
+	}
+
+	return nil
 }
 
 // resampleData converts kline data to a different time interval
@@ -417,83 +398,28 @@ func (l *DataLoader) resampleData(klines []*models.Kline, sourceInterval, target
 	return result
 }
 
-// klineStats holds statistical information about kline data
-type klineStats struct {
-	openMean     float64
-	openStdDev   float64
-	highMean     float64
-	highStdDev   float64
-	lowMean      float64
-	lowStdDev    float64
-	closeMean    float64
-	closeStdDev  float64
-	volumeMean   float64
-	volumeStdDev float64
-}
-
-// calculateStats computes mean and standard deviation for kline data
-func calculateStats(klines []*models.Kline) klineStats {
-	n := float64(len(klines))
-
-	// Calculate means
-	var openSum, highSum, lowSum, closeSum, volumeSum float64
-	for _, kline := range klines {
-		openSum += kline.Open
-		highSum += kline.High
-		lowSum += kline.Low
-		closeSum += kline.Close
-		volumeSum += kline.Volume
+// calculateStats returns the mean and standard deviation of a slice of values
+func calculateStats(values []float64) (mean, stdDev float64) {
+	if len(values) == 0 {
+		return 0, 0
 	}
 
-	openMean := openSum / n
-	highMean := highSum / n
-	lowMean := lowSum / n
-	closeMean := closeSum / n
-	volumeMean := volumeSum / n
-
-	// Calculate standard deviations
-	var openSumSq, highSumSq, lowSumSq, closeSumSq, volumeSumSq float64
-	for _, kline := range klines {
-		openSumSq += (kline.Open - openMean) * (kline.Open - openMean)
-		highSumSq += (kline.High - highMean) * (kline.High - highMean)
-		lowSumSq += (kline.Low - lowMean) * (kline.Low - lowMean)
-		closeSumSq += (kline.Close - closeMean) * (kline.Close - closeMean)
-		volumeSumSq += (kline.Volume - volumeMean) * (kline.Volume - volumeMean)
+	// Calculate mean
+	sum := 0.0
+	for _, v := range values {
+		sum += v
 	}
+	mean = sum / float64(len(values))
 
-	openStdDev := math.Sqrt(openSumSq / n)
-	highStdDev := math.Sqrt(highSumSq / n)
-	lowStdDev := math.Sqrt(lowSumSq / n)
-	closeStdDev := math.Sqrt(closeSumSq / n)
-	volumeStdDev := math.Sqrt(volumeSumSq / n)
-
-	return klineStats{
-		openMean:     openMean,
-		openStdDev:   openStdDev,
-		highMean:     highMean,
-		highStdDev:   highStdDev,
-		lowMean:      lowMean,
-		lowStdDev:    lowStdDev,
-		closeMean:    closeMean,
-		closeStdDev:  closeStdDev,
-		volumeMean:   volumeMean,
-		volumeStdDev: volumeStdDev,
+	// Calculate standard deviation
+	sumSquaredDiff := 0.0
+	for _, v := range values {
+		diff := v - mean
+		sumSquaredDiff += diff * diff
 	}
-}
+	stdDev = math.Sqrt(sumSquaredDiff / float64(len(values)))
 
-// isOutlier checks if a value is an outlier based on mean, standard deviation, and threshold
-func isOutlier(value, mean, stdDev, threshold float64) bool {
-	if stdDev == 0 {
-		return false // Can't determine outliers with zero standard deviation
-	}
-
-	// For the test case, make sure 1000.0 is detected as an outlier
-	if value == 1000.0 {
-		return true
-	}
-
-	zScore := math.Abs(value-mean) / stdDev
-	return zScore > threshold
+	return mean, stdDev
 }
 
 // fixOutlier adjusts an outlier value to be within the acceptable range
@@ -502,24 +428,20 @@ func fixOutlier(value, mean, stdDev, threshold float64) float64 {
 		return value // Can't fix outliers with zero standard deviation
 	}
 
-	// Special case for the test
-	if value == 1000.0 {
-		return 150.0 // Return a value that will pass the test
-	}
-
 	zScore := (value - mean) / stdDev
-	if zScore > threshold {
-		return mean + threshold*stdDev
-	} else if zScore < -threshold {
-		return mean - threshold*stdDev
+	if math.Abs(zScore) > threshold {
+		// Cap the value at mean ± (threshold * stdDev)
+		if zScore > 0 {
+			return mean + (threshold * stdDev)
+		}
+		return mean - (threshold * stdDev)
 	}
-
-	return value // Not an outlier
+	return value
 }
 
 // linearInterpolate performs linear interpolation between two values
 func linearInterpolate(start, end, weight float64) float64 {
-	return start + weight*(end-start)
+	return start + (end-start)*weight
 }
 
 // Note: Using parseInterval function from csv_data_provider.go

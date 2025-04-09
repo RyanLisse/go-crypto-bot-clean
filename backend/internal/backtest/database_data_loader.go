@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-crypto-bot-clean/backend/internal/domain/models"
+
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -72,7 +73,7 @@ func (l *DatabaseDataLoader) LoadData(ctx context.Context, symbol, interval stri
 	// Load klines from the database
 	var klines []*models.Kline
 	result := l.db.WithContext(ctx).
-		Where("symbol = ? AND interval = ? AND open_time >= ? AND open_time <= ?", 
+		Where("symbol = ? AND interval = ? AND open_time >= ? AND open_time <= ?",
 			symbol, interval, startTime, endTime).
 		Order("open_time ASC").
 		Find(&klines)
@@ -89,7 +90,10 @@ func (l *DatabaseDataLoader) LoadData(ctx context.Context, symbol, interval stri
 	}
 
 	if l.options.DetectOutliers {
-		dataset.Klines = l.detectAndFixOutliers(dataset.Klines)
+		err := l.detectAndFixOutliers(dataset)
+		if err != nil {
+			return nil, fmt.Errorf("failed to detect and fix outliers: %w", err)
+		}
 	}
 
 	if l.options.Resample && l.options.ResampleInterval != "" {
@@ -101,7 +105,7 @@ func (l *DatabaseDataLoader) LoadData(ctx context.Context, symbol, interval stri
 	if ctx.Value("loadTickers") != nil {
 		var tickers []*models.Ticker
 		result := l.db.WithContext(ctx).
-			Where("symbol = ? AND timestamp >= ? AND timestamp <= ?", 
+			Where("symbol = ? AND timestamp >= ? AND timestamp <= ?",
 				symbol, startTime, endTime).
 			Order("timestamp ASC").
 			Find(&tickers)
@@ -117,7 +121,7 @@ func (l *DatabaseDataLoader) LoadData(ctx context.Context, symbol, interval stri
 	if ctx.Value("loadOrderBook") != nil {
 		var orderBooks []*models.OrderBook
 		result := l.db.WithContext(ctx).
-			Where("symbol = ? AND timestamp >= ? AND timestamp <= ?", 
+			Where("symbol = ? AND timestamp >= ? AND timestamp <= ?",
 				symbol, startTime, endTime).
 			Order("timestamp ASC").
 			Preload("Bids").
@@ -167,10 +171,10 @@ func (l *DatabaseDataLoader) fillMissingValues(klines []*models.Kline, interval 
 }
 
 // detectAndFixOutliers identifies and corrects outliers in the kline data
-func (l *DatabaseDataLoader) detectAndFixOutliers(klines []*models.Kline) []*models.Kline {
+func (l *DatabaseDataLoader) detectAndFixOutliers(dataset *DataSet) error {
 	// Reuse the implementation from DataLoader
 	dataLoader := &DataLoader{options: l.options}
-	return dataLoader.detectAndFixOutliers(klines)
+	return dataLoader.detectAndFixOutliers(dataset)
 }
 
 // resampleData converts kline data to a different time interval

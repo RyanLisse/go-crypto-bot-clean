@@ -33,6 +33,8 @@ type Config struct {
 		CookieName string `mapstructure:"cookie_name"`
 		// For API key auth
 		APIKeys []string `mapstructure:"api_keys"`
+		// Clerk configuration
+		ClerkSecretKey string `mapstructure:"clerk_secret_key"`
 	} `mapstructure:"auth"`
 
 	Mexc struct {
@@ -127,6 +129,9 @@ func LoadConfig(path string) (*Config, error) {
 	viper.BindEnv("app.environment", "ENVIRONMENT")
 	viper.BindEnv("database.path", "DB_PATH")
 	viper.BindEnv("logging.file_path", "LOG_PATH")
+
+	// Add Clerk environment variable binding
+	viper.BindEnv("auth.clerk_secret_key", "CLERK_SECRET_KEY")
 
 	// Unmarshal configuration
 	var config Config

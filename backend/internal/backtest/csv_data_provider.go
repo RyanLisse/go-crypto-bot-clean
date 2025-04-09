@@ -187,19 +187,3 @@ func parseInterval(interval string) time.Duration {
 		return time.Hour // Default to 1 hour
 	}
 }
-
-// Helper function to split CSV list
-func splitCSVList(s, sep string) []string {
-	if s == "" {
-		return []string{}
-	}
-	return strings.Split(s, sep)
-}
-
-// Helper function to get absolute value of int64
-func abs(n int64) int64 {
-	if n < 0 {
-		return -n
-	}
-	return n
-}

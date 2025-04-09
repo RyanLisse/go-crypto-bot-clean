@@ -3,9 +3,11 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"go-crypto-bot-clean/backend/internal/api/handlers"
 	"go-crypto-bot-clean/backend/internal/api/websocket"
+	"go-crypto-bot-clean/backend/internal/auth"
 	"go-crypto-bot-clean/backend/internal/config"
 	"go-crypto-bot-clean/backend/internal/core/account"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service"
@@ -42,19 +44,40 @@ type Dependencies struct {
 	// Authentication
 	ValidAPIKeys map[string]struct{}
 	Config       *config.Config
+	AuthService  auth.AuthProvider
 
 	// Rate limiting
 	RateLimit struct {
 		Rate     float64
 		Capacity int
 	}
+
+	logger *zap.Logger
 }
 
 // NewDependencies creates a new Dependencies instance.
-func NewDependencies(cfg *config.Config) *Dependencies {
-	deps := &Dependencies{
-		Config: cfg,
+func NewDependencies(cfg *config.Config) (*Dependencies, error) {
+	deps := &Dependencies{}
+
+	// Initialize logger
+	logger, err := zap.NewProduction()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
+	deps.logger = logger
+
+	// Initialize auth service
+	authService, err := auth.NewService(auth.Config{
+		ClerkSecretKey: cfg.Auth.ClerkSecretKey,
+	})
+	if err != nil {
+		deps.logger.Error("failed to initialize auth service",
+			zap.String("error", err.Error()),
+		)
+		// Fall back to disabled auth service
+		authService = &auth.DisabledService{}
+	}
+	deps.AuthService = authService
 
 	// Initialize API keys
 	deps.ValidAPIKeys = make(map[string]struct{})
@@ -76,13 +99,6 @@ func NewDependencies(cfg *config.Config) *Dependencies {
 
 	// Initialize status handler with mock service
 	deps.StatusHandler = handlers.NewStatusHandler(&MockStatusService{})
-
-	// Initialize logger and MEXC client for all services
-	logger, err := zap.NewProduction()
-	if err != nil {
-		// Fall back to basic logger if we can't create the production logger
-		logger = zap.NewExample()
-	}
 
 	// Validate API keys before proceeding
 	if cfg.Mexc.APIKey == "" || cfg.Mexc.SecretKey == "" {
@@ -168,5 +184,5 @@ func NewDependencies(cfg *config.Config) *Dependencies {
 	// Initialize Backtest dependencies
 	deps.InitializeBacktestDependencies()
 
-	return deps
+	return deps, nil
 }

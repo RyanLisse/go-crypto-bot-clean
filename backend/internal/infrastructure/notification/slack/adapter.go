@@ -3,10 +3,11 @@ package slack
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"go-crypto-bot-clean/backend/internal/domain/notification/ports"
-	// TODO: Add import for a Slack client library (e.g., slack-go/slack)
-	// "github.com/slack-go/slack"
+
+	"github.com/slack-go/slack"
 )
 
 const ChannelSlack = "slack"
@@ -20,40 +21,55 @@ type Config struct {
 // adapter implements the ports.Notifier interface for Slack.
 type adapter struct {
 	config Config
-	// client *slack.Client // TODO: Uncomment when library is added
+	client *slack.Client
 }
 
 // NewAdapter creates a new Slack notification adapter.
 func NewAdapter(cfg Config) (ports.Notifier, error) {
-	// TODO: Initialize the actual Slack client
-	// client := slack.New(cfg.BotToken)
-	// _, err := client.AuthTest() // Verify authentication
-	// if err != nil {
-	// 	 return nil, fmt.Errorf("failed to authenticate slack client: %w", err)
-	// }
-	// log.Printf("Slack Notifier: Authorized")
+	// Initialize the actual Slack client
+	client := slack.New(cfg.BotToken)
+	_, err := client.AuthTest() // Verify authentication
+	if err != nil {
+		log.Printf("Error authenticating Slack client: %v", err)
+		return nil, fmt.Errorf("failed to authenticate slack client: %w", err)
+	}
+	log.Printf("Slack Notifier: Authorized")
 
 	return &adapter{
 		config: cfg,
-		// client: client, // TODO: Uncomment
+		client: client,
 	}, nil
 }
 
 // Send sends a notification via Slack.
 // Recipient can be a channel ID (e.g., C12345) or user ID (e.g., U12345).
 func (a *adapter) Send(ctx context.Context, recipient string, subject string, message string) error {
-	// TODO: Implement the actual sending logic using the Slack client library.
-	// Use client.PostMessageContext or similar.
-	// Format the message using Slack's mrkdwn.
-	// Example:
-	// fullMessage := fmt.Sprintf("*%s*\n\n%s", subject, message)
-	// _, _, err := a.client.PostMessageContext(ctx, recipient, slack.MsgOptionText(fullMessage, false), slack.MsgOptionAsUser(true)) // Or false depending on token type
-	// if err != nil {
-	// 	 return fmt.Errorf("failed to send slack message: %w", err)
-	// }
+	// Format the message using Slack's mrkdwn
+	fullMessage := fmt.Sprintf("*%s*\n\n%s", subject, message)
 
-	fmt.Printf("--- Slack Notification ---\nTo: %s\nSubject: %s\nMessage: %s\n------------------------\n", recipient, subject, message) // Placeholder - Removed extra '+'
-	return fmt.Errorf("slack send not implemented yet")                                                                                 // Placeholder error
+	// Create message options
+	options := []slack.MsgOption{
+		slack.MsgOptionText(fullMessage, false),
+		slack.MsgOptionAsUser(true),
+	}
+
+	// Add context to ensure we respect cancellation
+	select {
+	case <-ctx.Done():
+		log.Printf("Context cancelled before sending Slack notification to %s", recipient)
+		return ctx.Err()
+	default:
+	}
+
+	// Send the message
+	_, _, err := a.client.PostMessageContext(ctx, recipient, options...)
+	if err != nil {
+		log.Printf("Error sending Slack message to %s: %v", recipient, err)
+		return fmt.Errorf("failed to send slack message: %w", err)
+	}
+
+	log.Printf("Successfully sent Slack notification to %s", recipient)
+	return nil
 }
 
 // Supports checks if the channel is "slack".

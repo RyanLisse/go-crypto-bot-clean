@@ -1,70 +1,96 @@
 package middleware
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"go-crypto-bot-clean/backend/internal/auth"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRecoveryMiddleware(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	tests := []struct {
-		name        string
-		shouldPanic bool
+		name           string
+		handler        http.HandlerFunc
+		expectedStatus int
+		expectedType   string
 	}{
 		{
-			name:        "handles panic",
-			shouldPanic: true,
+			name: "handles panic with error",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				panic("test panic")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedType:   "internal_error",
 		},
 		{
-			name:        "normal request",
-			shouldPanic: false,
+			name: "handles panic with auth error",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				panic(auth.ErrUnauthorized)
+			},
+			expectedStatus: http.StatusUnauthorized,
+			expectedType:   "unauthorized",
+		},
+		{
+			name: "normal request",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			},
+			expectedStatus: http.StatusOK,
+			expectedType:   "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock logger
-			logger := &mockLogger{}
+			// Create a test handler with recovery middleware
+			handler := RecoveryMiddleware(tt.handler)
 
-			// Create a test router with the recovery middleware
-			router := gin.New()
-			router.Use(RecoveryMiddleware(logger))
-
-			// Define a test handler that may panic
-			router.GET("/test", func(c *gin.Context) {
-				if tt.shouldPanic {
-					panic("test panic")
-				}
-				c.Status(http.StatusOK)
-			})
-
-			// Make a request
+			// Create test request
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
 			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
 
-			// Check the response
-			if tt.shouldPanic {
-				// Should return 500 status code
-				assert.Equal(t, http.StatusInternalServerError, w.Code)
-				// Should contain error details
-				assert.Contains(t, w.Body.String(), "internal_error")
-				assert.Contains(t, w.Body.String(), "Internal server error")
-				// Logger should have been called
-				assert.True(t, logger.errorCalled, "Error logger should have been called")
-				assert.Contains(t, logger.errorArgs, "panic recovered:")
-				assert.Contains(t, logger.errorArgs, "test panic")
-			} else {
-				// Should return 200 status code
-				assert.Equal(t, http.StatusOK, w.Code)
-				// Logger should not have been called
-				assert.False(t, logger.errorCalled, "Error logger should not have been called")
+			// Add request ID to context for testing
+			ctx := req.Context()
+			ctx = context.WithValue(ctx, RequestIDContextKey, "test-request-id")
+			req = req.WithContext(ctx)
+
+			// Execute request
+			handler.ServeHTTP(w, req)
+
+			// Check status code
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			// For non-panic cases, we're done
+			if tt.expectedType == "" {
+				return
 			}
+
+			// For panic cases, verify the error response
+			var response auth.ErrorResponse
+			err := json.NewDecoder(w.Body).Decode(&response)
+			assert.NoError(t, err)
+
+			// Verify error details
+			assert.Equal(t, tt.expectedType, string(response.Error.Type))
+			assert.Equal(t, "test-request-id", response.Error.RequestID)
+			assert.NotNil(t, response.Error.Details)
+
+			// Verify metadata
+			details, ok := response.Error.Details.(map[string]interface{})
+			assert.True(t, ok)
+			assert.Contains(t, details, "stack_trace")
+			assert.Contains(t, details, "request")
+
+			// Verify request info
+			reqInfo, ok := details["request"].(map[string]interface{})
+			assert.True(t, ok)
+			assert.Equal(t, "/test", reqInfo["path"])
+			assert.Equal(t, "GET", reqInfo["method"])
 		})
 	}
 }

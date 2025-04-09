@@ -6,6 +6,8 @@ import (
 
 	"go-crypto-bot-clean/backend/internal/api/dto/response"
 
+	"go-crypto-bot-clean/backend/internal/auth"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -26,4 +28,14 @@ func AuthMiddleware(validAPIKeys map[string]struct{}) gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+// AuthMiddlewareWrapper wraps the auth service middleware for use in the API
+func AuthMiddlewareWrapper(authSvc *auth.Service) func(http.Handler) http.Handler {
+	return authSvc.AuthMiddleware
+}
+
+// RequireRole wraps the auth service role middleware for use in the API
+func RequireRole(authSvc *auth.Service, role string) func(http.Handler) http.Handler {
+	return authSvc.RequireRole(role)
 }
