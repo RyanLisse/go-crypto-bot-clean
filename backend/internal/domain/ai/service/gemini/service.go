@@ -2,34 +2,54 @@ package gemini
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
-	"github.com/google/generative-ai-go/genai"
 	"go-crypto-bot-clean/backend/internal/domain/ai/repository"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service"
+	"go-crypto-bot-clean/backend/internal/domain/ai/service/function"
+	"go-crypto-bot-clean/backend/internal/domain/ai/service/templates"
+	"go-crypto-bot-clean/backend/internal/domain/portfolio"
+	"go-crypto-bot-clean/backend/internal/domain/risk"
+	"go-crypto-bot-clean/backend/internal/domain/trade"
+
+	"github.com/google/generative-ai-go/genai"
 )
 
 // GeminiAIService implements the AIService interface using Google's Gemini API
 type GeminiAIService struct {
-	Client     *genai.Client
-	MemoryRepo repository.ConversationMemoryRepository
+	Client           *genai.Client
+	MemoryRepo       repository.ConversationMemoryRepository
+	PortfolioSvc     portfolio.Service
+	TradeSvc         trade.Service
+	RiskSvc          risk.Service
+	TemplateRegistry *templates.TemplateRegistry
+	FunctionRegistry *function.FunctionRegistry
 }
 
 // NewGeminiAIService creates a new GeminiAIService
 func NewGeminiAIService(
 	client *genai.Client,
-	db *sql.DB,
+	memoryRepo repository.ConversationMemoryRepository,
+	portfolioSvc portfolio.Service,
+	tradeSvc trade.Service,
+	riskSvc risk.Service,
 ) (*GeminiAIService, error) {
-	memoryRepo, err := repository.NewSQLiteConversationMemoryRepository(db)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create conversation memory repository: %w", err)
-	}
+	// Create template registry
+	templateRegistry := templates.NewTemplateRegistry()
+
+	// Create function registry
+	functionRegistry := function.NewFunctionRegistry()
+	function.RegisterTradingFunctions(functionRegistry)
 
 	return &GeminiAIService{
-		Client:     client,
-		MemoryRepo: memoryRepo,
+		Client:           client,
+		MemoryRepo:       memoryRepo,
+		PortfolioSvc:     portfolioSvc,
+		TradeSvc:         tradeSvc,
+		RiskSvc:          riskSvc,
+		TemplateRegistry: templateRegistry,
+		FunctionRegistry: functionRegistry,
 	}, nil
 }
 

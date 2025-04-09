@@ -2,19 +2,27 @@ package factory
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 
-	"github.com/google/generative-ai-go/genai"
+	"go-crypto-bot-clean/backend/internal/domain/ai/repository"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service/gemini"
+	"go-crypto-bot-clean/backend/internal/domain/portfolio"
+	"go-crypto-bot-clean/backend/internal/domain/risk"
+	"go-crypto-bot-clean/backend/internal/domain/trade"
+
+	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
+	"gorm.io/gorm"
 )
 
 // CreateAIService creates an AI service based on configuration
 func CreateAIService(
-	db *sql.DB,
+	db *gorm.DB,
+	portfolioSvc portfolio.Service,
+	tradeSvc trade.Service,
+	riskSvc risk.Service,
 ) (service.AIService, error) {
 	// Get AI provider from environment variable
 	aiProvider := os.Getenv("AI_PROVIDER")
@@ -24,7 +32,7 @@ func CreateAIService(
 
 	switch aiProvider {
 	case "gemini":
-		return createGeminiAIService(db)
+		return createGeminiAIService(db, portfolioSvc, tradeSvc, riskSvc)
 	// Add other providers as needed
 	default:
 		return nil, fmt.Errorf("unsupported AI provider: %s", aiProvider)
@@ -33,7 +41,10 @@ func CreateAIService(
 
 // createGeminiAIService creates a Gemini AI service
 func createGeminiAIService(
-	db *sql.DB,
+	db *gorm.DB,
+	portfolioSvc portfolio.Service,
+	tradeSvc trade.Service,
+	riskSvc risk.Service,
 ) (service.AIService, error) {
 	// Get API key from environment variable
 	apiKey := os.Getenv("GEMINI_API_KEY")
@@ -47,6 +58,12 @@ func createGeminiAIService(
 		return nil, fmt.Errorf("failed to create Gemini client: %w", err)
 	}
 
+	// Create conversation memory repository
+	memoryRepo, err := repository.NewGormConversationMemoryRepository(db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create conversation memory repository: %w", err)
+	}
+
 	// Create Gemini AI service
-	return gemini.NewGeminiAIService(client, db)
+	return gemini.NewGeminiAIService(client, memoryRepo, portfolioSvc, tradeSvc, riskSvc)
 }

@@ -6,3 +6,4 @@ export * from './trades';
 export * from './transactions';
 export * from './strategies';
 export * from './backtests';
+export * from './conversations';
