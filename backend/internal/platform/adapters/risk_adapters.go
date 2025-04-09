@@ -5,9 +5,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repository"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/risk/controls"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/rest"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/interfaces"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/repository"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/risk/controls"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/platform/mexc/rest"
 	"go.uber.org/zap"
 )
 
@@ -175,4 +176,80 @@ func convertToZapFields(keysAndValues []interface{}) []zap.Field {
 	}
 
 	return fields
+}
+
+// PriceServiceAdapter adapts the PriceService interface to the controls.PriceService interface
+type PriceServiceAdapter struct {
+	priceService interfaces.PriceService
+}
+
+// NewPriceServiceAdapter creates a new PriceServiceAdapter
+func NewPriceServiceAdapter(priceService interfaces.PriceService) *PriceServiceAdapter {
+	return &PriceServiceAdapter{
+		priceService: priceService,
+	}
+}
+
+// GetPrice implements the controls.PriceService interface
+func (a *PriceServiceAdapter) GetPrice(ctx context.Context, symbol string) (float64, error) {
+	return a.priceService.GetPrice(ctx, symbol)
+}
+
+// PositionRepositoryAdapter adapts the PositionRepository interface to the controls.PositionRepository interface
+type PositionRepositoryAdapter struct {
+	positionRepo interfaces.PositionRepository
+}
+
+// NewPositionRepositoryAdapter creates a new PositionRepositoryAdapter
+func NewPositionRepositoryAdapter(positionRepo interfaces.PositionRepository) *PositionRepositoryAdapter {
+	return &PositionRepositoryAdapter{
+		positionRepo: positionRepo,
+	}
+}
+
+// GetOpenPositions implements the controls.PositionRepository interface
+func (a *PositionRepositoryAdapter) GetOpenPositions(ctx context.Context) ([]controls.Position, error) {
+	positions, err := a.positionRepo.FindAll(ctx, interfaces.PositionFilter{})
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]controls.Position, 0, len(positions))
+	for _, pos := range positions {
+		result = append(result, controls.Position{
+			Symbol:     pos.Symbol,
+			Quantity:   pos.Quantity,
+			EntryPrice: pos.EntryPrice,
+		})
+	}
+
+	return result, nil
+}
+
+// AccountServiceAdapter adapts the ExchangeService interface to the controls.AccountService interface
+type AccountServiceAdapter struct {
+	exchangeSvc interfaces.ExchangeService
+}
+
+// NewAccountServiceAdapter creates a new AccountServiceAdapter
+func NewAccountServiceAdapter(exchangeSvc interfaces.ExchangeService) *AccountServiceAdapter {
+	return &AccountServiceAdapter{
+		exchangeSvc: exchangeSvc,
+	}
+}
+
+// GetBalance implements the controls.AccountService interface
+func (a *AccountServiceAdapter) GetBalance(ctx context.Context) (float64, error) {
+	wallet, err := a.exchangeSvc.GetWallet(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get USDT balance
+	var balance float64
+	if usdtBalance, ok := wallet.Balances["USDT"]; ok {
+		balance = usdtBalance.Free
+	}
+
+	return balance, nil
 }
