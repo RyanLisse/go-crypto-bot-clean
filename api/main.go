@@ -9,10 +9,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 
+	"go-crypto-bot-clean/api/database"
 	"go-crypto-bot-clean/api/huma"
 	"go-crypto-bot-clean/api/middleware"
 	"go-crypto-bot-clean/api/middleware/jwt"
+	"go-crypto-bot-clean/api/repository"
 	"go-crypto-bot-clean/api/service"
 	"go-crypto-bot-clean/backend/internal/auth"
 	"go-crypto-bot-clean/backend/internal/backtest"
@@ -20,6 +23,42 @@ import (
 )
 
 func main() {
+	// Initialize logger
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatalf("Failed to create logger: %v", err)
+	}
+	defer logger.Sync()
+
+	// Initialize database
+	dbConfig := database.DefaultConfig()
+	dbConfig.Path = getEnv("DB_PATH", dbConfig.Path)
+	dbConfig.Debug = getEnvBool("DB_DEBUG", false)
+	dbConfig.Logger = logger
+
+	db, err := database.NewDatabase(dbConfig)
+	if err != nil {
+		logger.Fatal("Failed to connect to database", zap.Error(err))
+	}
+
+	// Run migrations
+	migrationManager := database.NewMigrationManager(db, logger)
+	if err := migrationManager.RunMigrations(); err != nil {
+		logger.Fatal("Failed to run migrations", zap.Error(err))
+	}
+
+	// Seed database with initial data
+	if getEnvBool("DB_SEED", false) {
+		if err := migrationManager.SeedDatabase(); err != nil {
+			logger.Fatal("Failed to seed database", zap.Error(err))
+		}
+	}
+
+	// Initialize repositories
+	userRepo := repository.NewGormUserRepository(db)
+	strategyRepo := repository.NewGormStrategyRepository(db)
+	backtestRepo := repository.NewGormBacktestRepository(db)
+
 	// Create router
 	router := chi.NewRouter()
 
@@ -63,6 +102,9 @@ func main() {
 		backtestService,
 		strategyFactory,
 		authService,
+		userRepo,
+		strategyRepo,
+		backtestRepo,
 	)
 
 	// Setup Huma API
@@ -82,4 +124,13 @@ func getEnv(key, defaultValue string) string {
 		return defaultValue
 	}
 	return value
+}
+
+// getEnvBool gets a boolean environment variable or returns a default value
+func getEnvBool(key string, defaultValue bool) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value == "true" || value == "1" || value == "yes"
 }

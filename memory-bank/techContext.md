@@ -2,72 +2,129 @@
 
 ## Technology Stack
 
-### Primary Language
-- Go (Golang) 1.21+
+### Frontend
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **State Management**: Redux Toolkit + TanStack Query
+- **UI Components**: 
+  - Material-UI (MUI)
+  - Radix UI primitives
+  - Tailwind CSS
+- **Authentication**: Clerk
+- **Local Database**: TursoDB with Drizzle ORM
+- **Testing**: Vitest + Playwright
+
+### Backend
+- **Language**: Go 1.24+
+- **Database**: 
+  - TursoDB (primary)
+  - SQLite (fallback/development)
+- **API Framework**: Chi Router
+- **Authentication**: Clerk SDK
+- **WebSocket**: Gorilla WebSocket
+- **Documentation**: OpenAPI/Swagger
 
 ### Database
-- GORM (Go Object Relational Mapper) for data persistence
-- Auto-migrations handled via GORM
+- **Primary**: TursoDB (distributed SQLite)
+- **ORM**: 
+  - Backend: Native SQL with prepared statements
+  - Frontend: Drizzle ORM
+- **Migration**: Drizzle Kit
+- **Sync**: TursoDB built-in sync
 
-### API
-- RESTful API using Gin framework
-- WebSocket for real-time updates
-
-### External Integration
+### External Services
 - MEXC Exchange API
-- WebSocket API for market data
+- Clerk Authentication
+- TursoDB Cloud
 
 ### Development Tools
-- Go Modules for dependency management
-- Make for build automation
+- Bun for package management and running
 - Docker for containerization
 - GitHub Actions for CI/CD
+- ESLint + Prettier for code formatting
+- Husky for git hooks
 
 ## Implementation Documentation
 
-The implementation is thoroughly documented with step-by-step guidelines:
+### Frontend Architecture
+- Component structure and organization
+- State management patterns
+- Data fetching and caching
+- Authentication flow
+- Offline capabilities
+- Testing strategy
 
-### Core Documentation
-- Architecture overview and implementation strategy
-- Domain models and repository interfaces
-- Service interfaces and business logic implementation
+### Backend Architecture
+- Clean architecture implementation
+- Service layer organization
+- Repository pattern usage
+- WebSocket implementation
+- Error handling
+- Logging and monitoring
 
 ### Database Layer
-- Database layer overview and repository pattern
-- GORM setup and connection management
-- Auto-migration system and schema management
-- Repository implementation examples
+- TursoDB setup and configuration
+- Migration management
+- Data synchronization
+- Performance optimization
+- Backup and recovery
 
 ### API Layer
-- API layer overview and structure
-- Middleware components for authentication, logging, etc.
-- REST API endpoint handlers
-- WebSocket implementation for real-time data
-
-### Advanced Trading Features
-- Advanced trading strategies using multi-indicator analysis
-- Position management with lifecycle controls
-- Risk management and capital protection systems
-  - Position sizing based on account balance and risk parameters
-  - Drawdown monitoring with historical balance tracking
-  - Exposure limits for trading positions
-  - Daily loss limits to prevent excessive losses
+- REST endpoints
+- WebSocket handlers
+- Authentication middleware
+- Rate limiting
+- Error handling
+- API documentation
 
 ## Key Libraries and Dependencies
 
-### Core
-- github.com/gin-gonic/gin - Web framework
-- gorm.io/gorm - Go Object Relational Mapper
-- gorm.io/driver/sqlite - SQLite driver for GORM
-- github.com/gorilla/websocket - WebSocket implementation
-- github.com/go-telegram-bot-api/telegram-bot-api/v5 - Telegram Bot API client
-- github.com/sirupsen/logrus - Structured logger
+### Frontend Core
+- @clerk/clerk-react - Authentication
+- @reduxjs/toolkit - State management
+- @tanstack/react-query - Data fetching
+- @mui/material - UI components
+- @radix-ui/* - UI primitives
+- drizzle-orm - Local database ORM
+- @libsql/client - TursoDB client
 
-### Testing
-- **testing**: Go standard library testing
-- **testify**: Enhanced testing assertions and mocks
+### Frontend Development
+- vite - Build tool
+- typescript - Type checking
+- vitest - Unit testing
+- playwright - E2E testing
+- eslint - Linting
+- prettier - Code formatting
+- tailwindcss - Utility CSS
+
+### Backend Core
+- github.com/go-chi/chi/v5 - HTTP router
+- github.com/clerk/clerk-sdk-go - Authentication
+- github.com/gorilla/websocket - WebSocket
+- github.com/mattn/go-sqlite3 - SQLite driver
+- github.com/sirupsen/logrus - Logging
+
+### Backend Development
+- github.com/stretchr/testify - Testing
+- github.com/spf13/viper - Configuration
+- github.com/spf13/cobra - CLI tools
 
 ## Build & Deployment
-- **Makefile**: For build automation
-- **Docker**: For containerization (optional)
-- **go.mod/go.sum**: For dependency management
+
+### Frontend
+- Vite for development and production builds
+- Docker for containerization
+- Environment-based configuration
+- Automated testing in CI
+
+### Backend
+- Go modules for dependency management
+- Docker multi-stage builds
+- Configuration via environment variables
+- Automated testing and linting
+
+### Database
+- TursoDB cloud deployment
+- Local development with SQLite
+- Automated backups
+- Monitoring and maintenance

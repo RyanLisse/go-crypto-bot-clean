@@ -1,6 +1,7 @@
 package service
 
 import (
+	"go-crypto-bot-clean/api/repository"
 	"go-crypto-bot-clean/backend/internal/auth"
 	"go-crypto-bot-clean/backend/internal/backtest"
 	"go-crypto-bot-clean/backend/internal/domain/strategy"
@@ -19,11 +20,14 @@ func NewProvider(
 	backtestService *backtest.Service,
 	strategyFactory *strategy.Factory,
 	authService *auth.Service,
+	userRepo repository.UserRepository,
+	strategyRepo repository.StrategyRepository,
+	backtestRepo repository.BacktestRepository,
 ) *Provider {
 	return &Provider{
-		BacktestService: NewBacktestService(backtestService),
-		StrategyService: NewStrategyService(strategyFactory),
-		AuthService:     NewAuthService(authService),
-		UserService:     NewUserService(),
+		BacktestService: NewBacktestService(backtestService, backtestRepo),
+		StrategyService: NewStrategyService(strategyFactory, strategyRepo),
+		AuthService:     NewAuthService(authService, userRepo),
+		UserService:     NewUserService(userRepo),
 	}
 }

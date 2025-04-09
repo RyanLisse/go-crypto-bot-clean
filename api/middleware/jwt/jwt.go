@@ -60,7 +60,7 @@ func NewService(accessSecret, refreshSecret string, accessTTL, refreshTTL time.D
 // GenerateAccessToken generates a new access token
 func (s *Service) GenerateAccessToken(userID, email string, roles []string) (string, time.Time, error) {
 	expiresAt := time.Now().Add(s.accessTTL)
-	
+
 	claims := CustomClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
@@ -76,7 +76,7 @@ func (s *Service) GenerateAccessToken(userID, email string, roles []string) (str
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	
+
 	tokenString, err := token.SignedString(s.accessSecret)
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("failed to sign token: %w", err)
@@ -88,7 +88,7 @@ func (s *Service) GenerateAccessToken(userID, email string, roles []string) (str
 // GenerateRefreshToken generates a new refresh token
 func (s *Service) GenerateRefreshToken(userID string) (string, time.Time, error) {
 	expiresAt := time.Now().Add(s.refreshTTL)
-	
+
 	claims := CustomClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
@@ -102,7 +102,7 @@ func (s *Service) GenerateRefreshToken(userID string) (string, time.Time, error)
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	
+
 	tokenString, err := token.SignedString(s.refreshSecret)
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("failed to sign token: %w", err)
@@ -119,6 +119,16 @@ func (s *Service) ValidateAccessToken(tokenString string) (*CustomClaims, error)
 // ValidateRefreshToken validates a refresh token and returns the claims
 func (s *Service) ValidateRefreshToken(tokenString string) (*CustomClaims, error) {
 	return s.validateToken(tokenString, s.refreshSecret, RefreshToken)
+}
+
+// GetAccessTTL returns the access token TTL
+func (s *Service) GetAccessTTL() time.Duration {
+	return s.accessTTL
+}
+
+// GetRefreshTTL returns the refresh token TTL
+func (s *Service) GetRefreshTTL() time.Duration {
+	return s.refreshTTL
 }
 
 // validateToken validates a token and returns the claims

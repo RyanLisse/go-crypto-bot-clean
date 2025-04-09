@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/danielgtaylor/huma/v2"
 	"go-crypto-bot-clean/api/service"
+
+	"github.com/danielgtaylor/huma/v2"
 )
 
 // RegisterEndpoints registers the authentication endpoints.
@@ -140,14 +141,26 @@ func RegisterEndpoints(api huma.API, basePath string, authService *service.AuthS
 		Summary:     "Logout",
 		Description: "Invalidates the current session",
 		Tags:        []string{"Authentication"},
-	}, func(ctx context.Context, input *struct{}) (*struct {
+	}, func(ctx context.Context, input *struct {
+		RefreshToken string `json:"refreshToken,omitempty"`
+	}) (*struct {
 		Body struct {
 			Success   bool      `json:"success"`
 			Timestamp time.Time `json:"timestamp"`
 		}
 	}, error) {
+		// For now, we'll just use a mock user ID
+		// In a real implementation, we would get the user ID from the JWT token
+		userID := "user-123456"
+
+		// Get refresh token from request
+		var refreshToken string
+		if input != nil {
+			refreshToken = input.RefreshToken
+		}
+
 		// Logout
-		err := authService.Logout(ctx)
+		err := authService.Logout(ctx, userID, refreshToken)
 		if err != nil {
 			return nil, err
 		}

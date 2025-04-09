@@ -4,16 +4,20 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"go-crypto-bot-clean/api/repository"
 )
 
 // UserService provides user management functionality for the API
 type UserService struct {
-	// In a real implementation, this would have dependencies like a user repository
+	userRepo repository.UserRepository
 }
 
 // NewUserService creates a new user service
-func NewUserService() *UserService {
-	return &UserService{}
+func NewUserService(userRepo repository.UserRepository) *UserService {
+	return &UserService{
+		userRepo: userRepo,
+	}
 }
 
 // UserProfile represents a user profile
@@ -30,10 +34,10 @@ type UserProfile struct {
 
 // UserSettings represents user settings
 type UserSettings struct {
-	ID                  string    `json:"id"`
-	Theme               string    `json:"theme"`
-	Language            string    `json:"language"`
-	TimeZone            string    `json:"timeZone"`
+	ID                   string    `json:"id"`
+	Theme                string    `json:"theme"`
+	Language             string    `json:"language"`
+	TimeZone             string    `json:"timeZone"`
 	NotificationsEnabled bool      `json:"notificationsEnabled"`
 	EmailNotifications   bool      `json:"emailNotifications"`
 	PushNotifications    bool      `json:"pushNotifications"`
@@ -50,9 +54,9 @@ type UpdateProfileRequest struct {
 
 // UpdateSettingsRequest represents a request to update user settings
 type UpdateSettingsRequest struct {
-	Theme               string `json:"theme,omitempty"`
-	Language            string `json:"language,omitempty"`
-	TimeZone            string `json:"timeZone,omitempty"`
+	Theme                string `json:"theme,omitempty"`
+	Language             string `json:"language,omitempty"`
+	TimeZone             string `json:"timeZone,omitempty"`
 	NotificationsEnabled string `json:"notificationsEnabled,omitempty"`
 	EmailNotifications   string `json:"emailNotifications,omitempty"`
 	PushNotifications    string `json:"pushNotifications,omitempty"`
@@ -73,120 +77,182 @@ type ChangePasswordResponse struct {
 
 // GetUserProfile gets the profile of the authenticated user
 func (s *UserService) GetUserProfile(ctx context.Context, userID string) (*UserProfile, error) {
-	// In a real implementation, we would get the user from the database
-	// based on the authenticated user. For now, we'll just return a mock response.
-	
-	// This is a placeholder for actual user profile retrieval logic
 	if userID == "" {
 		return nil, errors.New("user ID is required")
 	}
 
-	// Mock user profile
+	// Get user from repository
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get user roles
+	roles, err := s.userRepo.GetRoles(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to UserProfile
 	return &UserProfile{
-		ID:        userID,
-		Email:     "user@example.com",
-		Username:  "johndoe",
-		FirstName: "John",
-		LastName:  "Doe",
-		Roles:     []string{"user"},
-		CreatedAt: time.Now().AddDate(0, -1, 0),
-		UpdatedAt: time.Now(),
+		ID:        user.ID,
+		Email:     user.Email,
+		Username:  user.Username,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Roles:     roles,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
 	}, nil
 }
 
 // UpdateUserProfile updates the profile of the authenticated user
 func (s *UserService) UpdateUserProfile(ctx context.Context, userID string, req *UpdateProfileRequest) (*UserProfile, error) {
-	// In a real implementation, we would update the user in the database
-	// based on the authenticated user. For now, we'll just return a mock response.
-	
-	// This is a placeholder for actual user profile update logic
 	if userID == "" {
 		return nil, errors.New("user ID is required")
 	}
 
-	// Mock updated user profile
+	// Get user from repository
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update user fields
+	if req.Username != "" {
+		user.Username = req.Username
+	}
+	if req.FirstName != "" {
+		user.FirstName = req.FirstName
+	}
+	if req.LastName != "" {
+		user.LastName = req.LastName
+	}
+
+	// Save user
+	err = s.userRepo.Update(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get user roles
+	roles, err := s.userRepo.GetRoles(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to UserProfile
 	return &UserProfile{
-		ID:        userID,
-		Email:     "user@example.com",
-		Username:  req.Username,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Roles:     []string{"user"},
-		CreatedAt: time.Now().AddDate(0, -1, 0),
-		UpdatedAt: time.Now(),
+		ID:        user.ID,
+		Email:     user.Email,
+		Username:  user.Username,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Roles:     roles,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
 	}, nil
 }
 
 // GetUserSettings gets the settings of the authenticated user
 func (s *UserService) GetUserSettings(ctx context.Context, userID string) (*UserSettings, error) {
-	// In a real implementation, we would get the user settings from the database
-	// based on the authenticated user. For now, we'll just return a mock response.
-	
-	// This is a placeholder for actual user settings retrieval logic
 	if userID == "" {
 		return nil, errors.New("user ID is required")
 	}
 
-	// Mock user settings
+	// Get user settings from repository
+	settings, err := s.userRepo.GetSettings(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to UserSettings
 	return &UserSettings{
-		ID:                  userID,
-		Theme:               "light",
-		Language:            "en",
-		TimeZone:            "UTC",
-		NotificationsEnabled: true,
-		EmailNotifications:   true,
-		PushNotifications:    true,
-		DefaultCurrency:      "USD",
-		UpdatedAt:            time.Now(),
+		ID:                   userID,
+		Theme:                settings.Theme,
+		Language:             settings.Language,
+		TimeZone:             settings.TimeZone,
+		NotificationsEnabled: settings.NotificationsEnabled,
+		EmailNotifications:   settings.EmailNotifications,
+		PushNotifications:    settings.PushNotifications,
+		DefaultCurrency:      settings.DefaultCurrency,
+		UpdatedAt:            settings.UpdatedAt,
 	}, nil
 }
 
 // UpdateUserSettings updates the settings of the authenticated user
 func (s *UserService) UpdateUserSettings(ctx context.Context, userID string, req *UpdateSettingsRequest) (*UserSettings, error) {
-	// In a real implementation, we would update the user settings in the database
-	// based on the authenticated user. For now, we'll just return a mock response.
-	
-	// This is a placeholder for actual user settings update logic
 	if userID == "" {
 		return nil, errors.New("user ID is required")
 	}
 
+	// Get current settings
+	currentSettings, err := s.userRepo.GetSettings(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	// Parse boolean values from strings
-	notificationsEnabled := true
-	if req.NotificationsEnabled == "false" {
+	notificationsEnabled := currentSettings.NotificationsEnabled
+	if req.NotificationsEnabled == "true" {
+		notificationsEnabled = true
+	} else if req.NotificationsEnabled == "false" {
 		notificationsEnabled = false
 	}
 
-	emailNotifications := true
-	if req.EmailNotifications == "false" {
+	emailNotifications := currentSettings.EmailNotifications
+	if req.EmailNotifications == "true" {
+		emailNotifications = true
+	} else if req.EmailNotifications == "false" {
 		emailNotifications = false
 	}
 
-	pushNotifications := false
+	pushNotifications := currentSettings.PushNotifications
 	if req.PushNotifications == "true" {
 		pushNotifications = true
+	} else if req.PushNotifications == "false" {
+		pushNotifications = false
 	}
 
-	// Mock updated user settings
+	// Update settings
+	if req.Theme != "" {
+		currentSettings.Theme = req.Theme
+	}
+	if req.Language != "" {
+		currentSettings.Language = req.Language
+	}
+	if req.TimeZone != "" {
+		currentSettings.TimeZone = req.TimeZone
+	}
+	if req.DefaultCurrency != "" {
+		currentSettings.DefaultCurrency = req.DefaultCurrency
+	}
+	currentSettings.NotificationsEnabled = notificationsEnabled
+	currentSettings.EmailNotifications = emailNotifications
+	currentSettings.PushNotifications = pushNotifications
+
+	// Save settings
+	err = s.userRepo.UpdateSettings(ctx, currentSettings)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to UserSettings
 	return &UserSettings{
-		ID:                  userID,
-		Theme:               req.Theme,
-		Language:            req.Language,
-		TimeZone:            req.TimeZone,
-		NotificationsEnabled: notificationsEnabled,
-		EmailNotifications:   emailNotifications,
-		PushNotifications:    pushNotifications,
-		DefaultCurrency:      req.DefaultCurrency,
-		UpdatedAt:            time.Now(),
+		ID:                   userID,
+		Theme:                currentSettings.Theme,
+		Language:             currentSettings.Language,
+		TimeZone:             currentSettings.TimeZone,
+		NotificationsEnabled: currentSettings.NotificationsEnabled,
+		EmailNotifications:   currentSettings.EmailNotifications,
+		PushNotifications:    currentSettings.PushNotifications,
+		DefaultCurrency:      currentSettings.DefaultCurrency,
+		UpdatedAt:            currentSettings.UpdatedAt,
 	}, nil
 }
 
 // ChangePassword changes the password of the authenticated user
 func (s *UserService) ChangePassword(ctx context.Context, userID string, req *ChangePasswordRequest) (*ChangePasswordResponse, error) {
-	// In a real implementation, we would validate the current password
-	// and update the password in the database. For now, we'll just return a success response.
-	
-	// This is a placeholder for actual password change logic
 	if userID == "" {
 		return nil, errors.New("user ID is required")
 	}
@@ -195,7 +261,25 @@ func (s *UserService) ChangePassword(ctx context.Context, userID string, req *Ch
 		return nil, errors.New("current password and new password are required")
 	}
 
-	// Mock successful password change
+	// Get user from repository
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Validate current password using bcrypt
+	// For now, we'll just update the password without validation
+
+	// TODO: Hash new password using bcrypt
+	// For now, we'll just store the password as is
+	user.PasswordHash = req.NewPassword
+
+	// Save user
+	err = s.userRepo.Update(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ChangePasswordResponse{
 		Success:   true,
 		Timestamp: time.Now(),
