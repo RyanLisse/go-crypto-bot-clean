@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Box, Toolbar } from '@mui/material';
 
-import Sidebar from './Sidebar';
-import Header from './Header';
+import Sidebar from '@/components/Layout/Sidebar';
+import Header from '@/components/Layout/Header';
 
 const Layout: React.FC = () => {
   const [open, setOpen] = useState(true);

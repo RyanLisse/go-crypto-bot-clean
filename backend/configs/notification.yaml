@@ -1,0 +1,64 @@
+notification:
+  enabled: true
+  default_providers: ["telegram", "slack"]
+  queue:
+    capacity: 1000
+    workers: 5
+  providers:
+    telegram:
+      enabled: true
+      token: "your-telegram-bot-token"
+      chat_ids:
+        - "-1001234567890" # Group chat ID
+        - "123456789" # User chat ID
+      rate_limit: 20 # messages per minute
+    slack:
+      enabled: true
+      token: "your-slack-token"
+      channels:
+        - "#trading-alerts"
+        - "#system-status"
+      rate_limit: 30 # messages per minute
+  templates:
+    trade_executed:
+      title: "Trade Executed: {{ .Symbol }}"
+      message: "{{ .Side }} {{ .Quantity }} {{ .Symbol }} at {{ .Price }}"
+      level: "TRADE"
+      providers: ["telegram", "slack"]
+      priority: 10
+    risk_alert:
+      title: "Risk Alert: {{ .AlertType }}"
+      message: "{{ .Message }}"
+      level: "WARNING"
+      providers: ["telegram", "slack"]
+      priority: 20
+    system_status:
+      title: "System Status: {{ .Status }}"
+      message: "{{ .Message }}"
+      level: "INFO"
+      providers: ["slack"]
+      priority: 5
+    position_opened:
+      title: "Position Opened: {{ .Symbol }}"
+      message: "Opened {{ .Side }} position of {{ .Quantity }} {{ .Symbol }} at {{ .EntryPrice }}"
+      level: "TRADE"
+      providers: ["telegram", "slack"]
+      priority: 10
+    position_closed:
+      title: "Position Closed: {{ .Symbol }}"
+      message: "Closed {{ .Side }} position of {{ .Quantity }} {{ .Symbol }} at {{ .ExitPrice }}\nProfit/Loss: {{ .ProfitLoss }} ({{ .ProfitLossPercentage }}%)"
+      level: "TRADE"
+      providers: ["telegram", "slack"]
+      priority: 10
+    new_coin_detected:
+      title: "New Coin Detected: {{ .Symbol }}"
+      message: "New coin {{ .Symbol }} detected on {{ .Exchange }}\nCurrent price: {{ .Price }}"
+      level: "INFO"
+      providers: ["telegram"]
+      priority: 5
+    error_alert:
+      title: "Error: {{ .Service }}"
+      message: "Error in {{ .Service }}: {{ .Message }}\n{{ .StackTrace }}"
+      level: "ERROR"
+      providers: ["slack"]
+      priority: 80

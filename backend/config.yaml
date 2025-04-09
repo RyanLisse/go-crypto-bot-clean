@@ -1,0 +1,18 @@
+mexc:
+  apiKey: "mx0vglEo7wfYDwNNpY"
+  secretKey: "c0161c4438344cd29f6cc70b80dbc195"
+  baseURL: "https://api.mexc.com/api/v3"
+  wsURL: "wss://wbs.mexc.com/ws"
+
+connectionRateLimiter:
+  requestsPerSecond: 10
+  burstCapacity: 20
+
+subscriptionRateLimiter:
+  requestsPerSecond: 5
+  burstCapacity: 10
+
+logging:
+  level: "debug"
+  format: "json"
+  output: "stdout"

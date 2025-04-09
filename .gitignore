@@ -55,3 +55,4 @@ vendor/
 # Temporary files
 tmp/
 temp/
+/crypto-brute-dash

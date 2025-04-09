@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crypto-bot-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs
+    environment:
+      - MEXC_API_KEY=${MEXC_API_KEY}
+      - MEXC_SECRET_KEY=${MEXC_SECRET_KEY}
+      - MEXC_BASE_URL=${MEXC_BASE_URL:-https://api.mexc.com/api/v3}
+      - MEXC_WEBSOCKET_URL=${MEXC_WEBSOCKET_URL:-wss://wbs.mexc.com/ws}
+      - TURSO_ENABLED=${TURSO_ENABLED:-true}
+      - TURSO_URL=${TURSO_URL}
+      - TURSO_AUTH_TOKEN=${TURSO_AUTH_TOKEN}
+      - TURSO_SYNC_ENABLED=${TURSO_SYNC_ENABLED:-true}
+      - TURSO_SYNC_INTERVAL_SECONDS=${TURSO_SYNC_INTERVAL_SECONDS:-300}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - DB_PATH=/app/data/db
+      - CONFIG_PATH=/app/configs
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    command: ["serve", "--port=8080"]
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8080/api/v1/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: crypto-bot-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8080/api/v1
+      - NEXT_PUBLIC_WS_URL=ws://backend:8080/ws
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  data:
+    driver: local

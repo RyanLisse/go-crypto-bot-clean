@@ -4,6 +4,10 @@
 
 Go Crypto Bot is a sophisticated cryptocurrency trading bot designed to provide robust, efficient, and flexible trading capabilities across multiple exchanges. This repository is structured as a monorepo containing multiple deployable components that work together as a complete system.
 
+## Current Status
+
+The project is currently under active development with a focus on building a reliable and scalable architecture. The backend API and WebSocket services are operational, and the frontend React application is in development. The system currently supports the MEXC exchange with plans to add more exchanges in the future.
+
 ## Features
 
 ### WebSocket Client
@@ -41,28 +45,36 @@ Go Crypto Bot is a sophisticated cryptocurrency trading bot designed to provide 
 ## Technology Stack
 
 ### Backend
-- Language: Go (1.21+)
+- Language: Go (1.24.2)
+- Web Frameworks: chi, gin-gonic/gin
 - WebSocket Library: gorilla/websocket
-- HTTP Router: chi
-- API Documentation: Huma
+- API Documentation: Huma v2
 - Testing: testify
 - Rate Limiting: Custom token bucket implementation
-- Database: SQLite with sqlx
+- Database: SQLite with sqlx and GORM
 - Logging: zap
-- CLI: cobra
+- CLI: cobra with viper for configuration
+- JWT Authentication: golang-jwt/jwt/v5
+- AI Integration: google/generative-ai-go
 
 ### Frontend
 - React 18 with TypeScript
 - Material UI for components and styling
 - Redux Toolkit for state management
-- RTK Query for API calls
-- Chart.js for data visualization
+- Axios for API calls
+- Chart.js with react-chartjs-2 for data visualization
 - Socket.io for real-time updates
+- Formik and Yup for form validation
+- React Router v6 for routing
+- React Toastify for notifications
+- Date-fns for date manipulation
+- Build tools: Create React App with Vite configuration available
 
 ### DevOps
 - Docker for containerization
 - Docker Compose for multi-container orchestration
 - GitHub Actions for CI/CD
+- Bun as an optional JavaScript runtime (with npm fallback)
 
 ## Development Approach
 - Test-Driven Development (TDD)
@@ -83,28 +95,34 @@ Go Crypto Bot is a sophisticated cryptocurrency trading bot designed to provide 
 This repository is organized as a monorepo containing multiple deployable components:
 
 - `backend/`: Go backend services for core trading functionality
+  - `cmd/`: Command-line tools and entry points
+  - `internal/`: Shared internal packages
+  - `pkg/`: Shared public packages
+  - `configs/`: Configuration templates for different environments
+  - `tests/`: Test suites for backend components
+  - `docs/`: API documentation
+  - `data/`: Data storage directory
 - `frontend/`: React frontend application for monitoring and control
-- `crypto-brute-dash/`: Dashboard application for analytics
-- `cmd/`: Command-line tools and entry points
-- `internal/`: Shared internal packages
-- `pkg/`: Shared public packages
-- `docs/`: Documentation for all components
-- `configs/`: Configuration templates for different environments
-- `tests/`: Test suites for all components
+  - `src/`: Source code for the React application
+  - `public/`: Static assets
+  - `docs/`: Frontend documentation
+- `memory-bank/`: Storage for AI-assisted trading strategies and historical data
+- `.env.example`: Example environment variables configuration
 
 ## Getting Started
 
 ### Prerequisites
-- Go 1.21+
+- Go 1.24+
 - Docker and Docker Compose (for containerized deployment)
-- Node.js 16+ and npm/yarn (for frontend development)
+- Node.js 18+ and npm (for frontend development)
+- Bun (optional, for faster frontend development)
 
 ### Installation
 
 #### Clone Repository
 ```bash
-git clone https://github.com/RyanLisse/go-crypto-bot-migration.git
-cd go-crypto-bot-migration
+git clone https://github.com/RyanLisse/go-crypto-bot-clean.git
+cd go-crypto-bot-clean
 ```
 
 #### Backend
@@ -120,13 +138,23 @@ npm install
 yarn install
 ```
 
-#### Dashboard
+### Development Workflow
+
+The repository includes a development script that starts both the backend and frontend services:
+
 ```bash
-cd crypto-brute-dash
-npm install
-# or
-yarn install
+# Make the script executable if needed
+chmod +x run-dev-monorepo.sh
+
+# Run the development environment
+./run-dev-monorepo.sh
 ```
+
+This script will:
+- Start the Go backend API server on port 8080
+- Start the React frontend development server on port 3000 (using npm or Bun)
+- Set up the necessary environment variables for API and WebSocket connections
+- Provide a clean shutdown mechanism with Ctrl+C
 
 ## Deployment
 
@@ -173,7 +201,8 @@ docker-compose down
 #### Backend
 ```bash
 # Run the API server
-go run cmd/backtest/main.go serve --port=8080
+cd backend
+go run cmd/api/main.go --port=8080
 
 # Run tests
 go test ./...
@@ -182,31 +211,18 @@ go test ./...
 #### Frontend
 ```bash
 cd frontend
+# Using npm
 npm start
-# or
-yarn start
-```
 
-#### Dashboard
-```bash
-cd crypto-brute-dash
-npm start
-# or
-yarn start
-```
-
-### Running Backtests
-```bash
-go run cmd/backtest/main.go backtest --strategy=simple_ma --symbols=BTCUSDT --start=2023-01-01 --end=2023-12-31 --capital=10000 --interval=1h
+# Or using Bun (if installed)
+bun start
 ```
 
 ### Available CLI Commands
 ```bash
-# Get help
-go run cmd/backtest/main.go --help
-
-# Run backtest with custom parameters
-go run cmd/backtest/main.go backtest --strategy=simple_ma --symbols=BTCUSDT,ETHUSDT --start=2023-01-01 --end=2023-12-31 --capital=10000 --interval=1h --short-period=10 --long-period=50 --output=results.txt
+# Get help for the API server
+cd backend
+go run cmd/api/main.go --help
 ```
 
 ## CI/CD Integration
@@ -228,4 +244,4 @@ When contributing to this monorepo:
 3. Ensure your changes don't break other components that may depend on shared code
 
 ## License
-[Specify your license here]
+MIT License

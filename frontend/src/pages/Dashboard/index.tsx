@@ -1,6 +1,6 @@
 import React from 'react';
 import { Grid, Paper, Typography, Box } from '@mui/material';
-import { useGetStatusQuery } from '../../services/api';
+import { useGetStatusQuery } from '@/services/api';
 
 const Dashboard: React.FC = () => {
   const { data, error, isLoading } = useGetStatusQuery();
