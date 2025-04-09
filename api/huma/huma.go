@@ -6,6 +6,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 
+	"go-crypto-bot-clean/api/huma/auth"
 	"go-crypto-bot-clean/api/huma/strategy"
 )
 
@@ -35,8 +36,8 @@ func SetupHuma(router chi.Router, config Config) huma.API {
 	// Register endpoints
 	registerBacktestEndpoints(api, config.BasePath)
 	strategy.RegisterEndpoints(api, config.BasePath)
+	auth.RegisterEndpoints(api, config.BasePath)
 	// TODO: Implement these
-	// registerAuthEndpoints(api, config.BasePath)
 	// registerUserEndpoints(api, config.BasePath)
 
 	return api
