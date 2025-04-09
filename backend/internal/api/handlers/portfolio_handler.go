@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/dto/response"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/api/dto/response"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // PortfolioServiceInterface defines the interface for portfolio service

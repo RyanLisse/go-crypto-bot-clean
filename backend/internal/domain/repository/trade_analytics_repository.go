@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // TradeAnalyticsRepository defines the interface for trade analytics persistence and retrieval

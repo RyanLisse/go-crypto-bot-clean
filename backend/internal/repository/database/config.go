@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/config"
+	"go-crypto-bot-clean/backend/internal/config"
 )
 
 // LoadConfig loads database configuration from config file and environment variables

@@ -2,8 +2,8 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/handlers"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/middleware"
+	"go-crypto-bot-clean/backend/internal/api/handlers"
+	"go-crypto-bot-clean/backend/internal/api/middleware"
 	"go.uber.org/zap"
 )
 

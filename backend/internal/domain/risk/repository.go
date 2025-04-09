@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/risk/controls"
+	"go-crypto-bot-clean/backend/internal/domain/risk/controls"
 )
 
 // BalanceHistoryRepository defines the interface for storing and retrieving balance history

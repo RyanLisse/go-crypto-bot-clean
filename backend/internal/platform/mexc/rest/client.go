@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/cache"
-	"github.com/ryanlisse/go-crypto-bot/pkg/ratelimiter"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/platform/mexc/cache"
+	"go-crypto-bot-clean/backend/pkg/ratelimiter"
 	"go.uber.org/zap"
 )
 

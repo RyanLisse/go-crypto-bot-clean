@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"log"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/ai/factory"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/ai/service"
+	"go-crypto-bot-clean/backend/internal/domain/ai/factory"
+	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 )
 
 // AIServiceDependency adds AI service to the Dependencies struct

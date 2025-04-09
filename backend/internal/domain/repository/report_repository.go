@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // ReportRepository defines the interface for report persistence

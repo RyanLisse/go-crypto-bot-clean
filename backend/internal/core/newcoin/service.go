@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // NewCoinService defines the interface for new coin detection and management

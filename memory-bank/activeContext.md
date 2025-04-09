@@ -80,6 +80,13 @@ The current focus is on implementing the remaining features for the Go crypto tr
 - Created SQLite repository for balance history
 - Integrated risk service with trade service
 - Added adapters for risk service interfaces
+- Added NotificationPreference domain entity and repository port
+- Implemented InMemoryNotificationPreferenceRepository
+- Refactored NotificationService to use preferences
+- Added Telegram adapter implementation
+- Added Slack adapter structure
+- Fixed related tests for NotificationService
+- Added logrus and telegram-bot-api dependencies
 
 ## Next Steps
 1. Implement additional technical indicators for market analysis (Ichimoku Cloud, Fibonacci Retracement, etc.)
@@ -180,3 +187,8 @@ The current focus is on implementing the remaining features for the Go crypto tr
 12. Add missing method implementations to service interfaces
 13. Improve error handling and recovery mechanisms
 14. Consider implementing a factory pattern for client creation
+15. Implement GormNotificationPreferenceRepository
+16. Add GORM-specific tests
+17. Run `go test ./internal/...` and fix failures (including pre-existing ones)
+18. Implement Subtask 8.3
+19. Fully implement Slack adapter

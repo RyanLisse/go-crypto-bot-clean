@@ -83,7 +83,7 @@ export class RateLimiter {
    */
   public allow(): boolean {
     const now = new Date();
-    if (now.getTime() - this.lastReset.getTime() > this.resetPeriodMs) {
+    if (now.getTime() - this.lastReset.getTime() >= this.resetPeriodMs) {
       this.requestCount = 0;
       this.lastReset = now;
     }
@@ -142,7 +142,7 @@ export class CircuitBreaker {
   public isAllowed(): boolean {
     if (this.state === 'OPEN') {
       // Check if it's time to try again
-      if (this.lastFailure && new Date().getTime() - this.lastFailure.getTime() > this.resetTimeoutMs) {
+      if (this.lastFailure && new Date().getTime() - this.lastFailure.getTime() >= this.resetTimeoutMs) {
         this.state = 'HALF_OPEN';
         return true;
       }

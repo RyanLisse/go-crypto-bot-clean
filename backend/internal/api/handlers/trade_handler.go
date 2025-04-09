@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/dto/request"
-	responseDto "github.com/ryanlisse/go-crypto-bot/internal/api/dto/response"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/trade"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repositories"
+	"go-crypto-bot-clean/backend/internal/api/dto/request"
+	responseDto "go-crypto-bot-clean/backend/internal/api/dto/response"
+	"go-crypto-bot-clean/backend/internal/core/trade"
+	"go-crypto-bot-clean/backend/internal/domain/repositories"
 )
 
 // TradeHandler handles trade-related endpoints

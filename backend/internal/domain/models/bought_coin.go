@@ -1,18 +1,24 @@
 package models
 
-import "time"
+import (
+	"time"
 
+	"gorm.io/gorm"
+)
+
+// BoughtCoin represents a coin purchase transaction recorded by the bot.
 type BoughtCoin struct {
-	ID            int64     `gorm:"primaryKey;autoIncrement" db:"id" json:"id"`
-	Symbol        string    `gorm:"uniqueIndex;not null" db:"symbol" json:"symbol"`
-	PurchasePrice float64   `gorm:"not null" db:"purchase_price" json:"purchase_price"`
-	BuyPrice      float64   `gorm:"-" json:"buy_price,omitempty"` // Alias for PurchasePrice for backward compatibility
-	Quantity      float64   `gorm:"not null" db:"quantity" json:"quantity"`
-	BoughtAt      time.Time `gorm:"not null" db:"bought_at" json:"bought_at"`
-	StopLoss      float64   `gorm:"not null" db:"stop_loss" json:"stop_loss"`
-	TakeProfit    float64   `gorm:"not null" db:"take_profit" json:"take_profit"`
-	CurrentPrice  float64   `gorm:"not null" db:"current_price" json:"current_price"`
-	IsDeleted     bool      `gorm:"not null;default:false" db:"is_deleted" json:"is_deleted,omitempty"`
-	UpdatedAt     time.Time `gorm:"autoUpdateTime" db:"updated_at" json:"updated_at"`
-	CreatedAt     time.Time `gorm:"autoCreateTime" json:"created_at"`
+	ID            int64          `gorm:"primaryKey;autoIncrement" json:"id"`
+	Symbol        string         `gorm:"uniqueIndex;not null" json:"symbol"`
+	PurchasePrice float64        `gorm:"not null" json:"purchase_price"`
+	BuyPrice      float64        `gorm:"-" json:"buy_price,omitempty"` // Alias for PurchasePrice for backward compatibility
+	Quantity      float64        `gorm:"not null" json:"quantity"`
+	BoughtAt      time.Time      `gorm:"index;not null" json:"bought_at"` // Indexed for querying by time
+	StopLoss      float64        `gorm:"not null" json:"stop_loss"`
+	TakeProfit    float64        `gorm:"not null" json:"take_profit"`
+	CurrentPrice  float64        `gorm:"not null" json:"current_price"` // This might be better managed externally
+	CreatedAt     time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt     time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"` // Use GORM's soft delete
+	IsDeleted     bool           `gorm:"not null" json:"is_deleted"`
 }

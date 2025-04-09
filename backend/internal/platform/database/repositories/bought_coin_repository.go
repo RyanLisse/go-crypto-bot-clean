@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/repository"
 	"github.com/jmoiron/sqlx"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repository"
 )
 
 // SQLiteBoughtCoinRepository implements the BoughtCoinRepository interface using SQLite
@@ -66,14 +66,14 @@ func (r *SQLiteBoughtCoinRepository) FindBySymbol(ctx context.Context, symbol st
 func (r *SQLiteBoughtCoinRepository) Create(ctx context.Context, coin *models.BoughtCoin) (int64, error) {
 	query := `
 		INSERT INTO bought_coins (
-			symbol, purchase_price, quantity, bought_at, 
-			stop_loss, take_profit, current_price, is_deleted, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			symbol, purchase_price, quantity, bought_at,
+			stop_loss, take_profit, current_price, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	result, err := r.db.ExecContext(
 		ctx, query,
 		coin.Symbol, coin.PurchasePrice, coin.Quantity, coin.BoughtAt,
-		coin.StopLoss, coin.TakeProfit, coin.CurrentPrice, coin.IsDeleted, coin.UpdatedAt,
+		coin.StopLoss, coin.TakeProfit, coin.CurrentPrice, coin.UpdatedAt,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create bought coin: %w", err)
@@ -90,15 +90,15 @@ func (r *SQLiteBoughtCoinRepository) Create(ctx context.Context, coin *models.Bo
 // Update modifies an existing bought coin
 func (r *SQLiteBoughtCoinRepository) Update(ctx context.Context, coin *models.BoughtCoin) error {
 	query := `
-		UPDATE bought_coins 
+		UPDATE bought_coins
 		SET symbol = ?, purchase_price = ?, quantity = ?, bought_at = ?,
-			stop_loss = ?, take_profit = ?, current_price = ?, is_deleted = ?, updated_at = ?
+			stop_loss = ?, take_profit = ?, current_price = ?, updated_at = ?
 		WHERE id = ?
 	`
 	_, err := r.db.ExecContext(
 		ctx, query,
 		coin.Symbol, coin.PurchasePrice, coin.Quantity, coin.BoughtAt,
-		coin.StopLoss, coin.TakeProfit, coin.CurrentPrice, coin.IsDeleted, time.Now(),
+		coin.StopLoss, coin.TakeProfit, coin.CurrentPrice, time.Now(),
 		coin.ID,
 	)
 	if err != nil {

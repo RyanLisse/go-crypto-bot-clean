@@ -7,12 +7,12 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/config"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repository"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/risk"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/strategy"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/rest"
+	"go-crypto-bot-clean/backend/internal/config"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/repository"
+	"go-crypto-bot-clean/backend/internal/domain/risk"
+	"go-crypto-bot-clean/backend/internal/domain/strategy"
+	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
 )
 
 // tradeService implements TradeService

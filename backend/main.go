@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/api"
-	"github.com/ryanlisse/go-crypto-bot/internal/config"
+	"go-crypto-bot-clean/backend/internal/api"
+	"go-crypto-bot-clean/backend/internal/config"
 )
 
 func main() {

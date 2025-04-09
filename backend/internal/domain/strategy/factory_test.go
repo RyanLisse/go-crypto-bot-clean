@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/strategy/advanced"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/strategy/advanced"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

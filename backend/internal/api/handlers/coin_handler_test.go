@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/newcoin"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/core/newcoin"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 	"github.com/stretchr/testify/assert"
 )
 

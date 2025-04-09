@@ -8,10 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/api/dto/request"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/dto/response"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/analytics"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/api/dto/request"
+	"go-crypto-bot-clean/backend/internal/api/dto/response"
+	"go-crypto-bot-clean/backend/internal/core/analytics"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // AnalyticsHandler handles API requests for trade analytics

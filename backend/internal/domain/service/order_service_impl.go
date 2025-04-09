@@ -7,8 +7,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/interfaces"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/interfaces"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // OrderServiceImpl implements the interfaces.OrderService interface using the TradeService

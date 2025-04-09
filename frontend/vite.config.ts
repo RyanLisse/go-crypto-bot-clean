@@ -18,6 +18,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@playwright/test": path.resolve(__dirname, "src/__mocks__/@playwright/test.js"),
+      "@google/generative-ai": path.resolve(__dirname, "src/__mocks__/@google/generative-ai.js"),
+      "date-fns/differenceInCalendarISOWeekYears": "date-fns/differenceInCalendarYears"
     },
   },
   build: {

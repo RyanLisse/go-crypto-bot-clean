@@ -2,9 +2,9 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/handlers"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/middleware"
-	"github.com/ryanlisse/go-crypto-bot/internal/config"
+	"go-crypto-bot-clean/backend/internal/api/handlers"
+	"go-crypto-bot-clean/backend/internal/api/middleware"
+	"go-crypto-bot-clean/backend/internal/config"
 )
 
 // AuthDependencies contains the dependencies for authentication.

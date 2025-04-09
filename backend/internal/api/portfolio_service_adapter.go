@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repository"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/rest"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/repository"
+	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
 	"go.uber.org/zap"
 )
 

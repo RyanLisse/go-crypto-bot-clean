@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 )

@@ -7,8 +7,8 @@ import (
 	"runtime"
 
 	"github.com/gin-gonic/gin"
-	responseDto "github.com/ryanlisse/go-crypto-bot/internal/api/dto/response"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/status"
+	responseDto "go-crypto-bot-clean/backend/internal/api/dto/response"
+	"go-crypto-bot-clean/backend/internal/core/status"
 )
 
 // StatusServiceInterface defines the interface for status service

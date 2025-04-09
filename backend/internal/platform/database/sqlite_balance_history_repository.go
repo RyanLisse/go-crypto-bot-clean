@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/risk/controls"
+	"go-crypto-bot-clean/backend/internal/domain/risk/controls"
 )
 
 // SQLiteBalanceHistoryRepository implements the BalanceHistoryRepository interface

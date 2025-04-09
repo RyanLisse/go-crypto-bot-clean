@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/repository/balance"
-	"github.com/ryanlisse/go-crypto-bot/internal/repository/database"
-	"github.com/ryanlisse/go-crypto-bot/internal/repository/report"
+	"go-crypto-bot-clean/backend/internal/repository/balance"
+	"go-crypto-bot-clean/backend/internal/repository/database"
+	"go-crypto-bot-clean/backend/internal/repository/report"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"

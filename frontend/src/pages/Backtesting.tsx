@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import BacktestChart, { EquityPoint, DrawdownPoint } from '@/components/charts/BacktestChart';
+import PerformanceMetrics from '@/components/charts/PerformanceMetrics';
 
 type BacktestResult = {
   id: number;
@@ -12,6 +14,24 @@ type BacktestResult = {
   amount: string;
   profitLoss: string;
   isProfitable: boolean;
+};
+
+type BacktestMetrics = {
+  totalReturn: number;
+  annualizedReturn: number;
+  sharpeRatio: number;
+  sortinoRatio: number;
+  maxDrawdownPercent: number;
+  winRate: number;
+  profitFactor: number;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  averageProfitTrade: number;
+  averageLossTrade: number;
+  calmarRatio: number;
+  omegaRatio: number;
+  informationRatio: number;
 };
 
 // Mock data for backtest results
@@ -68,7 +88,7 @@ const Backtesting = () => {
   const [isRunningBacktest, setIsRunningBacktest] = useState(false);
   const [backtestResults, setBacktestResults] = useState<BacktestResult[]>([]);
   const [showResults, setShowResults] = useState(false);
-  
+
   // Form state
   const [strategy, setStrategy] = useState('macd_crossover');
   const [symbol, setSymbol] = useState('BTC');
@@ -77,10 +97,15 @@ const Backtesting = () => {
   const [endDate, setEndDate] = useState('2023-12-31');
   const [initialCapital, setInitialCapital] = useState('10000');
   const [riskPerTrade, setRiskPerTrade] = useState('2');
-  
+
+  // Mock data for visualization
+  const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
+  const [drawdownCurve, setDrawdownCurve] = useState<DrawdownPoint[]>([]);
+  const [performanceMetrics, setPerformanceMetrics] = useState<BacktestMetrics | null>(null);
+
   const handleRunBacktest = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate inputs
     if (!strategy || !symbol || !timeframe || !startDate || !endDate || !initialCapital || !riskPerTrade) {
       toast({
@@ -90,17 +115,76 @@ const Backtesting = () => {
       });
       return;
     }
-    
+
     // Simulate running a backtest
     setIsRunningBacktest(true);
     setShowResults(false);
-    
+
     // Simulate API call delay
     setTimeout(() => {
       setBacktestResults(mockBacktestResults);
+
+      // Generate mock equity curve and drawdown curve
+      const mockEquityCurve: EquityPoint[] = [];
+      const mockDrawdownCurve: DrawdownPoint[] = [];
+      const initialCap = parseFloat(initialCapital);
+      let equity = initialCap;
+
+      // Generate data points for 6 months
+      const startDateObj = new Date(startDate);
+      for (let i = 0; i < 180; i++) {
+        const date = new Date(startDateObj);
+        date.setDate(date.getDate() + i);
+
+        // Random daily change between -2% and +3%
+        const dailyChange = (Math.random() * 5 - 2) / 100;
+        equity = equity * (1 + dailyChange);
+
+        // Calculate drawdown
+        const highWaterMark = Math.max(...mockEquityCurve.map(p => p.equity).concat(initialCap));
+        const drawdown = highWaterMark - equity;
+
+        mockEquityCurve.push({
+          timestamp: date.toISOString(),
+          equity: equity
+        });
+
+        mockDrawdownCurve.push({
+          timestamp: date.toISOString(),
+          drawdown: drawdown
+        });
+      }
+
+      setEquityCurve(mockEquityCurve);
+      setDrawdownCurve(mockDrawdownCurve);
+
+      // Generate mock performance metrics
+      const finalEquity = mockEquityCurve[mockEquityCurve.length - 1].equity;
+      const totalReturn = ((finalEquity - initialCap) / initialCap) * 100;
+      const maxDrawdown = Math.max(...mockDrawdownCurve.map(p => p.drawdown));
+      const maxDrawdownPercent = (maxDrawdown / initialCap) * 100;
+
+      setPerformanceMetrics({
+        totalReturn: totalReturn,
+        annualizedReturn: totalReturn * 2, // Annualized for 6 months
+        sharpeRatio: 1.42,
+        sortinoRatio: 1.65,
+        maxDrawdownPercent: maxDrawdownPercent,
+        winRate: 62.1,
+        profitFactor: 1.87,
+        totalTrades: 124,
+        winningTrades: 77,
+        losingTrades: 47,
+        averageProfitTrade: 112.45,
+        averageLossTrade: 78.32,
+        calmarRatio: 3.2,
+        omegaRatio: 1.95,
+        informationRatio: 1.1
+      });
+
       setShowResults(true);
       setIsRunningBacktest(false);
-      
+
       toast({
         title: 'Success',
         description: 'Backtest completed successfully',
@@ -116,11 +200,11 @@ const Backtesting = () => {
           <div className="lg:col-span-1">
             <div className="brutal-card">
               <div className="brutal-card-header mb-4">Backtest Configuration</div>
-              
+
               <form className="space-y-4" onSubmit={handleRunBacktest}>
                 <div className="space-y-2">
                   <label className="text-sm">Strategy</label>
-                  <select 
+                  <select
                     className="w-full brutal-input"
                     value={strategy}
                     onChange={(e) => setStrategy(e.target.value)}
@@ -131,10 +215,10 @@ const Backtesting = () => {
                     <option value="moving_average">Moving Average</option>
                   </select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-sm">Symbol</label>
-                  <select 
+                  <select
                     className="w-full brutal-input"
                     value={symbol}
                     onChange={(e) => setSymbol(e.target.value)}
@@ -145,10 +229,10 @@ const Backtesting = () => {
                     <option value="DOGE">DOGE</option>
                   </select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-sm">Timeframe</label>
-                  <select 
+                  <select
                     className="w-full brutal-input"
                     value={timeframe}
                     onChange={(e) => setTimeframe(e.target.value)}
@@ -161,7 +245,7 @@ const Backtesting = () => {
                     <option value="1d">1 day</option>
                   </select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-sm">Start Date</label>
                   <input
@@ -171,7 +255,7 @@ const Backtesting = () => {
                     onChange={(e) => setStartDate(e.target.value)}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-sm">End Date</label>
                   <input
@@ -181,7 +265,7 @@ const Backtesting = () => {
                     onChange={(e) => setEndDate(e.target.value)}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-sm">Initial Capital (USD)</label>
                   <input
@@ -191,7 +275,7 @@ const Backtesting = () => {
                     onChange={(e) => setInitialCapital(e.target.value)}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-sm">Risk Per Trade (%): {riskPerTrade}%</label>
                   <input
@@ -204,9 +288,9 @@ const Backtesting = () => {
                     className="w-full"
                   />
                 </div>
-                
-                <button 
-                  type="submit" 
+
+                <button
+                  type="submit"
                   className="w-full brutal-button"
                   disabled={isRunningBacktest}
                 >
@@ -215,12 +299,12 @@ const Backtesting = () => {
               </form>
             </div>
           </div>
-          
+
           {/* Backtest Results */}
           <div className="lg:col-span-2">
             <div className="brutal-card">
               <div className="brutal-card-header mb-4">Backtest Results</div>
-              
+
               {!showResults && !isRunningBacktest ? (
                 <div className="text-center py-12 text-brutal-text/50">
                   Configure and run a backtest to see results
@@ -258,12 +342,26 @@ const Backtesting = () => {
                       <div className="text-xl font-bold">1.42</div>
                     </div>
                   </div>
-                  
-                  {/* Results Chart */}
-                  <div className="h-48 mb-6 flex items-center justify-center text-brutal-text/50 border border-dashed border-brutal-border">
-                    Performance chart will be implemented here
-                  </div>
-                  
+
+                  {/* Results Charts */}
+                  {equityCurve.length > 0 && drawdownCurve.length > 0 && (
+                    <div className="mb-6">
+                      <BacktestChart
+                        equityCurve={equityCurve}
+                        drawdownCurve={drawdownCurve}
+                        initialCapital={parseFloat(initialCapital)}
+                        title={`${symbol} ${strategy.toUpperCase()} Backtest`}
+                      />
+                    </div>
+                  )}
+
+                  {/* Performance Metrics */}
+                  {performanceMetrics && (
+                    <div className="mb-6">
+                      <PerformanceMetrics metrics={performanceMetrics} />
+                    </div>
+                  )}
+
                   {/* Trade List */}
                   <h4 className="text-sm text-brutal-text/70 mb-2">Trade List</h4>
                   <div className="overflow-x-auto">

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"math"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // MarketRegime represents the current market condition

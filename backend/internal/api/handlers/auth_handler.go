@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/dto/response"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/middleware"
+	"go-crypto-bot-clean/backend/internal/api/dto/response"
+	"go-crypto-bot-clean/backend/internal/api/middleware"
 )
 
 // AuthHandler handles authentication-related requests

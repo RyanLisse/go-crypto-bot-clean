@@ -2,8 +2,8 @@ package database
 
 import (
 	"github.com/jmoiron/sqlx"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/database/repositories"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repository"
+	"go-crypto-bot-clean/backend/internal/platform/database/repositories"
+	"go-crypto-bot-clean/backend/internal/domain/repository"
 )
 
 // NewSQLiteBoughtCoinRepository creates a new SQLite implementation of BoughtCoinRepository

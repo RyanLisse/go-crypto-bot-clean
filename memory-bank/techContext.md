@@ -6,8 +6,8 @@
 - Go (Golang) 1.21+
 
 ### Database
-- SQLite3 for data persistence
-- Migrations handled via embedded SQL files
+- GORM (Go Object Relational Mapper) for data persistence
+- Auto-migrations handled via GORM
 
 ### API
 - RESTful API using Gin framework
@@ -34,8 +34,8 @@ The implementation is thoroughly documented with step-by-step guidelines:
 
 ### Database Layer
 - Database layer overview and repository pattern
-- SQLite setup and connection management
-- Migration system and schema management
+- GORM setup and connection management
+- Auto-migration system and schema management
 - Repository implementation examples
 
 ### API Layer
@@ -48,14 +48,20 @@ The implementation is thoroughly documented with step-by-step guidelines:
 - Advanced trading strategies using multi-indicator analysis
 - Position management with lifecycle controls
 - Risk management and capital protection systems
+  - Position sizing based on account balance and risk parameters
+  - Drawdown monitoring with historical balance tracking
+  - Exposure limits for trading positions
+  - Daily loss limits to prevent excessive losses
 
 ## Key Libraries and Dependencies
 
 ### Core
 - github.com/gin-gonic/gin - Web framework
-- github.com/jmoiron/sqlx - Enhanced database access
-- github.com/mattn/go-sqlite3 - SQLite driver
+- gorm.io/gorm - Go Object Relational Mapper
+- gorm.io/driver/sqlite - SQLite driver for GORM
 - github.com/gorilla/websocket - WebSocket implementation
+- github.com/go-telegram-bot-api/telegram-bot-api/v5 - Telegram Bot API client
+- github.com/sirupsen/logrus - Structured logger
 
 ### Testing
 - **testing**: Go standard library testing

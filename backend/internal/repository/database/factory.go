@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"gorm.io/gorm"
 )
 
 // DefaultRepositoryFactory is the default implementation of RepositoryFactory
@@ -18,6 +20,8 @@ func NewDefaultRepositoryFactory() *DefaultRepositoryFactory {
 type RepositoryMode string
 
 const (
+	// ModeGORM uses GORM with SQLite as the primary database
+	ModeGORM RepositoryMode = "gorm"
 	// ModeSQLite uses SQLite as the primary database
 	ModeSQLite RepositoryMode = "sqlite"
 	// ModeTurso uses TursoDB as the primary database
@@ -26,21 +30,28 @@ const (
 	ModeShadow RepositoryMode = "shadow"
 )
 
-// NewRepository creates a new repository based on the provided configuration
-func (f *DefaultRepositoryFactory) NewRepository(config Config) (Repository, error) {
+// NewRepository creates a new repository based on the provided configuration and DB connection
+func (f *DefaultRepositoryFactory) NewRepository(config Config, db *gorm.DB) (Repository, error) {
 	// Determine repository mode
 	mode := f.DetermineRepositoryMode(config)
 
 	// Create repository based on mode
 	switch mode {
+	case ModeGORM:
+		// Use the provided db instance
+		return NewGormRepository(db)
 	case ModeSQLite:
+		// TODO: Refactor NewSQLiteRepository to accept a connection or handle initialization differently
 		return NewSQLiteRepository(config)
 	case ModeTurso:
+		// TODO: Refactor NewTursoRepository to accept a connection or handle initialization differently
 		return NewTursoRepository(config)
 	case ModeShadow:
+		// TODO: Refactor NewShadowRepository to accept connections or handle initialization differently
 		return NewShadowRepository(config)
 	default:
-		return NewSQLiteRepository(config)
+		// Default to GORM, using the provided db instance
+		return NewGormRepository(db)
 	}
 }
 
@@ -56,14 +67,16 @@ func (f *DefaultRepositoryFactory) DetermineRepositoryMode(config Config) Reposi
 		return ModeTurso
 	}
 
-	// Default to SQLite mode
-	return ModeSQLite
+	// Default to GORM mode
+	return ModeGORM
 }
 
-// GetRepositoryFromEnv creates a repository based on environment configuration
-func GetRepositoryFromEnv(config Config) (Repository, error) {
-	factory := NewDefaultRepositoryFactory()
-	return factory.NewRepository(config)
+// GetRepositoryFromEnv might need refactoring as it doesn't have access to the *gorm.DB instance
+// This function's usage needs to be reviewed in the context of where the DB is initialized.
+func GetRepositoryFromEnv(config Config /*, db *gorm.DB - Needs DB instance */) (Repository, error) {
+	// Cannot call NewRepository without the db instance
+	// return factory.NewRepository(config, db)
+	return nil, fmt.Errorf("GetRepositoryFromEnv needs refactoring to receive DB instance")
 }
 
 // WithTransaction executes a function within a transaction

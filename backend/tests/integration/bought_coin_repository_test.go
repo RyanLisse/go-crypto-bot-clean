@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/platform/database"
+
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,10 +27,10 @@ func TestMain(m *testing.M) {
 	testDB = db
 
 	// Run migrations
-	err = database.RunMigrations(testDB)
-	if err != nil {
-		panic(err)
-	}
+	// err = database.RunMigrations(testDB)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// Run tests
 	exitCode := m.Run()
@@ -103,4 +104,19 @@ func TestBoughtCoinRepository(t *testing.T) {
 	coins, err = repo.FindAll(ctx)
 	require.NoError(t, err)
 	assert.Len(t, coins, 0)
+}
+
+func setupTestDB() *sqlx.DB {
+	db, err := sqlx.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err)
+	}
+
+	testDB = db
+
+	// Migrate the database schema
+	// err = database.RunMigrations(db)
+	// assert.NoError(t, err)
+
+	return db
 }

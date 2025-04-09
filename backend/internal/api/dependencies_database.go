@@ -2,9 +2,10 @@ package api
 
 import (
 	"log"
+	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/database/gorm"
-	gormrepo "github.com/ryanlisse/go-crypto-bot/internal/platform/database/gorm/repositories"
+	"go-crypto-bot-clean/backend/internal/platform/database/gorm"
+	gormrepo "go-crypto-bot-clean/backend/internal/platform/database/gorm/repositories"
 	"go.uber.org/zap"
 )
 
@@ -14,31 +15,37 @@ func (d *Dependencies) InitializeDatabaseDependencies() {
 	logger, err := zap.NewProduction()
 	if err != nil {
 		log.Printf("Failed to create logger: %v", err)
+		// Consider returning an error or panicking if logger is essential
 		return
 	}
 
-	// Initialize GORM database
-	db, err := gorm.NewDatabase(gorm.Config{
-		Path:   d.Config.Database.Path,
-		Debug:  d.Config.App.Debug,
-		Logger: logger,
+	// Initialize GORM database using the refactored NewDatabase
+	gormDB, err := gorm.NewDatabase(gorm.Config{
+		Path:            d.Config.Database.Path,
+		Debug:           d.Config.App.Debug,
+		Logger:          logger,
+		MaxIdleConns:    d.Config.Database.MaxIdleConns,
+		MaxOpenConns:    d.Config.Database.MaxOpenConns,
+		ConnMaxLifetime: time.Duration(d.Config.Database.ConnMaxLifetimeSeconds) * time.Second, // Assuming config is in seconds
 	})
 	if err != nil {
-		logger.Error("Failed to initialize database", zap.Error(err))
+		logger.Fatal("Failed to initialize GORM database", zap.Error(err)) // Fatal error if DB fails
 		return
 	}
 
-	// Run migrations
-	if err := db.Migrate(); err != nil {
-		logger.Error("Failed to run database migrations", zap.Error(err))
+	// Run migrations using the standalone function
+	if err := gorm.RunMigrations(gormDB, logger); err != nil {
+		logger.Fatal("Failed to run database migrations", zap.Error(err)) // Fatal error if migrations fail
 		return
 	}
 
-	// Create repositories using GORM
-	boughtCoinRepo := gormrepo.NewGORMBoughtCoinRepository(db.DB, logger)
-	newCoinRepo := gormrepo.NewGORMNewCoinRepository(db.DB, logger)
+	// Create repositories using GORM DB instance directly
+	boughtCoinRepo := gormrepo.NewGORMBoughtCoinRepository(gormDB, logger)
+	newCoinRepo := gormrepo.NewGORMNewCoinRepository(gormDB, logger)
 
 	// Store repositories in dependencies
 	d.BoughtCoinRepository = boughtCoinRepo
 	d.NewCoinRepository = newCoinRepo
+
+	logger.Info("Database dependencies initialized successfully")
 }

@@ -5,10 +5,10 @@ import (
 	"log"
 	"testing"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/config"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/service"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc"
+	"go-crypto-bot-clean/backend/internal/config"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/service"
+	"go-crypto-bot-clean/backend/internal/platform/mexc"
 	"github.com/stretchr/testify/assert"
 )
 

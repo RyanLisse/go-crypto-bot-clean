@@ -1,0 +1,157 @@
+# Overview  
+Go Crypto Bot is a sophisticated cryptocurrency trading bot designed to automate trading strategies on the MEXC exchange. The project involves migrating an existing Python cryptocurrency trading bot to Go, with a focus on applying hexagonal architecture principles for better separation of concerns. The bot provides robust, efficient, and flexible trading capabilities with comprehensive risk management features.
+
+The system addresses the need for automated cryptocurrency trading without constant manual intervention, allowing traders to implement and execute strategies consistently while managing risk effectively. It provides transparency into trading decisions, control over trading parameters, insights into portfolio performance, and extensibility for adding new strategies or exchange integrations.
+
+# Core Features  
+## Exchange Integration
+- Comprehensive MEXC Exchange API integration with REST and WebSocket support
+- Real-time market data streaming with automatic reconnection
+- Thread-safe connection management with exponential backoff
+- Rate limiting with token bucket algorithm
+- Efficient caching for market data with appropriate TTL
+- Support for account information, order management, and market data retrieval
+
+## Authentication & Authorization (Clerk)
+- Secure user authentication and session management using Clerk
+- OAuth2 integration for social login providers
+- Role-based access control for different user types
+- JWT token management and validation
+- Secure password handling and recovery flows
+- User profile management and settings
+
+## Data Persistence (GORM)
+- Efficient database operations using GORM ORM with Turso SQLite
+- Automatic schema migrations and versioning
+- Soft delete support for data retention
+- Complex query optimization
+- Relationship management between entities
+- Transaction management and data consistency
+- Connection pooling and performance optimization
+
+## Trading Strategy Framework
+- Flexible strategy interface for implementing various trading approaches
+- Strategy factory for managing and selecting trading strategies
+- Market regime detection for adaptive strategy selection
+- Signal generation for buy and sell decisions
+- Multiple concrete strategy implementations:
+  - NewCoinStrategy for newly listed assets
+  - VolumeSpikeStrategy for volume-based breakouts
+  - BreakoutStrategy for price range breakouts
+- Technical indicators for market analysis
+- Machine learning integration for pattern recognition
+
+## Risk Management
+- Position sizing based on account balance and risk parameters
+- Drawdown monitoring with historical balance tracking
+- Exposure limits to prevent overexposure to specific coins, sectors, or the market
+- Daily loss limits to prevent excessive losses in a single day
+- Dynamic stop-loss and trailing stops
+- Multi-target take-profit management with partial exit logic
+- Comprehensive risk status reporting
+
+## Portfolio Management
+- Account balance tracking across fiat and crypto assets
+- Position tracking with profit/loss calculation
+- Position risk assessment for individual symbols
+- Portfolio valuation and performance metrics
+- Real-time portfolio updates and notifications
+
+## Backtesting Framework
+- Historical data loading from CSV and database sources
+- Position tracking and P&L calculation
+- Performance metrics calculation (Sharpe ratio, drawdown, etc.)
+- Slippage models for realistic trade simulation
+- Strategy interface for testing different strategies
+- CLI command for running backtests
+- Visualization of backtest results
+
+## Notification System
+- Real-time alerts via Telegram and Slack
+- Templating system for formatting notifications
+- Attachment handling for sending charts and files
+- Asynchronous processing with worker pool
+- Rate limiting to avoid API throttling
+
+## User Interfaces
+- RESTful API with OpenAPI documentation (Huma)
+- Command-line interface (CLI) using Cobra
+- Interactive API documentation UI
+- Modern web dashboard for monitoring and control
+- Real-time data visualization
+- Mobile-responsive design
+
+# User Stories
+## Dashboard
+- As a trader, I want to see an overview of all purchased coins to track my current holdings
+- As a user, I want to see which coins were automatically sold after purchase to verify my strategy
+- As an advanced user, I want to see machine learning insights per coin to discover behavior patterns
+- As a user, I want to view arbitrage activities to analyze returns
+- As a user, I want to see trending coins based on volume spikes to quickly act on opportunities
+
+## Portfolio
+- As a trader, I want to view my current portfolio to know which coins I own and their value
+
+## Trading
+- As a user, I want to manually buy coins based on volume to maintain control over my positions
+
+## New Coins
+- As a user, I want to see which new coins are available for early investment
+- As a user, I want to know if a coin is minted or has liquidity to better assess risks
+
+## Backtesting
+- As a developer, I want to backtest strategies on historical data to validate their effectiveness
+
+## System Status
+- As a user, I want to view the status of all connections and APIs to ensure system functionality
+
+## Bot Configuration
+- As a user, I want to configure my trading bot strategy to control my automation
+- As a user, I want to set multiple take-profit levels to optimize profits
+
+## Settings & Tests
+- As a user, I want to manage my settings for optimal system operation
+- As a developer, I want to run tests to ensure everything works correctly
+
+# Technical Architecture  
+[Previous technical architecture sections remain unchanged...]
+
+# Development Roadmap  
+## Phase 1: Foundation (MVP)
+[Previous Phase 1 sections remain unchanged...]
+
+## Phase 2: Advanced Trading Features
+[Previous Phase 2 sections remain unchanged...]
+
+## Phase 3: Enhanced User Experience
+1. **Authentication & Authorization**:
+   - Implement Clerk integration
+   - Set up social login providers
+   - Configure role-based access
+   - Implement user settings management
+
+2. **Data Layer Enhancement**:
+   - Migrate to GORM for database operations using Turso SQLite
+   - Implement automatic migrations
+   - Optimize query performance
+   - Set up relationship management
+
+3. **Dashboard Development**:
+   - Create modern web interface
+   - Implement real-time data visualization
+   - Add portfolio management views
+   - Create performance reporting
+
+4. **Machine Learning Integration**:
+   - Implement coin behavior analysis
+   - Add pattern recognition
+   - Create predictive models
+   - Set up automated model training
+
+5. **Mobile Optimization**:
+   - Implement responsive design
+   - Optimize for mobile devices
+   - Add mobile-specific features
+   - Test cross-device compatibility
+
+[Rest of the document remains unchanged...] 

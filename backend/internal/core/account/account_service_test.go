@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // Mocks
@@ -78,7 +78,7 @@ func (m *MockTransactionRepository) Create(ctx context.Context, transaction *mod
 	return args.Get(0).(*models.Transaction), args.Error(1)
 }
 
-func (m *MockTransactionRepository) FindByID(ctx context.Context, id int64) (*models.Transaction, error) {
+func (m *MockTransactionRepository) FindByID(ctx context.Context, id string) (*models.Transaction, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -294,7 +294,7 @@ func TestUpdateBalance_Success(t *testing.T) {
 	walletRepo.On("GetWallet", mock.Anything).Return(wallet, nil)
 	mexc.On("FetchBalances", mock.Anything).Return(balance, nil)
 	walletRepo.On("SaveWallet", mock.Anything, mock.Anything).Return(wallet, nil)
-	txRepo.On("Create", mock.Anything, mock.Anything).Return(&models.Transaction{ID: 1}, nil)
+	txRepo.On("Create", mock.Anything, mock.Anything).Return(&models.Transaction{ID: "00000000-0000-0000-0000-000000000001"}, nil)
 
 	// Test updating balance
 	err := svc.UpdateBalance(context.Background(), 500.0, "Test deposit")
@@ -332,7 +332,7 @@ func TestSyncWithExchange_Success(t *testing.T) {
 	mexc.On("GetAccountBalance", mock.Anything).Return(1500.0, nil)
 	mexc.On("FetchBalances", mock.Anything).Return(models.Balance{Fiat: 1500.0}, nil)
 	walletRepo.On("SaveWallet", mock.Anything, mock.Anything).Return(wallet, nil)
-	txRepo.On("Create", mock.Anything, mock.Anything).Return(&models.Transaction{ID: 1}, nil)
+	txRepo.On("Create", mock.Anything, mock.Anything).Return(&models.Transaction{ID: "00000000-0000-0000-0000-000000000001"}, nil)
 
 	// Test syncing with exchange
 	err := svc.SyncWithExchange(context.Background())
@@ -358,10 +358,10 @@ func TestGetBalanceSummary_Success(t *testing.T) {
 	// Setup transactions
 	now := time.Now()
 	transactions := []*models.Transaction{
-		{ID: 1, Amount: 500.0, Balance: 500.0, Reason: "Initial deposit", Timestamp: now.Add(-48 * time.Hour)},
-		{ID: 2, Amount: 300.0, Balance: 800.0, Reason: "Deposit", Timestamp: now.Add(-24 * time.Hour)},
-		{ID: 3, Amount: -100.0, Balance: 700.0, Reason: "Withdrawal", Timestamp: now.Add(-12 * time.Hour)},
-		{ID: 4, Amount: 300.0, Balance: 1000.0, Reason: "Deposit", Timestamp: now.Add(-6 * time.Hour)},
+		{ID: "00000000-0000-0000-0000-000000000001", Amount: 500.0, Balance: 500.0, Reason: "Initial deposit", Timestamp: now.Add(-48 * time.Hour)},
+		{ID: "00000000-0000-0000-0000-000000000002", Amount: 300.0, Balance: 800.0, Reason: "Deposit", Timestamp: now.Add(-24 * time.Hour)},
+		{ID: "00000000-0000-0000-0000-000000000003", Amount: -100.0, Balance: 700.0, Reason: "Withdrawal", Timestamp: now.Add(-12 * time.Hour)},
+		{ID: "00000000-0000-0000-0000-000000000004", Amount: 300.0, Balance: 1000.0, Reason: "Deposit", Timestamp: now.Add(-6 * time.Hour)},
 	}
 
 	// Setup expectations
@@ -394,10 +394,10 @@ func TestAnalyzeTransactions_Success(t *testing.T) {
 	// Setup transactions
 	now := time.Now()
 	transactions := []*models.Transaction{
-		{ID: 1, Amount: 500.0, Balance: 500.0, Reason: "Initial deposit", Timestamp: now.Add(-48 * time.Hour)},
-		{ID: 2, Amount: 300.0, Balance: 800.0, Reason: "Buy BTC", Timestamp: now.Add(-24 * time.Hour)},
-		{ID: 3, Amount: -100.0, Balance: 700.0, Reason: "Sell ETH", Timestamp: now.Add(-12 * time.Hour)},
-		{ID: 4, Amount: 300.0, Balance: 1000.0, Reason: "Deposit", Timestamp: now.Add(-6 * time.Hour)},
+		{ID: "00000000-0000-0000-0000-000000000001", Amount: 500.0, Balance: 500.0, Reason: "Initial deposit", Timestamp: now.Add(-48 * time.Hour)},
+		{ID: "00000000-0000-0000-0000-000000000002", Amount: 300.0, Balance: 800.0, Reason: "Buy BTC", Timestamp: now.Add(-24 * time.Hour)},
+		{ID: "00000000-0000-0000-0000-000000000003", Amount: -100.0, Balance: 700.0, Reason: "Sell ETH", Timestamp: now.Add(-12 * time.Hour)},
+		{ID: "00000000-0000-0000-0000-000000000004", Amount: 300.0, Balance: 1000.0, Reason: "Deposit", Timestamp: now.Add(-6 * time.Hour)},
 	}
 
 	// Setup expectations

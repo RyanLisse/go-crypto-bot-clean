@@ -8,9 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/core/newcoin"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/trade"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/service"
+	"go-crypto-bot-clean/backend/internal/core/newcoin"
+	"go-crypto-bot-clean/backend/internal/core/trade"
+	"go-crypto-bot-clean/backend/internal/domain/service"
 )
 
 // Handler manages WebSocket connections and broadcasts.

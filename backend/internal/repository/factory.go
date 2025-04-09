@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repository"
-	"github.com/ryanlisse/go-crypto-bot/internal/repository/balance"
-	"github.com/ryanlisse/go-crypto-bot/internal/repository/database"
-	"github.com/ryanlisse/go-crypto-bot/internal/repository/report"
+	"go-crypto-bot-clean/backend/internal/domain/repository"
+	"go-crypto-bot-clean/backend/internal/repository/balance"
+	"go-crypto-bot-clean/backend/internal/repository/database"
+	"go-crypto-bot-clean/backend/internal/repository/report"
 	"go.uber.org/zap"
 )
 

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/core/newcoin"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/portfolio"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/trade"
+	"go-crypto-bot-clean/backend/internal/core/newcoin"
+	"go-crypto-bot-clean/backend/internal/core/portfolio"
+	"go-crypto-bot-clean/backend/internal/core/trade"
 )
 
 // Config holds configuration for the trading bot

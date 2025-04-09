@@ -4,10 +4,10 @@ import (
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/interfaces"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/position/management"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/service"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/database/repositories"
+	"go-crypto-bot-clean/backend/internal/domain/interfaces"
+	"go-crypto-bot-clean/backend/internal/domain/position/management"
+	"go-crypto-bot-clean/backend/internal/domain/service"
+	"go-crypto-bot-clean/backend/internal/platform/database/repositories"
 )
 
 // Factory creates position management components

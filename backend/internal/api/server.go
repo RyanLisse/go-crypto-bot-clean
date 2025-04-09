@@ -8,15 +8,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/handlers"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/middleware"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/websocket"
-	"github.com/ryanlisse/go-crypto-bot/internal/config"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/analytics"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/newcoin"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/status"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/trade"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/api/handlers"
+	"go-crypto-bot-clean/backend/internal/api/middleware"
+	"go-crypto-bot-clean/backend/internal/api/websocket"
+	"go-crypto-bot-clean/backend/internal/config"
+	"go-crypto-bot-clean/backend/internal/core/analytics"
+	"go-crypto-bot-clean/backend/internal/core/newcoin"
+	"go-crypto-bot-clean/backend/internal/core/status"
+	"go-crypto-bot-clean/backend/internal/core/trade"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // Helper function to convert time.Time to *time.Time

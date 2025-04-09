@@ -6,9 +6,10 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/backtest"
-	"github.com/ryanlisse/go-crypto-bot/internal/backtest/strategies"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/backtest"
+	"go-crypto-bot-clean/backend/internal/backtest/strategies"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+
 	"go.uber.org/zap"
 )
 
@@ -24,15 +25,15 @@ func main() {
 	strategy := strategies.NewSimpleMAStrategy(10, 50, logger)
 
 	// Create slippage model
-	slippageModel := backtest.NewFixedSlippage(0.1) // 0.1% slippage
+	slippageModel := backtest.NewFixedSlippageModel(0.05) // 0.05% slippage
 
 	// Create backtest config
 	config := &backtest.BacktestConfig{
 		StartTime:          time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
-		EndTime:            time.Date(2023, 1, 31, 0, 0, 0, 0, time.UTC),
+		EndTime:            time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC),
 		InitialCapital:     10000,
 		Symbols:            []string{"BTCUSDT"},
-		Interval:           "1h",
+		Interval:           "1d",
 		CommissionRate:     0.001, // 0.1% commission
 		SlippageModel:      slippageModel,
 		EnableShortSelling: false,
@@ -87,9 +88,9 @@ func createTestDataProvider() *backtest.InMemoryDataProvider {
 
 	// Create test klines for BTCUSDT
 	symbol := "BTCUSDT"
-	interval := "1h"
+	interval := "1d"
 	startTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-	endTime := time.Date(2023, 1, 31, 0, 0, 0, 0, time.UTC)
+	endTime := time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)
 
 	// Create klines with a simple price pattern
 	klines := createTestKlines(symbol, startTime, endTime, interval)

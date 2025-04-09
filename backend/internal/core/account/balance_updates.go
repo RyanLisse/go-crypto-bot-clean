@@ -3,7 +3,7 @@ package account
 import (
 	"context"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // SubscribeToBalanceUpdates registers a callback for balance updates

@@ -3,8 +3,8 @@ package risk
 import (
 	"database/sql"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/risk/controls"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/database"
+	"go-crypto-bot-clean/backend/internal/domain/risk/controls"
+	"go-crypto-bot-clean/backend/internal/platform/database"
 )
 
 // Factory creates and configures a RiskService

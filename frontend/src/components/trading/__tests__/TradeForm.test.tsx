@@ -1,10 +1,13 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import TradeForm from '../TradeForm';
 import * as tradeQueries from '@/hooks/queries/useTradeQueries';
+type TradeRequest = { symbol: string; side: 'buy' | 'sell'; amount: number; price: number };
+
 
 // Mock the toast
 vi.mock('sonner', () => ({
@@ -36,6 +39,9 @@ describe('TradeForm', () => {
       mutate: mockMutate,
       isPending: false,
       isError: false,
+      isIdle: true,
+      isPaused: false,
+      submittedAt: 0,
       error: null,
       isSuccess: false,
       data: undefined,
@@ -58,7 +64,7 @@ describe('TradeForm', () => {
 
     // Check if the form elements are rendered
     expect(screen.getByText(/Market/i)).toBeInTheDocument();
-    expect(screen.getByText(/BTC/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/BTC/i)[0]).toBeInTheDocument();
     expect(screen.getByText(/Buy/i)).toBeInTheDocument();
     expect(screen.getByText(/Sell/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Amount/i)).toBeInTheDocument();
@@ -163,11 +169,14 @@ describe('TradeForm', () => {
     vi.mocked(tradeQueries.useExecuteTradeMutation).mockReturnValue({
       mutate: vi.fn((_, options) => {
         if (options?.onError) {
-          options.onError(new Error('Failed to execute trade'));
+          options.onError(new Error('Failed to execute trade'), { symbol: 'BTC', side: 'buy' as const, amount: 0, price: 0 }, undefined);
         }
       }),
       isPending: false,
       isError: true,
+      isIdle: false,
+      isPaused: false,
+      submittedAt: 0,
       error: new Error('Failed to execute trade'),
       isSuccess: false,
       data: undefined,

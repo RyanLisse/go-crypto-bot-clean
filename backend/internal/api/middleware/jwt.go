@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/dto/response"
+	"go-crypto-bot-clean/backend/internal/api/dto/response"
 )
 
 // JWTClaims represents the claims in the JWT token

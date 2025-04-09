@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/ryanlisse/go-crypto-bot/internal/api/handlers"
+	"go-crypto-bot-clean/backend/internal/api/handlers"
 )
 
 // InitializeConfigDependencies initializes the Config dependencies

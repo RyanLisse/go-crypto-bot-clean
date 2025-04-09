@@ -190,3 +190,13 @@
 - Enhance market regime detection with machine learning capabilities
 - Implement adaptive parameter tuning for strategy optimization
 - Create a strategy configuration UI for easy parameter adjustment
+
+* **Notification System (In Progress - Subtask 8.2)**
+  - Defined `Preference` entity and `NotificationPreferenceRepository` port.
+  - Implemented `InMemoryNotificationPreferenceRepository` for testing (incl. seed method).
+  - Updated `NotificationService` to use preference repo and `userID`.
+  - Created basic Telegram adapter structure and implemented send logic.
+  - Created basic Slack adapter structure.
+  - Updated `NotificationService` tests for new signatures and logic.
+  - Added `logrus` and `go-telegram-bot-api` dependencies.
+  - Identified pre-existing build errors in other modules during testing.

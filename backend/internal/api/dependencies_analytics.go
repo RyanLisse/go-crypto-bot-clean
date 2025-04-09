@@ -6,9 +6,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/api/handlers"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/rest"
+	"go-crypto-bot-clean/backend/internal/api/handlers"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
 	"go.uber.org/zap"
 )
 

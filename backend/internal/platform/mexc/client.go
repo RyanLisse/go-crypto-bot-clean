@@ -7,12 +7,12 @@ import (
 	"log"
 	"sync"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/config"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/service"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/rest"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/websocket"
-	"github.com/ryanlisse/go-crypto-bot/pkg/ratelimiter"
+	"go-crypto-bot-clean/backend/internal/config"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/service"
+	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
+	"go-crypto-bot-clean/backend/internal/platform/mexc/websocket"
+	"go-crypto-bot-clean/backend/pkg/ratelimiter"
 )
 
 // Client implements the service.ExchangeService interface by combining

@@ -9,8 +9,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/interfaces"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/interfaces"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // SQLitePositionRepository implements the interfaces.PositionRepository interface using SQLite

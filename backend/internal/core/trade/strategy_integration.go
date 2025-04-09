@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/strategy"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/strategy"
 )
 
 // EvaluateWithStrategy evaluates a trading decision using the strategy framework

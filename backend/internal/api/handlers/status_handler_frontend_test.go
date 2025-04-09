@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/core/status"
+	"go-crypto-bot-clean/backend/internal/core/status"
 )
 
 // TestStatusHandler_GetStatusForFrontend tests that the status handler returns data in the format expected by the frontend

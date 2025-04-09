@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // TransactionRepository defines the interface for transaction data access
@@ -13,7 +13,7 @@ type TransactionRepository interface {
 	Create(ctx context.Context, transaction *models.Transaction) (*models.Transaction, error)
 	
 	// FindByID retrieves a transaction by its ID
-	FindByID(ctx context.Context, id int64) (*models.Transaction, error)
+	FindByID(ctx context.Context, id string) (*models.Transaction, error)
 	
 	// FindByTimeRange retrieves transactions within a time range
 	FindByTimeRange(ctx context.Context, startTime, endTime time.Time) ([]*models.Transaction, error)

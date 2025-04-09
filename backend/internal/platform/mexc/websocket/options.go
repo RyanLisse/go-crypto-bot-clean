@@ -2,7 +2,7 @@ package websocket
 
 import (
 	"github.com/gorilla/websocket"
-	"github.com/ryanlisse/go-crypto-bot/pkg/ratelimiter"
+	"go-crypto-bot-clean/backend/pkg/ratelimiter"
 )
 
 // ClientOption is a function that configures a Client

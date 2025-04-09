@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/notification"
+	"go-crypto-bot-clean/backend/internal/notification"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )

@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/core/status"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/core/status"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // MockStatusService is a mock implementation of the status service

@@ -34,7 +34,7 @@ type BalanceSummary struct {
 	UpdatedAt        time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 	
 	// Foreign key relationship
-	WalletID         string    `gorm:"index;not null" json:"wallet_id"
+	WalletID         string    `gorm:"index;not null" json:"wallet_id"`
 }
 
 // TransactionAnalysis provides analysis of transaction history
@@ -52,5 +52,5 @@ type TransactionAnalysis struct {
 	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 	
 	// Foreign key relationship
-	WalletID    string    `gorm:"index;not null" json:"wallet_id"
+	WalletID    string    `gorm:"index;not null" json:"wallet_id"`
 }

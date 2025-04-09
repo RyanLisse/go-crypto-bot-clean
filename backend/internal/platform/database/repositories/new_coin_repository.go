@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/repository"
 	"github.com/jmoiron/sqlx"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repository"
 )
 
 // SQLiteNewCoinRepository implements the NewCoinRepository interface using SQLite
@@ -66,13 +66,13 @@ func (r *SQLiteNewCoinRepository) FindBySymbol(ctx context.Context, symbol strin
 func (r *SQLiteNewCoinRepository) Create(ctx context.Context, coin *models.NewCoin) (int64, error) {
 	query := `
 		INSERT INTO new_coins (
-			symbol, found_at, first_open_time, base_volume, quote_volume, status, became_tradable_at, is_processed, is_deleted, is_upcoming
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			symbol, found_at, first_open_time, base_volume, quote_volume, status, became_tradable_at, is_processed, is_upcoming
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	result, err := r.db.ExecContext(
 		ctx, query,
 		coin.Symbol, coin.FoundAt, coin.FirstOpenTime, coin.BaseVolume, coin.QuoteVolume,
-		coin.Status, coin.BecameTradableAt, coin.IsProcessed, coin.IsDeleted, coin.IsUpcoming,
+		coin.Status, coin.BecameTradableAt, coin.IsProcessed, coin.IsUpcoming,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create new coin: %w", err)
@@ -157,14 +157,13 @@ func (r *SQLiteNewCoinRepository) Update(ctx context.Context, coin *models.NewCo
 			status = ?,
 			became_tradable_at = ?,
 			is_processed = ?,
-			is_deleted = ?,
 			is_upcoming = ?
 		WHERE id = ?
 	`
 	_, err := r.db.ExecContext(
 		ctx, query,
 		coin.Symbol, coin.FoundAt, coin.FirstOpenTime, coin.BaseVolume, coin.QuoteVolume,
-		coin.Status, coin.BecameTradableAt, coin.IsProcessed, coin.IsDeleted, coin.IsUpcoming,
+		coin.Status, coin.BecameTradableAt, coin.IsProcessed, coin.IsUpcoming,
 		coin.ID,
 	)
 	if err != nil {

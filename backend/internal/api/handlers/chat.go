@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/ai/service"
+	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 )
 
 // ChatHandler handles chat requests

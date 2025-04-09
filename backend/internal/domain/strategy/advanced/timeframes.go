@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // TimeframeMode represents a combination of timeframes to use

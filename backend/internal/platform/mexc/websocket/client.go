@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/ryanlisse/go-crypto-bot/internal/config"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/pkg/ratelimiter"
+	"go-crypto-bot-clean/backend/internal/config"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/pkg/ratelimiter"
 	"go.uber.org/zap"
 )
 

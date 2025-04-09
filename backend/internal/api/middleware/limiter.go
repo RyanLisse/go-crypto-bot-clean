@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/dto/response"
-	"github.com/ryanlisse/go-crypto-bot/pkg/ratelimiter"
+	"go-crypto-bot-clean/backend/internal/api/dto/response"
+	"go-crypto-bot-clean/backend/pkg/ratelimiter"
 )
 
 // RateLimiterMiddleware limits requests per identifier (IP or API key).

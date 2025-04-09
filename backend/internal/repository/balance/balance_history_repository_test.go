@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repository"
-	"github.com/ryanlisse/go-crypto-bot/internal/repository/database"
+	"go-crypto-bot-clean/backend/internal/domain/repository"
+	"go-crypto-bot-clean/backend/internal/repository/database"
 )
 
 func setupTestDB(t *testing.T) database.Repository {

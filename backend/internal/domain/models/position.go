@@ -3,32 +3,32 @@ package models
 import "time"
 
 type Position struct {
-	ID               string            `json:"id"`
-	Symbol           string            `json:"symbol"`
-	Side             OrderSide         `json:"side"` // BUY or SELL
-	Quantity         float64           `json:"quantity"`
-	Amount           float64           `json:"amount"` // Alias for Quantity for backward compatibility
-	EntryPrice       float64           `json:"entry_price"`
-	CurrentPrice     float64           `json:"current_price"`
-	OpenTime         time.Time         `json:"open_time"`
-	OpenedAt         time.Time         `json:"opened_at"` // Alias for OpenTime for backward compatibility
-	CloseTime        *time.Time        `json:"close_time,omitempty"`
-	StopLoss         float64           `json:"stop_loss"`
-	TakeProfit       float64           `json:"take_profit"`
-	TrailingStop     *float64          `json:"trailing_stop,omitempty"`
-	CreatedAt        time.Time         `json:"created_at"`
-	UpdatedAt        time.Time         `json:"updated_at"`
-	PnL              float64           `json:"pnl"`
-	PnLPercentage    float64           `json:"pnl_percentage"`
-	Status           string            `json:"status"` // open, closed
-	Orders           []Order           `json:"orders"` // Entry and scaling orders
-	EntryReason      string            `json:"entry_reason,omitempty"`
-	ExitReason       string            `json:"exit_reason,omitempty"`
-	Strategy         string            `json:"strategy,omitempty"`
-	RiskRewardRatio  float64           `json:"risk_reward_ratio,omitempty"`
-	ExpectedProfit   float64           `json:"expected_profit,omitempty"`
-	MaxRisk          float64           `json:"max_risk,omitempty"`
-	TakeProfitLevels []TakeProfitLevel `json:"take_profit_levels,omitempty"`
-	Tags             []string          `json:"tags,omitempty"`
-	Notes            string            `json:"notes,omitempty"`
+	ID               string            `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
+	Symbol           string            `gorm:"index;not null;size:20" json:"symbol"`
+	Side             OrderSide         `gorm:"type:varchar(4);not null" json:"side"` // BUY or SELL
+	Quantity         float64           `gorm:"not null" json:"quantity"`
+	Amount           float64           `gorm:"-" json:"amount"` // Alias for Quantity, not stored
+	EntryPrice       float64           `gorm:"not null" json:"entry_price"`
+	CurrentPrice     float64           `gorm:"not null" json:"current_price"`
+	OpenTime         time.Time         `gorm:"index;not null" json:"open_time"`
+	OpenedAt         time.Time         `gorm:"-" json:"opened_at"` // Alias for OpenTime
+	CloseTime        *time.Time        `gorm:"index" json:"close_time,omitempty"`
+	StopLoss         float64           `gorm:"not null" json:"stop_loss"`
+	TakeProfit       float64           `gorm:"not null" json:"take_profit"`
+	TrailingStop     *float64          `gorm:"default:null" json:"trailing_stop,omitempty"`
+	CreatedAt        time.Time         `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt        time.Time         `gorm:"autoUpdateTime" json:"updated_at"`
+	PnL              float64           `gorm:"not null;default:0" json:"pnl"`
+	PnLPercentage    float64           `gorm:"not null;default:0" json:"pnl_percentage"`
+	Status           string            `gorm:"index;type:varchar(10);not null;default:'open'" json:"status"` // open, closed
+	Orders           []Order           `gorm:"foreignKey:PositionID" json:"orders"`                          // Entry and scaling orders
+	EntryReason      string            `gorm:"type:varchar(100)" json:"entry_reason,omitempty"`
+	ExitReason       string            `gorm:"type:varchar(100)" json:"exit_reason,omitempty"`
+	Strategy         string            `gorm:"type:varchar(50)" json:"strategy,omitempty"`
+	RiskRewardRatio  float64           `gorm:"default:0" json:"risk_reward_ratio,omitempty"`
+	ExpectedProfit   float64           `gorm:"default:0" json:"expected_profit,omitempty"`
+	MaxRisk          float64           `gorm:"default:0" json:"max_risk,omitempty"`
+	TakeProfitLevels []TakeProfitLevel `gorm:"foreignKey:PositionID" json:"take_profit_levels,omitempty"`
+	Tags             []string          `gorm:"-" json:"tags,omitempty"`
+	Notes            string            `gorm:"-" json:"notes,omitempty"`
 }

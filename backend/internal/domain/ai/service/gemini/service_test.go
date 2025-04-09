@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/generative-ai-go/genai"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/ai/service"
+	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

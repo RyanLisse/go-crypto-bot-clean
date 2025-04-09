@@ -3,10 +3,9 @@ package repositories
 import (
 	"context"
 	"errors"
-	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repositories"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/repositories"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -25,10 +24,11 @@ func NewGORMBoughtCoinRepository(db *gorm.DB, logger *zap.Logger) repositories.B
 	}
 }
 
-// FindAll returns all bought coins
+// FindAll returns all bought coins (GORM automatically handles non-deleted records)
 func (r *GORMBoughtCoinRepository) FindAll(ctx context.Context) ([]*models.BoughtCoin, error) {
 	var coins []*models.BoughtCoin
-	result := r.db.WithContext(ctx).Where("is_deleted = ?", false).Find(&coins)
+	// GORM automatically adds WHERE deleted_at IS NULL
+	result := r.db.WithContext(ctx).Find(&coins)
 	if result.Error != nil {
 		r.logger.Error("Failed to find all bought coins", zap.Error(result.Error))
 		return nil, result.Error
@@ -42,10 +42,11 @@ func (r *GORMBoughtCoinRepository) FindAll(ctx context.Context) ([]*models.Bough
 	return coins, nil
 }
 
-// FindBySymbol returns a bought coin by symbol
+// FindBySymbol returns a bought coin by symbol (GORM automatically handles non-deleted records)
 func (r *GORMBoughtCoinRepository) FindBySymbol(ctx context.Context, symbol string) (*models.BoughtCoin, error) {
 	var coin models.BoughtCoin
-	result := r.db.WithContext(ctx).Where("symbol = ? AND is_deleted = ?", symbol, false).First(&coin)
+	// GORM automatically adds WHERE deleted_at IS NULL
+	result := r.db.WithContext(ctx).Where("symbol = ?", symbol).First(&coin)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil // Return nil, nil when not found
@@ -75,28 +76,30 @@ func (r *GORMBoughtCoinRepository) Save(ctx context.Context, coin *models.Bought
 	return nil
 }
 
-// Delete marks a bought coin as deleted
+// Delete marks a bought coin as deleted using GORM's soft delete
 func (r *GORMBoughtCoinRepository) Delete(ctx context.Context, symbol string) error {
-	result := r.db.WithContext(ctx).Model(&models.BoughtCoin{}).
-		Where("symbol = ?", symbol).
-		Updates(map[string]interface{}{
-			"is_deleted": true,
-			"updated_at": time.Now(),
-		})
+	// GORM sets the DeletedAt field when db.Delete is called
+	result := r.db.WithContext(ctx).Where("symbol = ?", symbol).Delete(&models.BoughtCoin{})
 	if result.Error != nil {
-		r.logger.Error("Failed to delete bought coin", zap.String("symbol", symbol), zap.Error(result.Error))
+		r.logger.Error("Failed to soft delete bought coin by symbol", zap.String("symbol", symbol), zap.Error(result.Error))
 		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		// Optionally return an error or log if the record to delete wasn't found
+		r.logger.Warn("Soft delete attempted on non-existent bought coin symbol", zap.String("symbol", symbol))
+		// return gorm.ErrRecordNotFound // Or return nil if not finding is ok
 	}
 	return nil
 }
 
-// UpdatePrice updates the current price of a bought coin
+// UpdatePrice updates the current price of a bought coin (GORM automatically handles non-deleted records)
 func (r *GORMBoughtCoinRepository) UpdatePrice(ctx context.Context, symbol string, price float64) error {
+	// GORM automatically adds WHERE deleted_at IS NULL for updates via Model()
 	result := r.db.WithContext(ctx).Model(&models.BoughtCoin{}).
-		Where("symbol = ? AND is_deleted = ?", symbol, false).
+		Where("symbol = ?", symbol).
 		Updates(map[string]interface{}{
 			"current_price": price,
-			"updated_at":    time.Now(),
+			// updated_at is handled automatically by GORM
 		})
 	if result.Error != nil {
 		r.logger.Error("Failed to update bought coin price", zap.String("symbol", symbol), zap.Float64("price", price), zap.Error(result.Error))
@@ -105,27 +108,17 @@ func (r *GORMBoughtCoinRepository) UpdatePrice(ctx context.Context, symbol strin
 	return nil
 }
 
-// FindAllActive returns all active bought coins
+// FindAllActive returns all active bought coins (GORM automatically handles non-deleted records)
 func (r *GORMBoughtCoinRepository) FindAllActive(ctx context.Context) ([]*models.BoughtCoin, error) {
-	var coins []*models.BoughtCoin
-	result := r.db.WithContext(ctx).Where("is_deleted = ?", false).Find(&coins)
-	if result.Error != nil {
-		r.logger.Error("Failed to find all active bought coins", zap.Error(result.Error))
-		return nil, result.Error
-	}
-
-	// Set BuyPrice alias for backward compatibility
-	for _, coin := range coins {
-		coin.BuyPrice = coin.PurchasePrice
-	}
-
-	return coins, nil
+	// This function becomes identical to FindAll with GORM soft delete
+	return r.FindAll(ctx)
 }
 
-// FindByID returns a bought coin by ID
+// FindByID returns a bought coin by ID (GORM automatically handles non-deleted records)
 func (r *GORMBoughtCoinRepository) FindByID(ctx context.Context, id int64) (*models.BoughtCoin, error) {
 	var coin models.BoughtCoin
-	result := r.db.WithContext(ctx).Where("id = ? AND is_deleted = ?", id, false).First(&coin)
+	// GORM automatically adds WHERE deleted_at IS NULL
+	result := r.db.WithContext(ctx).Where("id = ?", id).First(&coin)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil // Return nil, nil when not found
@@ -140,24 +133,25 @@ func (r *GORMBoughtCoinRepository) FindByID(ctx context.Context, id int64) (*mod
 	return &coin, nil
 }
 
-// DeleteByID deletes a bought coin by ID
+// DeleteByID deletes a bought coin by ID using GORM's soft delete
 func (r *GORMBoughtCoinRepository) DeleteByID(ctx context.Context, id int64) error {
-	result := r.db.WithContext(ctx).Model(&models.BoughtCoin{}).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{
-			"is_deleted": true,
-			"updated_at": time.Now(),
-		})
+	// GORM sets the DeletedAt field when db.Delete is called
+	result := r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.BoughtCoin{})
 	if result.Error != nil {
-		r.logger.Error("Failed to delete bought coin by ID", zap.Int64("id", id), zap.Error(result.Error))
+		r.logger.Error("Failed to soft delete bought coin by ID", zap.Int64("id", id), zap.Error(result.Error))
 		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		r.logger.Warn("Soft delete attempted on non-existent bought coin ID", zap.Int64("id", id))
+		// return gorm.ErrRecordNotFound // Or return nil
 	}
 	return nil
 }
 
 // HardDelete permanently deletes a bought coin
 func (r *GORMBoughtCoinRepository) HardDelete(ctx context.Context, symbol string) error {
-	result := r.db.WithContext(ctx).Where("symbol = ?", symbol).Delete(&models.BoughtCoin{})
+	// Use Unscoped() to bypass the soft delete hook for permanent deletion
+	result := r.db.WithContext(ctx).Unscoped().Where("symbol = ?", symbol).Delete(&models.BoughtCoin{})
 	if result.Error != nil {
 		r.logger.Error("Failed to hard delete bought coin", zap.String("symbol", symbol), zap.Error(result.Error))
 		return result.Error
@@ -165,10 +159,11 @@ func (r *GORMBoughtCoinRepository) HardDelete(ctx context.Context, symbol string
 	return nil
 }
 
-// Count returns the count of bought coins
+// Count returns the count of bought coins (GORM automatically handles non-deleted records)
 func (r *GORMBoughtCoinRepository) Count(ctx context.Context) (int64, error) {
 	var count int64
-	result := r.db.WithContext(ctx).Model(&models.BoughtCoin{}).Where("is_deleted = ?", false).Count(&count)
+	// GORM automatically adds WHERE deleted_at IS NULL
+	result := r.db.WithContext(ctx).Model(&models.BoughtCoin{}).Count(&count)
 	if result.Error != nil {
 		r.logger.Error("Failed to count bought coins", zap.Error(result.Error))
 		return 0, result.Error

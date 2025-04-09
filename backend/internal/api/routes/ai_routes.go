@@ -2,8 +2,8 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/handlers"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/ai/service"
+	"go-crypto-bot-clean/backend/internal/api/handlers"
+	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 )
 
 // RegisterAIRoutesWithGin registers AI-related routes with Gin router

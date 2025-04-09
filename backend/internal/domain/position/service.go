@@ -2,7 +2,7 @@
 // Use internal/domain/interfaces/position_interfaces.go instead.
 package position
 
-import "github.com/ryanlisse/go-crypto-bot/internal/domain/interfaces"
+import "go-crypto-bot-clean/backend/internal/domain/interfaces"
 
 // PositionFilter is deprecated.
 // Use interfaces.PositionFilter from internal/domain/interfaces/repository_interfaces.go instead.

@@ -3,9 +3,9 @@ package api
 import (
 	"log"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/api/handlers"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/newcoin"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/rest"
+	"go-crypto-bot-clean/backend/internal/api/handlers"
+	"go-crypto-bot-clean/backend/internal/core/newcoin"
+	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
 	"go.uber.org/zap"
 )
 

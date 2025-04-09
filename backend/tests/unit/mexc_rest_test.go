@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/rest"
+	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
 )
 
 func createTestClient(handler http.HandlerFunc) *rest.Client {

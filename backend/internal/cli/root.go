@@ -17,6 +17,7 @@ func NewRootCmd() *cobra.Command {
 
 	// Add subcommands
 	cmd.AddCommand(NewBacktestCmd())
+	cmd.AddCommand(NewVisualizeCmd())
 	// Add other commands here
 
 	return cmd

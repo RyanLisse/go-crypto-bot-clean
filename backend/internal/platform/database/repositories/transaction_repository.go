@@ -6,10 +6,10 @@ import (
 	"errors"
 	"time"
 
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/repository"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repository"
 )
 
 // SQLiteTransactionRepository implements the TransactionRepository interface for SQLite
@@ -26,31 +26,43 @@ func NewSQLiteTransactionRepository(db *sqlx.DB) repository.TransactionRepositor
 
 // Create creates a new transaction record
 func (r *SQLiteTransactionRepository) Create(ctx context.Context, transaction *models.Transaction) (*models.Transaction, error) {
+	// Generate a new UUID for the transaction
+	transaction.ID = uuid.New().String()
+
 	query := `
-		INSERT INTO transactions (amount, balance, reason, timestamp)
-		VALUES (?, ?, ?, ?)
-		RETURNING id
+		INSERT INTO transactions (
+			id, amount, balance, reason, timestamp,
+			created_at, updated_at, wallet_id, position_id, order_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	
-	var id int64
-	err := r.db.QueryRowContext(ctx, query, 
-		transaction.Amount, 
-		transaction.Balance, 
-		transaction.Reason, 
-		transaction.Timestamp).Scan(&id)
+	now := time.Now()
+	transaction.CreatedAt = now
+	transaction.UpdatedAt = now
+	
+	_, err := r.db.ExecContext(ctx, query,
+		transaction.ID,
+		transaction.Amount,
+		transaction.Balance,
+		transaction.Reason,
+		transaction.Timestamp,
+		transaction.CreatedAt,
+		transaction.UpdatedAt,
+		transaction.WalletID,
+		transaction.PositionID,
+		transaction.OrderID)
 	
 	if err != nil {
 		return nil, err
 	}
-	
-	transaction.ID = id
 	return transaction, nil
 }
 
 // FindByID retrieves a transaction by its ID
-func (r *SQLiteTransactionRepository) FindByID(ctx context.Context, id int64) (*models.Transaction, error) {
+func (r *SQLiteTransactionRepository) FindByID(ctx context.Context, id string) (*models.Transaction, error) {
 	query := `
-		SELECT id, amount, balance, reason, timestamp
+		SELECT id, amount, balance, reason, timestamp,
+			created_at, updated_at, wallet_id, position_id, order_id
 		FROM transactions
 		WHERE id = ?
 	`
@@ -62,7 +74,11 @@ func (r *SQLiteTransactionRepository) FindByID(ctx context.Context, id int64) (*
 		&transaction.Balance,
 		&transaction.Reason,
 		&transaction.Timestamp,
-	)
+		&transaction.CreatedAt,
+		&transaction.UpdatedAt,
+		&transaction.WalletID,
+		&transaction.PositionID,
+		&transaction.OrderID)
 	
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -77,7 +93,8 @@ func (r *SQLiteTransactionRepository) FindByID(ctx context.Context, id int64) (*
 // FindByTimeRange retrieves transactions within a time range
 func (r *SQLiteTransactionRepository) FindByTimeRange(ctx context.Context, startTime, endTime time.Time) ([]*models.Transaction, error) {
 	query := `
-		SELECT id, amount, balance, reason, timestamp
+		SELECT id, amount, balance, reason, timestamp,
+			created_at, updated_at, wallet_id, position_id, order_id
 		FROM transactions
 		WHERE timestamp BETWEEN ? AND ?
 		ORDER BY timestamp DESC
@@ -98,6 +115,11 @@ func (r *SQLiteTransactionRepository) FindByTimeRange(ctx context.Context, start
 			&tx.Balance,
 			&tx.Reason,
 			&tx.Timestamp,
+			&tx.CreatedAt,
+			&tx.UpdatedAt,
+			&tx.WalletID,
+			&tx.PositionID,
+			&tx.OrderID,
 		); err != nil {
 			return nil, err
 		}
@@ -114,7 +136,8 @@ func (r *SQLiteTransactionRepository) FindByTimeRange(ctx context.Context, start
 // FindAll retrieves all transactions
 func (r *SQLiteTransactionRepository) FindAll(ctx context.Context) ([]*models.Transaction, error) {
 	query := `
-		SELECT id, amount, balance, reason, timestamp
+		SELECT id, amount, balance, reason, timestamp,
+			created_at, updated_at, wallet_id, position_id, order_id
 		FROM transactions
 		ORDER BY timestamp DESC
 	`
@@ -134,6 +157,11 @@ func (r *SQLiteTransactionRepository) FindAll(ctx context.Context) ([]*models.Tr
 			&tx.Balance,
 			&tx.Reason,
 			&tx.Timestamp,
+			&tx.CreatedAt,
+			&tx.UpdatedAt,
+			&tx.WalletID,
+			&tx.PositionID,
+			&tx.OrderID,
 		); err != nil {
 			return nil, err
 		}

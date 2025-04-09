@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/risk"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/risk/controls"
+	"go-crypto-bot-clean/backend/internal/domain/risk"
+	"go-crypto-bot-clean/backend/internal/domain/risk/controls"
 	"go.uber.org/zap"
 )
 

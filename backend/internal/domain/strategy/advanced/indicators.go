@@ -4,7 +4,7 @@ import (
 	"errors"
 	"math"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // IndicatorType represents the type of technical indicator

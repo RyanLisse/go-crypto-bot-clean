@@ -5,10 +5,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/interfaces"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/repository"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/risk/controls"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/platform/mexc/rest"
+	"go-crypto-bot-clean/backend/internal/domain/interfaces"
+	"go-crypto-bot-clean/backend/internal/domain/repository"
+	"go-crypto-bot-clean/backend/internal/domain/risk/controls"
+	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
 	"go.uber.org/zap"
 )
 

@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // ParameterRange defines the range for a parameter

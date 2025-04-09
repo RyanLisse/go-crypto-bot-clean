@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/risk/controls"
+	"go-crypto-bot-clean/backend/internal/domain/risk/controls"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

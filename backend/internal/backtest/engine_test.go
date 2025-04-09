@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -75,8 +76,12 @@ type TestStrategy struct {
 }
 
 // Initialize initializes the strategy
-func (s *TestStrategy) Initialize(ctx context.Context, config map[string]interface{}) error {
+func (s *TestStrategy) Initialize(ctx context.Context, config interface{}) error {
 	s.initializeCalled = true
+	// Can add config parsing here if needed for tests, e.g.:
+	// if configMap, ok := config.(map[string]interface{}); ok {
+	//	 // process configMap
+	// }
 	return nil
 }
 
@@ -129,6 +134,12 @@ func (s *TestStrategy) OnOrderFilled(ctx context.Context, order *models.Order) e
 // OnPositionClosed is called when a position is closed
 func (s *TestStrategy) OnPositionClosed(ctx context.Context, position *models.ClosedPosition) error {
 	return nil
+}
+
+// ClosePositions implements the BacktestStrategy interface
+func (s *TestStrategy) ClosePositions(ctx context.Context) ([]*Signal, error) {
+	// Test strategy doesn't need to do anything specific on close
+	return nil, nil
 }
 
 // createTestKlines creates test klines for backtesting

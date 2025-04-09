@@ -24,14 +24,14 @@ type Kline struct {
 
 // Order represents a trading order
 
-// AssetBalance represents the balance of a single asset
-type AssetBalance struct {
-	Asset  string  `json:"asset"`
-	Free   float64 `json:"free"`
-	Locked float64 `json:"locked"`
-	Total  float64 `json:"total"`
-	Price  float64 `json:"price"` // Current price in USDT
-}
+// AssetBalance is now defined in account.go
+// type AssetBalance struct {
+// 	Asset  string  `json:"asset"`
+// 	Free   float64 `json:"free"`
+// 	Locked float64 `json:"locked"`
+// 	Total  float64 `json:"total"`
+// 	Price  float64 `json:"price"` // Current price in USDT
+// }
 
 // Wallet represents the account's wallet with balances for multiple assets
 // Commented out to avoid redeclaration with models.go

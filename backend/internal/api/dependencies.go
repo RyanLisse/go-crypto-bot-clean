@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 
+	"go-crypto-bot-clean/backend/internal/api/handlers"
+	"go-crypto-bot-clean/backend/internal/api/websocket"
+	"go-crypto-bot-clean/backend/internal/config"
+	"go-crypto-bot-clean/backend/internal/core/account"
+	"go-crypto-bot-clean/backend/internal/domain/ai/service"
+	"go-crypto-bot-clean/backend/internal/domain/repositories"
+	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
+
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/handlers"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/websocket"
-	"github.com/ryanlisse/go-crypto-bot/internal/config"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/account"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/ai/service"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/repositories"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/rest"
 	"go.uber.org/zap"
 )
 
@@ -29,6 +30,7 @@ type Dependencies struct {
 	AuthHandler            *handlers.AuthHandler
 	AnalyticsHandler       *handlers.AnalyticsHandler
 	EnhancedAccountHandler *handlers.EnhancedAccountHandler
+	BacktestHandler        *handlers.BacktestHandler
 
 	// AI Service
 	AIService service.AIService
@@ -97,7 +99,7 @@ func NewDependencies(cfg *config.Config) *Dependencies {
 			logger.Error("Failed to create MEXC client, will fall back to mock services", zap.Error(err))
 		} else {
 			// Validate the API keys
-			valid, validateErr := mexcClient.ValidateAPIKeys(context.Background())
+			valid, validateErr := mexcClient.ValidateKeys(context.Background())
 			if validateErr != nil || !valid {
 				logger.Error("MEXC API keys validation failed", zap.Error(validateErr))
 				err = errors.New("invalid MEXC API keys")
@@ -136,12 +138,12 @@ func NewDependencies(cfg *config.Config) *Dependencies {
 
 		// Create real account service - pass nil for the repositories that don't match the interface
 		accountService := account.NewRealAccountService(
-			mexcClient,  // MexcRESTClient
-			nil,         // MexcWebSocketClient - we don't have a compatible implementation
-			nil,         // BoughtCoinRepository - interface mismatch
-			nil,         // WalletRepository
-			nil,         // TransactionRepository
-			mockConfig,  // Config
+			mexcClient, // MexcRESTClient
+			nil,        // MexcWebSocketClient - we don't have a compatible implementation
+			nil,        // BoughtCoinRepository - interface mismatch
+			nil,        // WalletRepository
+			nil,        // TransactionRepository
+			mockConfig, // Config
 		)
 		// Create adapter to make it compatible with the AccountServiceInterface
 		accountAdapter := NewRealAccountServiceAdapter(accountService)
@@ -162,6 +164,9 @@ func NewDependencies(cfg *config.Config) *Dependencies {
 
 	// Initialize WebSocket dependencies
 	deps.InitializeWebSocketDependencies()
+
+	// Initialize Backtest dependencies
+	deps.InitializeBacktestDependencies()
 
 	return deps
 }

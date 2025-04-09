@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/dto/response"
+	"go-crypto-bot-clean/backend/internal/api/dto/response"
 )
 
 // RecoveryMiddleware recovers from panics and returns a standardized error response.

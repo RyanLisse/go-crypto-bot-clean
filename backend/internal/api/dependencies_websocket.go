@@ -3,11 +3,11 @@ package api
 import (
 	"log"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/api/websocket"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/newcoin"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/trade"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/service"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc"
+	"go-crypto-bot-clean/backend/internal/api/websocket"
+	"go-crypto-bot-clean/backend/internal/core/newcoin"
+	"go-crypto-bot-clean/backend/internal/core/trade"
+	"go-crypto-bot-clean/backend/internal/domain/service"
+	"go-crypto-bot-clean/backend/internal/platform/mexc"
 	"go.uber.org/zap"
 )
 

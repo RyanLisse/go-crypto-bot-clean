@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/core/account"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/position"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/core/account"
+	"go-crypto-bot-clean/backend/internal/core/position"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // PositionSizer defines interface for pluggable position sizing models.

@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/handlers"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/trade"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/risk"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/strategy"
-	dbrepositories "github.com/ryanlisse/go-crypto-bot/internal/platform/database/repositories"
-	"github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/rest"
+	"go-crypto-bot-clean/backend/internal/api/handlers"
+	"go-crypto-bot-clean/backend/internal/core/trade"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/risk"
+	"go-crypto-bot-clean/backend/internal/domain/strategy"
+	dbrepositories "go-crypto-bot-clean/backend/internal/platform/database/repositories"
+	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
 	"go.uber.org/zap"
 )
 

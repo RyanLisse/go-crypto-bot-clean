@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/ai/service"
+	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	_ "github.com/mattn/go-sqlite3"

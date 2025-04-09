@@ -2,8 +2,9 @@
 package api
 
 import (
+	"go-crypto-bot-clean/backend/internal/api/middleware"
+
 	"github.com/gin-gonic/gin"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/middleware"
 )
 
 // SetupRouter initializes the Gin engine, middleware chain, and API routes.
@@ -73,6 +74,11 @@ func SetupRouter(deps *Dependencies) *gin.Engine {
 		apiV1.POST("/trade/buy", deps.TradeHandler.ExecuteTrade)
 		apiV1.POST("/trade/sell", deps.TradeHandler.SellCoin)
 		apiV1.GET("/trade/status/:id", deps.TradeHandler.GetTradeStatus)
+
+		// Backtest endpoints
+		apiV1.POST("/backtest/run", deps.BacktestHandler.RunBacktest)
+		apiV1.GET("/backtest/results/:id", deps.BacktestHandler.GetBacktestResults)
+		apiV1.GET("/backtest/results", deps.BacktestHandler.ListBacktestResults)
 
 		// NewCoin endpoints
 		apiV1.GET("/newcoins", deps.NewCoinHandler.GetDetectedCoins)

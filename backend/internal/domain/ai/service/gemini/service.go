@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/generative-ai-go/genai"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/ai/repository"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/ai/service"
+	"go-crypto-bot-clean/backend/internal/domain/ai/repository"
+	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 )
 
 // GeminiAIService implements the AIService interface using Google's Gemini API

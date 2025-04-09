@@ -2,22 +2,28 @@ package backtest
 
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
-// DataProvider defines the interface for retrieving historical market data
-type DataProvider interface {
-	// GetKlines retrieves historical candlestick data for a symbol within a time range
-	GetKlines(ctx context.Context, symbol string, interval string, startTime, endTime time.Time) ([]*models.Kline, error)
-
-	// GetTickers retrieves historical ticker data for a symbol within a time range
-	GetTickers(ctx context.Context, symbol string, startTime, endTime time.Time) ([]*models.Ticker, error)
-
-	// GetOrderBook retrieves historical order book snapshots for a symbol at a specific time
-	GetOrderBook(ctx context.Context, symbol string, timestamp time.Time) (*models.OrderBookUpdate, error)
+// ConcreteDataProvider implements the DataProvider interface
+// This is just an example, replace with your actual implementation
+type ConcreteDataProvider struct {
+	// Add necessary fields, e.g., API client
 }
+
+// GetHistoricalData fetches historical data
+func (dp *ConcreteDataProvider) GetHistoricalData(ctx context.Context, symbol string, interval string, startTime time.Time, endTime time.Time) ([]*models.Kline, error) {
+	// Implementation to fetch data (e.g., from an exchange API)
+	fmt.Printf("Fetching historical data for %s (%s) from %s to %s\n", symbol, interval, startTime, endTime)
+	// Return mock data or implement actual fetching logic
+	return []*models.Kline{ /* ... mock klines ... */ }, nil
+}
+
+// Ensure ConcreteDataProvider implements DataProvider
+var _ DataProvider = (*ConcreteDataProvider)(nil)
 
 // SQLiteDataProvider implements the DataProvider interface using a SQLite database
 type SQLiteDataProvider struct {
@@ -49,35 +55,7 @@ func (p *SQLiteDataProvider) GetOrderBook(ctx context.Context, symbol string, ti
 	return nil, nil
 }
 
-// CSVDataProvider implements the DataProvider interface using CSV files
-type CSVDataProvider struct {
-	dataDir string
-}
-
-// NewCSVDataProvider creates a new CSVDataProvider
-func NewCSVDataProvider(dataDir string) *CSVDataProvider {
-	return &CSVDataProvider{
-		dataDir: dataDir,
-	}
-}
-
-// GetKlines retrieves historical candlestick data from CSV files
-func (p *CSVDataProvider) GetKlines(ctx context.Context, symbol string, interval string, startTime, endTime time.Time) ([]*models.Kline, error) {
-	// TODO: Implement CSV file reading to retrieve klines
-	return nil, nil
-}
-
-// GetTickers retrieves historical ticker data from CSV files
-func (p *CSVDataProvider) GetTickers(ctx context.Context, symbol string, startTime, endTime time.Time) ([]*models.Ticker, error) {
-	// TODO: Implement CSV file reading to retrieve tickers
-	return nil, nil
-}
-
-// GetOrderBook retrieves historical order book snapshots from CSV files
-func (p *CSVDataProvider) GetOrderBook(ctx context.Context, symbol string, timestamp time.Time) (*models.OrderBookUpdate, error) {
-	// TODO: Implement CSV file reading to retrieve order book
-	return nil, nil
-}
+// CSVDataProvider is now implemented in csv_data_provider.go
 
 // InMemoryDataProvider implements the DataProvider interface using in-memory data
 // This is primarily used for testing
@@ -112,26 +90,23 @@ func (p *InMemoryDataProvider) AddOrderBooks(symbol string, orderBooks []*models
 	p.orderBooks[symbol] = orderBooks
 }
 
-// GetKlines retrieves historical candlestick data from the in-memory data store
-func (p *InMemoryDataProvider) GetKlines(ctx context.Context, symbol string, interval string, startTime, endTime time.Time) ([]*models.Kline, error) {
+// GetHistoricalData retrieves historical candlestick data from the in-memory data store
+// (Renamed from GetKlines to match DataProvider interface)
+func (p *InMemoryDataProvider) GetHistoricalData(ctx context.Context, symbol string, interval string, startTime, endTime time.Time) ([]*models.Kline, error) {
 	key := symbol + "_" + interval
 	klines, ok := p.klines[key]
 	if !ok {
-		return nil, nil
+		return nil, nil // Or return an error if data for the key must exist
 	}
 
 	var result []*models.Kline
 	for _, kline := range klines {
-		// Convert time.Time to int64 for comparison
-		startMillis := startTime.UnixMilli()
-		endMillis := endTime.UnixMilli()
-
-		// Get Unix milliseconds from kline times
-		openTimeMillis := kline.OpenTime.UnixMilli()
-		closeTimeMillis := kline.CloseTime.UnixMilli()
-
-		if (openTimeMillis >= startMillis && openTimeMillis <= endMillis) ||
-			(closeTimeMillis >= startMillis && closeTimeMillis <= endMillis) {
+		// Ensure times are valid before comparison
+		if kline.OpenTime.IsZero() || startTime.IsZero() || endTime.IsZero() {
+			continue // Skip klines with zero times or invalid range
+		}
+		// Filter klines within the requested time range [startTime, endTime]
+		if !kline.OpenTime.Before(startTime) && !kline.OpenTime.After(endTime) {
 			result = append(result, kline)
 		}
 	}
@@ -139,52 +114,45 @@ func (p *InMemoryDataProvider) GetKlines(ctx context.Context, symbol string, int
 	return result, nil
 }
 
-// GetTickers retrieves historical ticker data from the in-memory data store
-func (p *InMemoryDataProvider) GetTickers(ctx context.Context, symbol string, startTime, endTime time.Time) ([]*models.Ticker, error) {
-	tickers, ok := p.tickers[symbol]
-	if !ok {
-		return nil, nil
-	}
+// // GetTickers retrieves historical ticker data from the in-memory data store
+// // Commenting out as it's not part of the current DataProvider interface
+// func (p *InMemoryDataProvider) GetTickers(ctx context.Context, symbol string, startTime, endTime time.Time) ([]*models.Ticker, error) {
+// 	tickers, ok := p.tickers[symbol]
+// 	if !ok {
+// 		return nil, nil
+// 	}
 
-	var result []*models.Ticker
-	for _, ticker := range tickers {
-		// Use the ticker's timestamp directly since it's already a time.Time
-		tickerTime := ticker.Timestamp
+// 	var result []*models.Ticker
+// 	for _, ticker := range tickers {
+// 		tickerTime := ticker.Timestamp
+// 		if tickerTime.After(startTime) && tickerTime.Before(endTime) {
+// 			result = append(result, ticker)
+// 		}
+// 	}
 
-		if tickerTime.After(startTime) && tickerTime.Before(endTime) {
-			result = append(result, ticker)
-		}
-	}
+// 	return result, nil
+// }
 
-	return result, nil
-}
+// // GetOrderBook retrieves historical order book snapshots from the in-memory data store
+// // Commenting out as it's not part of the current DataProvider interface
+// func (p *InMemoryDataProvider) GetOrderBook(ctx context.Context, symbol string, timestamp time.Time) (*models.OrderBookUpdate, error) {
+// 	orderBooks, ok := p.orderBooks[symbol]
+// 	if !ok {
+// 		return nil, nil
+// 	}
 
-// GetOrderBook retrieves historical order book snapshots from the in-memory data store
-func (p *InMemoryDataProvider) GetOrderBook(ctx context.Context, symbol string, timestamp time.Time) (*models.OrderBookUpdate, error) {
-	orderBooks, ok := p.orderBooks[symbol]
-	if !ok {
-		return nil, nil
-	}
+// 	var closestOrderBook *models.OrderBookUpdate
+// 	var minDiff int64 = math.MaxInt64
 
-	// Find the closest order book to the requested timestamp
-	var closestOrderBook *models.OrderBookUpdate
-	var minDiff int64 = 9223372036854775807 // Max int64
+// 	for _, orderBook := range orderBooks {
+// 		diff := abs(orderBook.Timestamp.UnixMilli() - timestamp.UnixMilli())
+// 		if diff < minDiff {
+// 			minDiff = diff
+// 			closestOrderBook = orderBook
+// 		}
+// 	}
 
-	for _, orderBook := range orderBooks {
-		diff := abs(orderBook.Timestamp.UnixMilli() - timestamp.UnixMilli())
-		if diff < minDiff {
-			minDiff = diff
-			closestOrderBook = orderBook
-		}
-	}
+// 	return closestOrderBook, nil
+// }
 
-	return closestOrderBook, nil
-}
-
-// abs returns the absolute value of an int64
-func abs(n int64) int64 {
-	if n < 0 {
-		return -n
-	}
-	return n
-}
+// abs function is now in csv_data_provider.go

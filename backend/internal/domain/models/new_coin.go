@@ -2,21 +2,24 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
-// NewCoin represents a newly listed cryptocurrency
+// NewCoin represents a newly listed cryptocurrency on an exchange.
 type NewCoin struct {
-	ID               int64      `gorm:"primaryKey;autoIncrement" db:"id" json:"id"`
-	Symbol           string     `gorm:"uniqueIndex;not null" db:"symbol" json:"symbol"`
-	FoundAt          time.Time  `gorm:"not null" db:"found_at" json:"found_at"`
-	FirstOpenTime    *time.Time `gorm:"" db:"first_open_time" json:"first_open_time,omitempty"`
-	BaseVolume       float64    `gorm:"not null;default:0" db:"base_volume" json:"base_volume"`
-	QuoteVolume      float64    `gorm:"not null;default:0" db:"quote_volume" json:"quote_volume"`
-	Status           string     `gorm:"not null;default:''" db:"status" json:"status"`                // Trading status (e.g., "1" for tradable)
-	BecameTradableAt *time.Time `gorm:"" db:"became_tradable_at" json:"became_tradable_at,omitempty"` // When the coin became tradable
-	IsProcessed      bool       `gorm:"not null;default:false" db:"is_processed" json:"is_processed"`
-	IsDeleted        bool       `gorm:"not null;default:false" db:"is_deleted" json:"is_deleted"`
-	IsUpcoming       bool       `gorm:"not null;default:false" db:"is_upcoming" json:"is_upcoming"`
-	CreatedAt        time.Time  `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt        time.Time  `gorm:"autoUpdateTime" json:"updated_at"`
+	ID               int64          `gorm:"primaryKey;autoIncrement" json:"id"`
+	Symbol           string         `gorm:"uniqueIndex;not null" json:"symbol"`
+	FoundAt          time.Time      `gorm:"index;not null" json:"found_at"` // Indexed
+	FirstOpenTime    *time.Time     `gorm:"" json:"first_open_time,omitempty"`
+	BaseVolume       float64        `gorm:"not null;default:0" json:"base_volume"`
+	QuoteVolume      float64        `gorm:"not null;default:0" json:"quote_volume"`
+	Status           string         `gorm:"index;not null;default:''" json:"status"`   // Trading status (e.g., "1" for tradable)
+	BecameTradableAt *time.Time     `gorm:"index" json:"became_tradable_at,omitempty"` // When the coin became tradable
+	IsProcessed      bool           `gorm:"index;not null;default:false" json:"is_processed"`
+	IsUpcoming       bool           `gorm:"index;not null;default:false" json:"is_upcoming"`
+	CreatedAt        time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt        time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"` // Use GORM's soft delete
+	IsDeleted        bool           `gorm:"index;not null;default:false" json:"is_deleted"`
 }

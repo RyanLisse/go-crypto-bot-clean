@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/ai/service"
+	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 )
 
 // ConversationMemoryRepository defines the interface for storing and retrieving conversation memories

@@ -5,9 +5,9 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	responseDto "github.com/ryanlisse/go-crypto-bot/internal/api/dto/response"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/account"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/service"
+	responseDto "go-crypto-bot-clean/backend/internal/api/dto/response"
+	"go-crypto-bot-clean/backend/internal/core/account"
+	"go-crypto-bot-clean/backend/internal/domain/service"
 	"go.uber.org/zap"
 )
 

@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/service"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/service"
 )
 
 // MarketDataService handles fetching and broadcasting market data

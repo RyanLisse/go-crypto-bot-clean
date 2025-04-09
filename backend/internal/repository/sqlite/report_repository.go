@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 	"go.uber.org/zap"
 )
 

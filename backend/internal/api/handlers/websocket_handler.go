@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	ws "github.com/ryanlisse/go-crypto-bot/internal/api/websocket"
-	"github.com/ryanlisse/go-crypto-bot/internal/core/account"
+	ws "go-crypto-bot-clean/backend/internal/api/websocket"
+	"go-crypto-bot-clean/backend/internal/core/account"
 	"go.uber.org/zap"
 )
 

@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/config" // Import internal/config
-	mexcWebsocket "github.com/ryanlisse/go-crypto-bot/internal/platform/mexc/websocket"
-	"github.com/ryanlisse/go-crypto-bot/pkg/ratelimiter"
+	"go-crypto-bot-clean/backend/internal/config" // Import internal/config
+	mexcWebsocket "go-crypto-bot-clean/backend/internal/platform/mexc/websocket"
+	"go-crypto-bot-clean/backend/pkg/ratelimiter"
 )
 
 // mockConfig creates a minimal config.Config for testing.

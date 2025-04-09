@@ -6,10 +6,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/handlers"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/huma"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/middleware/cors"
-	"github.com/ryanlisse/go-crypto-bot/internal/api/websocket"
+	"go-crypto-bot-clean/backend/internal/api/handlers"
+	"go-crypto-bot-clean/backend/internal/api/huma"
+	"go-crypto-bot-clean/backend/internal/api/middleware/cors"
+	"go-crypto-bot-clean/backend/internal/api/websocket"
 )
 
 // SetupChiRouter initializes the Chi router with Huma for OpenAPI documentation.

@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/backtest"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/backtest"
+	"go-crypto-bot-clean/backend/internal/domain/models"
+
 	"go.uber.org/zap"
 )
 
@@ -28,35 +29,36 @@ func NewSimpleMAStrategy(shortPeriod, longPeriod int, logger *zap.Logger) *Simpl
 	}
 
 	return &SimpleMAStrategy{
-		BaseStrategy: backtest.BaseStrategy{
-			Name: "SimpleMAStrategy",
-		},
-		ShortPeriod: shortPeriod,
-		LongPeriod:  longPeriod,
-		shortMA:     make(map[string][]float64),
-		longMA:      make(map[string][]float64),
-		prices:      make(map[string][]float64),
-		position:    make(map[string]bool),
-		logger:      logger,
+		BaseStrategy: backtest.BaseStrategy{ /* No Name field */ },
+		ShortPeriod:  shortPeriod,
+		LongPeriod:   longPeriod,
+		shortMA:      make(map[string][]float64),
+		longMA:       make(map[string][]float64),
+		prices:       make(map[string][]float64),
+		position:     make(map[string]bool),
+		logger:       logger,
 	}
 }
 
 // Initialize initializes the strategy with backtest-specific parameters
-func (s *SimpleMAStrategy) Initialize(ctx context.Context, config map[string]interface{}) error {
+// It now accepts interface{} to match the BacktestStrategy interface
+func (s *SimpleMAStrategy) Initialize(ctx context.Context, config interface{}) error {
+	// Optionally call base initialize if BaseStrategy requires it
 	err := s.BaseStrategy.Initialize(ctx, config)
 	if err != nil {
 		return err
 	}
 
-	// Override periods if provided in config
-	if config != nil {
-		if shortPeriod, ok := config["short_period"].(int); ok {
-			s.ShortPeriod = shortPeriod
+	// Attempt to cast config to the expected map type
+	if configMap, ok := config.(map[string]interface{}); ok && configMap != nil {
+		// Override periods if provided in config
+		if shortPeriod, ok := configMap["short_period"].(float64); ok {
+			s.ShortPeriod = int(shortPeriod) // Cast float64 from potential JSON parsing
 		}
-		if longPeriod, ok := config["long_period"].(int); ok {
-			s.LongPeriod = longPeriod
+		if longPeriod, ok := configMap["long_period"].(float64); ok {
+			s.LongPeriod = int(longPeriod) // Cast float64 from potential JSON parsing
 		}
-	}
+	} // else: config is nil or not the expected type, use defaults
 
 	s.logger.Info("Initialized SimpleMAStrategy",
 		zap.Int("short_period", s.ShortPeriod),

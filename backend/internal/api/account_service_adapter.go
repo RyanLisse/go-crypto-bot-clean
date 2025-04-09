@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/core/account"
-	"github.com/ryanlisse/go-crypto-bot/internal/domain/models"
+	"go-crypto-bot-clean/backend/internal/core/account"
+	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // RealAccountServiceAdapter adapts the real account service to the AccountServiceInterface

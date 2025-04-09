@@ -14,7 +14,13 @@ The system follows hexagonal architecture principles with clear separation betwe
 
 3. **Adapters**:
    - Primary (Driving) Adapters: REST handlers, gRPC services, CLI commands (in `internal/api` and `internal/cli`)
-   - Secondary (Driven) Adapters: DB repositories, MEXC API client (in `internal/platform`)
+   - Secondary (Driven) Adapters: DB repositories, MEXC API client (in `internal/platform`), Notification channel implementations (e.g., Telegram, Slack) as adapters implementing `ports.Notifier`.
+   - Mock implementations for testing
+
+4. **Dependency Injection**: For wiring components
+   - Constructor injection for services and repositories
+   - Interface-based dependency injection for flexibility and testability
+   - Application bootstrapped in cmd layer
 
 ## Dependency Rule
 Dependencies flow inwards: cmd -> Application Layer (api/cli) -> Domain Layer <- Platform Layer. The Domain Layer depends on nothing outside itself (except potentially shared utilities or standard library types).
@@ -34,6 +40,7 @@ Dependencies flow inwards: cmd -> Application Layer (api/cli) -> Domain Layer <-
 3. **Adapter Pattern**: For external system integration
    - MEXC API client as adapter to exchange, implementing the `service.ExchangeService` interface
    - Repository implementations as adapters to database
+   - Notification channel implementations (e.g., Telegram, Slack) as adapters implementing `ports.Notifier`.
    - Mock implementations for testing
 
 4. **Dependency Injection**: For wiring components
@@ -44,10 +51,10 @@ Dependencies flow inwards: cmd -> Application Layer (api/cli) -> Domain Layer <-
 ## Module Boundaries
 
 - **Domain Module**: Contains all business entities and interface definitions
-- **Service Module**: Implements business logic and orchestration
-- **Platform Module**: Provides infrastructure implementations
-- **API Module**: Exposes functionality via HTTP/gRPC
-- **CLI Module**: Provides command-line interface
+- **Service Module**: Implements business logic and orchestration (`internal/core`)
+- **Platform Module**: Provides infrastructure implementations (`internal/platform`, `internal/infrastructure`)
+- **API Module**: Exposes functionality via HTTP/gRPC (`internal/api`)
+- **CLI Module**: Provides command-line interface (`internal/cli`)
 
 ## Cross-Cutting Concerns
 
@@ -72,6 +79,7 @@ The system follows a strict interface-based design approach for better testabili
    - `repository.NewCoinRepository` for new coin persistence operations
    - `position.PositionRepository` for position data operations
    - `account.BoughtCoinRepository` for tracking purchased coins
+   - `ports.NotificationPreferenceRepository` for notification preference persistence.
    - Clean separation between domain logic and data access
 
 3. **Mock Implementations**: Test doubles implementing service interfaces

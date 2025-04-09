@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/backtest"
-	"github.com/ryanlisse/go-crypto-bot/internal/backtest/strategies"
+	"go-crypto-bot-clean/backend/internal/backtest"
+	"go-crypto-bot-clean/backend/internal/backtest/strategies"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -67,19 +69,27 @@ func NewBacktestCmd() *cobra.Command {
 				return fmt.Errorf("unknown strategy: %s", strategyName)
 			}
 
-			// Create slippage model
-			slippageModel := backtest.NewFixedSlippage(0.1) // 0.1% slippage
+			// Create Slippage Model
+			var slippageModel backtest.SlippageModel
+			if cmd.Flags().Changed("slippage") {
+				slippageValue, _ := cmd.Flags().GetFloat64("slippage")
+				slippageModel = backtest.NewFixedSlippageModel(slippageValue)
+			} else {
+				slippageModel = &backtest.NoSlippage{}
+			}
 
-			// Create backtest config
+			// Create Backtest Configuration
+			commissionValue, _ := cmd.Flags().GetFloat64("commission")
+			enableShorting, _ := cmd.Flags().GetBool("enable-shorting")
 			config := &backtest.BacktestConfig{
 				StartTime:          start,
 				EndTime:            end,
 				InitialCapital:     initialCapital,
 				Symbols:            symbols,
 				Interval:           interval,
-				CommissionRate:     0.001, // 0.1% commission
+				CommissionRate:     commissionValue,
 				SlippageModel:      slippageModel,
-				EnableShortSelling: false,
+				EnableShortSelling: enableShorting,
 				DataProvider:       dataProvider,
 				Strategy:           strategy,
 				Logger:             logger,
@@ -130,6 +140,9 @@ func NewBacktestCmd() *cobra.Command {
 	cmd.Flags().IntVar(&shortPeriod, "short-period", 10, "Short period for MA strategy")
 	cmd.Flags().IntVar(&longPeriod, "long-period", 50, "Long period for MA strategy")
 	cmd.Flags().StringVar(&outputFile, "output", "", "Output file for backtest results")
+	cmd.Flags().Float64("slippage", 0.1, "Slippage percentage")
+	cmd.Flags().Float64("commission", 0.001, "Commission rate")
+	cmd.Flags().Bool("enable-shorting", false, "Enable short selling")
 
 	return cmd
 }
@@ -188,39 +201,33 @@ func saveBacktestResults(result *backtest.BacktestResult, outputFile string) err
 
 	// Write configuration
 	fmt.Fprintf(file, "Configuration:\n")
-	fmt.Fprintf(file, "  Strategy: %s\n", result.Config.Strategy.(*backtest.BaseStrategy).Name)
-	fmt.Fprintf(file, "  Symbols: %v\n", result.Config.Symbols)
-	fmt.Fprintf(file, "  Start Date: %s\n", result.StartTime.Format("2006-01-02"))
-	fmt.Fprintf(file, "  End Date: %s\n", result.EndTime.Format("2006-01-02"))
+	fmt.Fprintf(file, "  Strategy:        %s\n", "Strategy Name Placeholder")
+	fmt.Fprintf(file, "  Symbol(s):       %s\n", strings.Join(result.Config.Symbols, ", "))
+	fmt.Fprintf(file, "  Start Date:      %s\n", result.StartTime.Format("2006-01-02"))
+	fmt.Fprintf(file, "  End Date:        %s\n", result.EndTime.Format("2006-01-02"))
 	fmt.Fprintf(file, "  Initial Capital: $%.2f\n", result.InitialCapital)
-	fmt.Fprintf(file, "  Interval: %s\n", result.Config.Interval)
-	fmt.Fprintf(file, "  Commission Rate: %.2f%%\n", result.Config.CommissionRate*100)
+	fmt.Fprintf(file, "  Final Capital:   $%.2f\n", result.FinalCapital)
+	fmt.Fprintf(file, "  Profit/Loss:     $%.2f (%.2f%%)\n", result.FinalCapital-result.InitialCapital, (result.FinalCapital-result.InitialCapital)/result.InitialCapital*100)
+	fmt.Fprintf(file, "  Interval:        %s\n", result.Config.Interval)
+	fmt.Fprintf(file, "\nPerformance Metrics:\n")
+	fmt.Fprintf(file, "  Total Return:    %.2f%%\n", result.PerformanceMetrics.TotalReturn)
+	fmt.Fprintf(file, "  Annualized Return: %.2f%%\n", result.PerformanceMetrics.AnnualizedReturn)
+	fmt.Fprintf(file, "  Sharpe Ratio:     %.2f\n", result.PerformanceMetrics.SharpeRatio)
+	fmt.Fprintf(file, "  Sortino Ratio:    %.2f\n", result.PerformanceMetrics.SortinoRatio)
+	fmt.Fprintf(file, "  Max Drawdown:     $%.2f (%.2f%%)\n", result.PerformanceMetrics.MaxDrawdown, result.PerformanceMetrics.MaxDrawdownPercent)
+	fmt.Fprintf(file, "  Win Rate:         %.2f%%\n", result.PerformanceMetrics.WinRate)
+	fmt.Fprintf(file, "  Profit Factor:    %.2f\n", result.PerformanceMetrics.ProfitFactor)
+	fmt.Fprintf(file, "  Expected Payoff:  $%.2f\n", result.PerformanceMetrics.ExpectedPayoff)
+	fmt.Fprintf(file, "  Total Trades:     %d\n", result.PerformanceMetrics.TotalTrades)
+	fmt.Fprintf(file, "  Winning Trades:   %d\n", result.PerformanceMetrics.WinningTrades)
+	fmt.Fprintf(file, "  Losing Trades:    %d\n", result.PerformanceMetrics.LosingTrades)
+	fmt.Fprintf(file, "  Break-Even Trades: %d\n", result.PerformanceMetrics.BreakEvenTrades)
+	fmt.Fprintf(file, "  Average Profit Trade: $%.2f\n", result.PerformanceMetrics.AverageProfitTrade)
+	fmt.Fprintf(file, "  Average Loss Trade: $%.2f\n", result.PerformanceMetrics.AverageLossTrade)
+	fmt.Fprintf(file, "  Largest Profit Trade: $%.2f\n", result.PerformanceMetrics.LargestProfitTrade)
+	fmt.Fprintf(file, "  Largest Loss Trade: $%.2f\n", result.PerformanceMetrics.LargestLossTrade)
+	fmt.Fprintf(file, "  Average Holding Time: %s\n", result.PerformanceMetrics.AverageHoldingTime)
 	fmt.Fprintf(file, "\n")
-
-	// Write performance metrics
-	metrics := result.PerformanceMetrics
-	if metrics != nil {
-		fmt.Fprintf(file, "Performance Metrics:\n")
-		fmt.Fprintf(file, "  Final Capital: $%.2f\n", result.FinalCapital)
-		fmt.Fprintf(file, "  Total Return: %.2f%%\n", metrics.TotalReturn)
-		fmt.Fprintf(file, "  Annualized Return: %.2f%%\n", metrics.AnnualizedReturn)
-		fmt.Fprintf(file, "  Sharpe Ratio: %.2f\n", metrics.SharpeRatio)
-		fmt.Fprintf(file, "  Sortino Ratio: %.2f\n", metrics.SortinoRatio)
-		fmt.Fprintf(file, "  Max Drawdown: $%.2f (%.2f%%)\n", metrics.MaxDrawdown, metrics.MaxDrawdownPercent)
-		fmt.Fprintf(file, "  Win Rate: %.2f%%\n", metrics.WinRate)
-		fmt.Fprintf(file, "  Profit Factor: %.2f\n", metrics.ProfitFactor)
-		fmt.Fprintf(file, "  Expected Payoff: $%.2f\n", metrics.ExpectedPayoff)
-		fmt.Fprintf(file, "  Total Trades: %d\n", metrics.TotalTrades)
-		fmt.Fprintf(file, "  Winning Trades: %d\n", metrics.WinningTrades)
-		fmt.Fprintf(file, "  Losing Trades: %d\n", metrics.LosingTrades)
-		fmt.Fprintf(file, "  Break-Even Trades: %d\n", metrics.BreakEvenTrades)
-		fmt.Fprintf(file, "  Average Profit Trade: $%.2f\n", metrics.AverageProfitTrade)
-		fmt.Fprintf(file, "  Average Loss Trade: $%.2f\n", metrics.AverageLossTrade)
-		fmt.Fprintf(file, "  Largest Profit Trade: $%.2f\n", metrics.LargestProfitTrade)
-		fmt.Fprintf(file, "  Largest Loss Trade: $%.2f\n", metrics.LargestLossTrade)
-		fmt.Fprintf(file, "  Average Holding Time: %s\n", metrics.AverageHoldingTime)
-		fmt.Fprintf(file, "\n")
-	}
 
 	// Write trade summary
 	fmt.Fprintf(file, "Trade Summary:\n")

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/ryanlisse/go-crypto-bot/internal/core/status"
+	"go-crypto-bot-clean/backend/internal/core/status"
 )
 
 // MockStatusService is a mock implementation of status.StatusService
