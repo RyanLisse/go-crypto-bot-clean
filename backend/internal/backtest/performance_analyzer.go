@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"go-crypto-bot-clean/backend/internal/backtest/types"
+	"go-crypto-bot-clean/backend/internal/domain/types"
 )
 
 // PerformanceStats contains detailed performance statistics
@@ -53,6 +53,8 @@ type BacktestReport struct {
 
 // TradeStats contains statistics about trades
 type TradeStats struct {
+	WinningTrades       int `json:"winning_trades"`
+	LosingTrades        int `json:"losing_trades"`
 	AverageWin          float64
 	AverageLoss         float64
 	LargestWin          float64
@@ -295,7 +297,7 @@ func (a *DefaultPerformanceAnalyzer) CalculateMetrics(result *BacktestResult) (*
 }
 
 // GenerateReport generates a detailed performance report
-func (a *DefaultPerformanceAnalyzer) GenerateReport(result *BacktestResult, metrics *types.PerformanceMetrics) (*BacktestReport, error) {
+func (a *DefaultPerformanceAnalyzer) GenerateReport(result *BacktestResult, metrics *PerformanceMetrics) (*BacktestReport, error) {
 	// Create the report structure
 	report := &BacktestReport{
 		Metrics:        metrics,
@@ -324,8 +326,10 @@ func (a *DefaultPerformanceAnalyzer) GenerateReport(result *BacktestResult, metr
 }
 
 // calculateTradeStats calculates detailed statistics about trades
-func (a *DefaultPerformanceAnalyzer) calculateTradeStats(result *BacktestResult, metrics *types.PerformanceMetrics) *TradeStats {
+func (a *DefaultPerformanceAnalyzer) calculateTradeStats(result *BacktestResult, metrics *PerformanceMetrics) *TradeStats {
 	stats := &TradeStats{
+		WinningTrades:      metrics.WinningTrades,
+		LosingTrades:       metrics.LosingTrades,
 		AverageWin:         metrics.AverageProfitTrade,
 		AverageLoss:        metrics.AverageLossTrade,
 		LargestWin:         metrics.LargestProfitTrade,
@@ -342,12 +346,12 @@ func (a *DefaultPerformanceAnalyzer) calculateTradeStats(result *BacktestResult,
 }
 
 // GenerateEquityCurve generates an equity curve from backtest results
-func (a *DefaultPerformanceAnalyzer) GenerateEquityCurve(result *BacktestResult) ([]*types.EquityPoint, error) {
+func (a *DefaultPerformanceAnalyzer) GenerateEquityCurve(result *BacktestResult) ([]*EquityPoint, error) {
 	return result.EquityCurve, nil
 }
 
 // GenerateDrawdownCurve generates a drawdown curve from backtest results
-func (a *DefaultPerformanceAnalyzer) GenerateDrawdownCurve(result *BacktestResult) ([]*types.DrawdownPoint, error) {
+func (a *DefaultPerformanceAnalyzer) GenerateDrawdownCurve(result *BacktestResult) ([]*DrawdownPoint, error) {
 	return result.DrawdownCurve, nil
 }
 

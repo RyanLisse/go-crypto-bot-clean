@@ -41,7 +41,24 @@ Object.defineProperty(window, 'localStorage', {
 // Mock performance.now
 vi.spyOn(performance, 'now').mockImplementation(() => 0);
 
+// Mock window.ResizeObserver
+const ResizeObserverMock = vi.fn(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
+
+beforeAll(() => {
+  // Add ResizeObserver to window
+  vi.stubGlobal('ResizeObserver', ResizeObserverMock);
+});
+
 // Clean up after each test
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
+});
+
+afterAll(() => {
+  vi.unstubAllGlobals();
 });

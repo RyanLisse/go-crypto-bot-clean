@@ -66,18 +66,26 @@ The system follows a modern full-stack architecture with clear separation betwee
    - Clean architecture principles
 
 2. **API Layer**:
+   - Primary routing with Chi Router
+   - OpenAPI/Swagger documentation via Huma integration
+   - Service-based API documentation
    - RESTful endpoints
    - WebSocket support
-   - OpenAPI/Swagger documentation
    - Rate limiting and security
 
-3. **Database Layer**:
+3. **Router Integration**:
+   - Chi Router for main HTTP routing and middleware
+   - Huma for OpenAPI documentation and service integration
+   - Conditional Huma setup based on service availability
+   - Adapter pattern for legacy Gin handlers
+
+4. **Database Layer**:
    - TursoDB integration
    - Repository pattern
    - Migration management
    - Data synchronization
 
-4. **External Integrations**:
+5. **External Integrations**:
    - MEXC Exchange API
    - Clerk authentication
    - WebSocket for real-time data
@@ -168,3 +176,59 @@ The system follows a modern full-stack architecture with clear separation betwee
    - Cloud deployment
    - Monitoring and logging
    - Backup and recovery
+
+## System Architecture
+
+### Command Structure
+- Commands follow a consistent pattern using Cobra library
+- Each command is self-contained in its own file under `backend/cmd/cli/commands/`
+- Commands implement validation and proper error handling
+- Common utilities and shared functionality are extracted into separate packages
+
+### Backup System
+- Located in `backend/cmd/cli/commands/backup.go`
+- Follows command pattern with clear separation of concerns:
+  - Command definition and flag handling
+  - Option validation
+  - Backup execution logic
+  - Metadata management
+- Supports both full and incremental backup types
+- Uses standard library for file system operations
+- Implements compression using tar + gzip
+- Maintains backup metadata for tracking and verification
+
+### Core Patterns
+
+#### Error Handling
+- Functions return errors explicitly
+- Errors are wrapped with context using `fmt.Errorf`
+- Logging is used for debugging and audit trails
+
+#### Configuration
+- Command-line flags for runtime configuration
+- Environment variables for sensitive settings
+- Configuration validation at startup
+
+#### Testing
+- Table-driven tests for command functionality
+- Integration tests for file system operations
+- Temporary directories for test isolation
+- Cleanup of test artifacts
+
+#### Security
+- Input validation for all command parameters
+- Safe file system operations
+- Planned: Encryption for sensitive data
+- Planned: Secure storage mechanisms
+
+#### Monitoring
+- Progress reporting during operations
+- Operation metadata collection
+- Error tracking and logging
+- Performance metrics collection (planned)
+
+### Module Boundaries
+- CLI commands are isolated in `commands` package
+- Core functionality is separated into domain-specific packages
+- Utility functions are shared via common packages
+- External integrations are abstracted behind interfaces

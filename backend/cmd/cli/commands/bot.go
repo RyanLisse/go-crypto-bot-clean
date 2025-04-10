@@ -40,7 +40,7 @@ func newBotStartCmd() *cobra.Command {
 		Use:   "start",
 		Short: "Start the trading bot",
 		Long:  `Start the trading bot with the specified configuration.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_cmd *cobra.Command, _args []string) error {
 			// Setup logger
 			logger, _ := zap.NewDevelopment()
 			if !verbose {
@@ -106,7 +106,7 @@ func newBotStopCmd() *cobra.Command {
 		Use:   "stop",
 		Short: "Stop the trading bot",
 		Long:  `Stop the running trading bot.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_cmd *cobra.Command, _args []string) error {
 			// Setup logger
 			logger, _ := zap.NewDevelopment()
 			if !verbose {
@@ -145,7 +145,7 @@ func newBotStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show bot status",
 		Long:  `Display the current status of the trading bot.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_cmd *cobra.Command, _args []string) error {
 			// Setup logger
 			logger, _ := zap.NewDevelopment()
 			if !verbose {
@@ -198,7 +198,7 @@ func newBotStatusCmd() *cobra.Command {
 
 // initBotService initializes the bot service
 // This is a placeholder function that would be implemented with actual service initialization
-func initBotService(ctx context.Context, logger *zap.Logger) (BotService, error) {
+func initBotService(_ctx context.Context, _logger *zap.Logger) (BotService, error) {
 	// This would be replaced with actual service initialization
 	return &mockBotService{}, nil
 }
@@ -239,7 +239,7 @@ type mockBotService struct {
 }
 
 // Start starts the bot
-func (s *mockBotService) Start(ctx context.Context) error {
+func (s *mockBotService) Start(_ctx context.Context) error {
 	// Mock implementation
 	s.running = true
 	s.startTime = time.Now()
@@ -247,7 +247,7 @@ func (s *mockBotService) Start(ctx context.Context) error {
 }
 
 // Stop stops the bot
-func (s *mockBotService) Stop(ctx context.Context) error {
+func (s *mockBotService) Stop(_ctx context.Context) error {
 	// Mock implementation
 	s.running = false
 	return nil

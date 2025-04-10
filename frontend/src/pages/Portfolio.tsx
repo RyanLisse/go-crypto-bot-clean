@@ -1,11 +1,14 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { BarChart3, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BarChart3, Wallet, TrendingUp, TrendingDown, LineChart } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { PortfolioPerformance } from '@/components/portfolio/performance/PortfolioPerformance';
 
 const Portfolio = () => {
+  const [activeTab, setActiveTab] = useState<string>('overview');
   // Mock data for portfolio
   const portfolioData = [
     { date: 'Apr 01', value: 22943 },
@@ -18,10 +21,10 @@ const Portfolio = () => {
   ];
 
   const holdings = [
-    { 
-      coin: 'Bitcoin', 
-      symbol: 'BTC', 
-      amount: '0.42', 
+    {
+      coin: 'Bitcoin',
+      symbol: 'BTC',
+      amount: '0.42',
       price: 58432.21,
       value: 24541.53,
       allocation: 89.5,
@@ -30,10 +33,10 @@ const Portfolio = () => {
       cost: 22134.25,
       pnl: 2407.28
     },
-    { 
-      coin: 'Ethereum', 
-      symbol: 'ETH', 
-      amount: '2.15', 
+    {
+      coin: 'Ethereum',
+      symbol: 'ETH',
+      amount: '2.15',
       price: 2843.67,
       value: 6113.89,
       allocation: 22.3,
@@ -42,10 +45,10 @@ const Portfolio = () => {
       cost: 5780.55,
       pnl: 333.34
     },
-    { 
-      coin: 'Solana', 
-      symbol: 'SOL', 
-      amount: '32.5', 
+    {
+      coin: 'Solana',
+      symbol: 'SOL',
+      amount: '32.5',
       price: 142.86,
       value: 4642.95,
       allocation: 16.9,
@@ -54,10 +57,10 @@ const Portfolio = () => {
       cost: 4225.50,
       pnl: 417.45
     },
-    { 
-      coin: 'Binance Coin', 
-      symbol: 'BNB', 
-      amount: '8.7', 
+    {
+      coin: 'Binance Coin',
+      symbol: 'BNB',
+      amount: '8.7',
       price: 563.21,
       value: 4899.93,
       allocation: 17.9,
@@ -66,10 +69,10 @@ const Portfolio = () => {
       cost: 4912.25,
       pnl: -12.32
     },
-    { 
-      coin: 'Cardano', 
-      symbol: 'ADA', 
-      amount: '2750', 
+    {
+      coin: 'Cardano',
+      symbol: 'ADA',
+      amount: '2750',
       price: 0.89,
       value: 2447.50,
       allocation: 8.9,
@@ -91,7 +94,7 @@ const Portfolio = () => {
   const totalValue = 27432.85;
   const totalPnL = 3008.90;
   const totalPnLPercent = 11.2;
-  
+
   return (
     <div className="flex-1 p-6 bg-brutal-background overflow-auto">
       <div className="mb-6">
@@ -99,7 +102,27 @@ const Portfolio = () => {
         <p className="text-brutal-text/70 text-sm">Last updated: April 7, 2025 at 12:45 PM</p>
       </div>
 
-      <Card className="bg-brutal-panel border-brutal-border mb-6">
+      <Tabs
+        defaultValue="overview"
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="mb-6"
+      >
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="overview" className="text-brutal-text">
+            <Wallet className="mr-2 h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="performance" className="text-brutal-text">
+            <LineChart className="mr-2 h-4 w-4" />
+            Performance Analysis
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {activeTab === 'overview' ? (
+        <>
+          <Card className="bg-brutal-panel border-brutal-border mb-6">
         <CardHeader className="pb-2">
           <CardTitle className="text-brutal-text flex items-center text-lg">
             <Wallet className="mr-2 h-5 w-5 text-brutal-info" />
@@ -124,31 +147,31 @@ const Portfolio = () => {
                   bottom: 0,
                 }}
               >
-                <XAxis 
+                <XAxis
                   dataKey="date"
                   stroke="#f7f7f7"
                   opacity={0.5}
                   tick={{ fill: '#f7f7f7', fontSize: 12 }}
                 />
-                <YAxis 
+                <YAxis
                   stroke="#f7f7f7"
                   opacity={0.5}
                   tick={{ fill: '#f7f7f7', fontSize: 12 }}
                   tickFormatter={(value) => `$${value.toLocaleString()}`}
                 />
-                <Tooltip 
-                  contentStyle={{ 
+                <Tooltip
+                  contentStyle={{
                     backgroundColor: '#1e1e1e',
                     borderColor: '#333333',
                     color: '#f7f7f7',
                     fontFamily: 'JetBrains Mono, monospace'
-                  }} 
+                  }}
                   formatter={(value) => [`$${value.toLocaleString()}`, 'Portfolio Value']}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="#3a86ff" 
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#3a86ff"
                   fill="#3a86ff"
                   fillOpacity={0.2}
                 />
@@ -247,12 +270,12 @@ const Portfolio = () => {
                     </TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${
-                        tx.type === 'BUY' 
-                          ? 'bg-brutal-success/20 text-brutal-success' 
+                        tx.type === 'BUY'
+                          ? 'bg-brutal-success/20 text-brutal-success'
                           : 'bg-brutal-error/20 text-brutal-error'
                       }`}>
-                        {tx.type === 'BUY' 
-                          ? <TrendingUp className="mr-1 h-3 w-3" /> 
+                        {tx.type === 'BUY'
+                          ? <TrendingUp className="mr-1 h-3 w-3" />
                           : <TrendingDown className="mr-1 h-3 w-3" />
                         }
                         {tx.type}
@@ -277,6 +300,10 @@ const Portfolio = () => {
           </div>
         </CardContent>
       </Card>
+        </>
+      ) : (
+        <PortfolioPerformance />
+      )}
     </div>
   );
 };

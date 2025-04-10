@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2025-04-09T16:45:57.527Z",
-    "tasksAnalyzed": 16,
+    "generatedAt": "2025-04-10T08:31:21.586Z",
+    "tasksAnalyzed": 28,
     "thresholdScore": 5,
     "projectName": "Your Project Name",
     "usedResearch": true
@@ -9,131 +9,227 @@
   "complexityAnalysis": [
     {
       "taskId": 1,
-      "taskTitle": "Setup Core Project Structure with Hexagonal Architecture",
-      "complexityScore": 8,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down the task into subtasks such as repository initialization, Go modules setup, directory structure creation, dependency injection configuration, and CI/CD pipeline setup.",
-      "reasoning": "The task involves implementing a complex architectural pattern, which requires careful planning and setup of multiple components like dependency injection, logging, and CI/CD. This makes it moderately high in complexity."
+      "taskTitle": "Project Setup and Basic Structure",
+      "complexityScore": 4,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the steps for initializing a Go project, organizing directory structure, configuring tools, and writing a basic README.",
+      "reasoning": "This task is straightforward but requires attention to detail to ensure all components are correctly set up for a smooth development process."
     },
     {
       "taskId": 2,
-      "taskTitle": "Implement MEXC Exchange API Integration",
-      "complexityScore": 9,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Divide the task into subtasks such as REST client implementation, WebSocket connection setup, rate limiting, caching mechanism, and support for various API endpoints.",
-      "reasoning": "Integrating an external API with both REST and WebSocket support, while ensuring robust error handling, caching, and rate limiting, adds significant complexity."
+      "taskTitle": "Database Schema Design",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Expand on defining table schemas, creating relationships, writing migration scripts, and ensuring normalization and indexing.",
+      "reasoning": "Designing a database schema involves careful planning to ensure scalability, data integrity, and performance, making it moderately complex."
     },
     {
       "taskId": 3,
-      "taskTitle": "Develop Data Persistence Layer with GORM",
+      "taskTitle": "User Authentication System",
       "complexityScore": 8,
       "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down the task into subtasks such as database connection setup, model definition, repository interface creation, schema migrations, and transaction management.",
-      "reasoning": "Setting up a data persistence layer with GORM involves multiple steps, including schema design, migrations, and optimizing queries, which require careful coordination."
+      "expansionPrompt": "Detail the implementation of registration, login/logout, JWT integration, middleware setup, and security measures.",
+      "reasoning": "This task is complex due to the need for secure handling of user data and integration with other system components."
     },
     {
       "taskId": 4,
-      "taskTitle": "Create Trading Strategy Framework",
-      "complexityScore": 9,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Divide the task into subtasks such as defining strategy interfaces, implementing technical indicators, creating signal generation logic, and setting up lifecycle hooks.",
-      "reasoning": "Developing a trading strategy framework is complex due to the need for modularity, integration of technical indicators, and lifecycle management."
+      "taskTitle": "Trading Pair Management",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Outline the steps for creating models, implementing CRUD endpoints, adding validation, and handling errors.",
+      "reasoning": "While CRUD operations are common, ensuring proper validation and error handling adds moderate complexity."
     },
     {
       "taskId": 5,
-      "taskTitle": "Risk Management System",
+      "taskTitle": "Order Management System",
       "complexityScore": 9,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Break down the task into subtasks such as position sizing, drawdown monitoring, exposure limit implementation, and dynamic stop-loss development.",
-      "reasoning": "The task is complex as it involves implementing multiple risk management features that interact with trading strategies and require real-time data handling."
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the implementation of order models, validation, creation, matching logic, and testing.",
+      "reasoning": "Order management is highly complex due to the need for robust logic, real-time processing, and integration with other components."
     },
     {
       "taskId": 6,
-      "taskTitle": "Develop Backtesting Framework",
-      "complexityScore": 8,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Divide the task into subtasks such as historical data loading, backtesting engine development, performance metric calculation, and visualization component creation.",
-      "reasoning": "Building a backtesting framework involves creating an event-driven system, calculating metrics, and ensuring realistic trade simulations, which are moderately complex."
+      "taskTitle": "WebSocket Integration",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Detail the setup of the WebSocket server, connection handling, real-time updates, and error handling.",
+      "reasoning": "Real-time updates via WebSocket require careful handling of connections and error scenarios, adding to the complexity."
     },
     {
       "taskId": 7,
-      "taskTitle": "Implement Concrete Trading Strategies",
-      "complexityScore": 7,
+      "taskTitle": "API Documentation",
+      "complexityScore": 5,
       "recommendedSubtasks": 4,
-      "expansionPrompt": "Break down the task into subtasks such as implementing individual strategies, integrating machine learning, and setting up performance tracking.",
-      "reasoning": "The task is moderately complex as it involves implementing specific strategies and integrating machine learning for pattern recognition."
+      "expansionPrompt": "Expand on documenting endpoints, providing examples, including authentication details, and covering WebSocket APIs.",
+      "reasoning": "While straightforward, comprehensive documentation requires attention to detail and clarity."
     },
     {
       "taskId": 8,
-      "taskTitle": "Develop Notification System",
-      "complexityScore": 7,
+      "taskTitle": "Error Handling and Logging",
+      "complexityScore": 6,
       "recommendedSubtasks": 4,
-      "expansionPrompt": "Divide the task into subtasks such as creating notification service, implementing channel adapters, and setting up asynchronous processing.",
-      "reasoning": "The task requires implementing a flexible system with support for multiple channels and asynchronous processing, making it moderately complex."
+      "expansionPrompt": "Break down the setup of middleware, logging systems, error reporting, and response formatting.",
+      "reasoning": "Implementing robust error handling and logging is moderately complex due to the need for consistency and reliability."
     },
     {
       "taskId": 9,
-      "taskTitle": "Implement Authentication & Authorization with Clerk",
-      "complexityScore": 8,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down the task into subtasks such as Clerk SDK integration, OAuth2 setup, JWT management, and role-based access control implementation.",
-      "reasoning": "The task is complex due to the need for secure authentication, role-based access control, and integration with external services."
+      "taskTitle": "Rate Limiting",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Detail the implementation of middleware, configuration of limits, token bucket algorithm, and headers.",
+      "reasoning": "Rate limiting requires careful design to avoid performance bottlenecks and ensure fairness."
     },
     {
       "taskId": 10,
-      "taskTitle": "Develop User Interfaces (API and Dashboard)",
-      "complexityScore": 9,
-      "recommendedSubtasks": 6,
-      "expansionPrompt": "Divide the task into subtasks such as API implementation, dashboard development, real-time data visualization, and performance reporting.",
-      "reasoning": "The task involves creating both a RESTful API and a modern web dashboard with real-time features, which is highly complex."
+      "taskTitle": "Performance Optimization",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Expand on profiling, optimizing queries, implementing caching, and enhancing WebSocket performance.",
+      "reasoning": "Optimizing performance involves analyzing and improving multiple system aspects, making it a complex task."
     },
     {
       "taskId": 11,
-      "taskTitle": "Dashboard Enhancement",
+      "taskTitle": "Security Enhancements",
       "complexityScore": 8,
       "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down the task into subtasks such as portfolio overview creation, sales history view, and ML insights integration.",
-      "reasoning": "Enhancing the dashboard with new features and visualizations requires significant effort and coordination."
+      "expansionPrompt": "Break down input validation, request sanitization, security headers, and CORS policy implementation.",
+      "reasoning": "This task is complex due to the need for thorough security measures to protect the system."
     },
     {
       "taskId": 12,
-      "taskTitle": "GORM Migration and Enhancement",
-      "complexityScore": 8,
-      "recommendedSubtasks": 5,
-      "expansionPrompt": "Divide the task into subtasks such as GORM configuration, model migration, query optimization, and caching implementation.",
-      "reasoning": "Migrating existing operations to GORM and adding new features involves multiple steps and careful planning."
+      "taskTitle": "Monitoring and Metrics",
+      "complexityScore": 5,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Detail metrics collection, health check endpoints, dashboard setup, and alert configuration.",
+      "reasoning": "Setting up monitoring is straightforward but requires integration with external tools and systems."
     },
     {
       "taskId": 13,
-      "taskTitle": "Implement Error Handling Framework for Authentication Middleware",
+      "taskTitle": "Deployment Configuration",
       "complexityScore": 7,
-      "recommendedSubtasks": 4,
-      "expansionPrompt": "Break down the task into subtasks such as creating structured error responses, implementing error categorization, and adding contextual information.",
-      "reasoning": "The task is moderately complex as it involves enhancing error handling with detailed responses and comprehensive logging."
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Expand on creating Dockerfiles, CI/CD pipelines, environment variables, and deployment scripts.",
+      "reasoning": "Preparing for deployment involves multiple steps and integrations, adding to its complexity."
     },
     {
       "taskId": 14,
-      "taskTitle": "Implement Permission Verification Methods in DisabledService",
-      "complexityScore": 6,
-      "recommendedSubtasks": 3,
-      "expansionPrompt": "Divide the task into subtasks such as implementing RequirePermission, RequireAnyPermission, and RequireAllPermissions methods.",
-      "reasoning": "The task is less complex as it focuses on implementing specific methods within an existing class."
+      "taskTitle": "User Interface Development",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down UI design, frontend implementation, real-time updates, and error handling.",
+      "reasoning": "Developing a user interface is complex due to the need for responsiveness, usability, and real-time interactions."
     },
     {
       "taskId": 15,
-      "taskTitle": "Create Comprehensive Test Suite for Authentication Service",
+      "taskTitle": "Testing Infrastructure",
       "complexityScore": 8,
       "recommendedSubtasks": 5,
-      "expansionPrompt": "Break down the task into subtasks such as unit test creation, integration test development, and test infrastructure setup.",
-      "reasoning": "The task is complex due to the need for comprehensive testing of various components and scenarios."
+      "expansionPrompt": "Detail the setup of testing environments, utilities, CI pipelines, and coverage reporting.",
+      "reasoning": "Building a comprehensive testing infrastructure requires significant effort and integration."
     },
     {
       "taskId": 16,
-      "taskTitle": "Update Frontend Components to Support Clerk User Data with Roles and Permissions",
+      "taskTitle": "Position Management System",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Expand on creating models, tracking positions, updating P&L, and implementing closing logic.",
+      "reasoning": "This task is complex due to the need for accurate calculations and real-time updates."
+    },
+    {
+      "taskId": 17,
+      "taskTitle": "Risk Management System",
+      "complexityScore": 9,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down position sizing, risk limits, stop-loss, take-profit, and exposure tracking.",
+      "reasoning": "Risk management is highly complex due to the need for precise calculations and integration with other systems."
+    },
+    {
+      "taskId": 18,
+      "taskTitle": "Strategy Execution Engine",
+      "complexityScore": 9,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Detail strategy execution, signal processing, order generation, and monitoring.",
+      "reasoning": "Developing a strategy engine is complex due to the need for real-time processing and integration."
+    },
+    {
+      "taskId": 19,
+      "taskTitle": "Strategy Implementation",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Expand on technical indicators, templates, parameters, backtesting, and validation.",
+      "reasoning": "Implementing strategies requires domain knowledge and integration with the execution engine."
+    },
+    {
+      "taskId": 20,
+      "taskTitle": "Performance Analytics",
       "complexityScore": 7,
-      "recommendedSubtasks": 4,
-      "expansionPrompt": "Divide the task into subtasks such as updating user context provider, creating custom hooks, and implementing conditional rendering.",
-      "reasoning": "The task is moderately complex as it involves enhancing frontend components to handle extended user data and permissions."
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down performance tracking, risk metrics, reporting, and dashboard creation.",
+      "reasoning": "This task involves data analysis and visualization, adding to its complexity."
+    },
+    {
+      "taskId": 21,
+      "taskTitle": "Market Data Management",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Detail data collection, storage, processing, validation, and historical data integration.",
+      "reasoning": "Managing market data is complex due to the need for accuracy and real-time processing."
+    },
+    {
+      "taskId": 22,
+      "taskTitle": "Backtesting System",
+      "complexityScore": 9,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Expand on creating the engine, data replay, performance analysis, reporting, and optimization.",
+      "reasoning": "Backtesting is highly complex due to the need for accuracy and integration with historical data."
+    },
+    {
+      "taskId": 23,
+      "taskTitle": "Strategy Optimization",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down parameter optimization, algorithms, metrics, cross-validation, and reporting.",
+      "reasoning": "Optimizing strategies is complex due to the need for advanced algorithms and analysis."
+    },
+    {
+      "taskId": 24,
+      "taskTitle": "Production Deployment",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Detail environment setup, monitoring, failover, disaster recovery, and documentation.",
+      "reasoning": "Deploying to production involves multiple critical steps to ensure reliability and scalability."
+    },
+    {
+      "taskId": 25,
+      "taskTitle": "Backend File System Backup Implementation",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Expand on creating backup scripts, implementing options, compression, secure storage, and documentation.",
+      "reasoning": "This task is moderately complex due to the need for reliability and compatibility with deployment environments."
+    },
+    {
+      "taskId": 26,
+      "taskTitle": "Implement Hexagonal Architecture for Backend Restructuring",
+      "complexityScore": 9,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down restructuring layers, updating dependencies, refactoring services, and documenting architecture.",
+      "reasoning": "Restructuring the backend is highly complex due to the need for architectural changes and integration."
+    },
+    {
+      "taskId": 27,
+      "taskTitle": "Configure Railway Deployment for Production Environment",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Detail account setup, repository connection, environment configuration, scaling, and monitoring.",
+      "reasoning": "Configuring deployment involves multiple steps and integration with the platform."
+    },
+    {
+      "taskId": 28,
+      "taskTitle": "Implement Comprehensive Testing Suite with TDD Approach",
+      "complexityScore": 9,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Expand on setting up frameworks, creating test suites, integrating CI, and documenting patterns.",
+      "reasoning": "Implementing a TDD approach is highly complex due to the need for comprehensive test coverage and integration."
     }
   ]
 }

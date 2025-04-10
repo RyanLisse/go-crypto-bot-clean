@@ -11,6 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// local context key to fix compilation error
+var sessionClaimsContextKey = &struct{}{}
+
 func TestService_Authenticate(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -23,7 +26,7 @@ func TestService_Authenticate(t *testing.T) {
 			setupMock: func() *http.Request {
 				// Create a request with valid session claims
 				r := httptest.NewRequest(http.MethodGet, "/", nil)
-				ctx := clerk.WithSessionClaims(r.Context(), &clerk.SessionClaims{
+				ctx := context.WithValue(r.Context(), sessionClaimsContextKey, &clerk.SessionClaims{
 					Subject: "user_123",
 				})
 				return r.WithContext(ctx)

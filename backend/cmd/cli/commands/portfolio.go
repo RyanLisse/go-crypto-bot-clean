@@ -32,7 +32,7 @@ func newPortfolioStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show portfolio status",
 		Long:  `Display current portfolio status including balance and value.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_cmd *cobra.Command, _args []string) error {
 			// Setup logger
 			logger, _ := zap.NewDevelopment()
 			if !verbose {
@@ -61,7 +61,7 @@ func newPortfolioStatusCmd() *cobra.Command {
 			fmt.Printf("Locked Balance: $%.2f\n", status.LockedBalance)
 			fmt.Printf("Open Positions: %d\n", status.OpenPositions)
 			fmt.Printf("Profit/Loss (24h): $%.2f (%.2f%%)\n", status.ProfitLoss24h, status.ProfitLossPercent24h)
-			
+
 			return nil
 		},
 	}
@@ -197,7 +197,7 @@ func newPortfolioHistoryCmd() *cobra.Command {
 
 // initPortfolioService initializes the portfolio service
 // This is a placeholder function that would be implemented with actual service initialization
-func initPortfolioService(ctx context.Context, logger *zap.Logger) (PortfolioService, error) {
+func initPortfolioService(_ctx context.Context, _logger *zap.Logger) (PortfolioService, error) {
 	// This would be replaced with actual service initialization
 	return &mockPortfolioService{}, nil
 }
@@ -211,24 +211,24 @@ type PortfolioService interface {
 
 // PortfolioStatus represents the current status of the portfolio
 type PortfolioStatus struct {
-	TotalValue          float64
-	AvailableBalance    float64
-	LockedBalance       float64
-	OpenPositions       int
-	ProfitLoss24h       float64
+	TotalValue           float64
+	AvailableBalance     float64
+	LockedBalance        float64
+	OpenPositions        int
+	ProfitLoss24h        float64
 	ProfitLossPercent24h float64
 }
 
 // Position represents a trading position
 type Position struct {
-	Symbol           string
-	EntryPrice       float64
-	CurrentPrice     float64
-	Quantity         float64
-	Value            float64
-	ProfitLoss       float64
+	Symbol            string
+	EntryPrice        float64
+	CurrentPrice      float64
+	Quantity          float64
+	Value             float64
+	ProfitLoss        float64
 	ProfitLossPercent float64
-	OpenTime         time.Time
+	OpenTime          time.Time
 }
 
 // PortfolioHistoryEntry represents a historical portfolio value entry
@@ -246,11 +246,11 @@ type mockPortfolioService struct{}
 func (s *mockPortfolioService) GetPortfolioStatus(ctx context.Context) (PortfolioStatus, error) {
 	// Mock implementation
 	return PortfolioStatus{
-		TotalValue:          10500.75,
-		AvailableBalance:    5000.25,
-		LockedBalance:       5500.50,
-		OpenPositions:       2,
-		ProfitLoss24h:       250.75,
+		TotalValue:           10500.75,
+		AvailableBalance:     5000.25,
+		LockedBalance:        5500.50,
+		OpenPositions:        2,
+		ProfitLoss24h:        250.75,
 		ProfitLossPercent24h: 2.45,
 	}, nil
 }
@@ -261,24 +261,24 @@ func (s *mockPortfolioService) GetPositions(ctx context.Context, includeHistory 
 	now := time.Now()
 	return []Position{
 		{
-			Symbol:           "BTCUSDT",
-			EntryPrice:       30000.00,
-			CurrentPrice:     32000.00,
-			Quantity:         0.1,
-			Value:            3200.00,
-			ProfitLoss:       200.00,
+			Symbol:            "BTCUSDT",
+			EntryPrice:        30000.00,
+			CurrentPrice:      32000.00,
+			Quantity:          0.1,
+			Value:             3200.00,
+			ProfitLoss:        200.00,
 			ProfitLossPercent: 6.67,
-			OpenTime:         now.Add(-48 * time.Hour),
+			OpenTime:          now.Add(-48 * time.Hour),
 		},
 		{
-			Symbol:           "ETHUSDT",
-			EntryPrice:       2000.00,
-			CurrentPrice:     2150.00,
-			Quantity:         1.0,
-			Value:            2150.00,
-			ProfitLoss:       150.00,
+			Symbol:            "ETHUSDT",
+			EntryPrice:        2000.00,
+			CurrentPrice:      2150.00,
+			Quantity:          1.0,
+			Value:             2150.00,
+			ProfitLoss:        150.00,
 			ProfitLossPercent: 7.50,
-			OpenTime:         now.Add(-24 * time.Hour),
+			OpenTime:          now.Add(-24 * time.Hour),
 		},
 	}, nil
 }
@@ -288,23 +288,23 @@ func (s *mockPortfolioService) GetPortfolioHistory(ctx context.Context, days int
 	// Mock implementation
 	now := time.Now()
 	history := make([]PortfolioHistoryEntry, 0, days)
-	
+
 	baseValue := 10000.00
 	for i := days - 1; i >= 0; i-- {
 		date := now.AddDate(0, 0, -i)
 		change := float64(i*50) + 100
 		value := baseValue + change
 		changePercent := (change / baseValue) * 100
-		
+
 		history = append(history, PortfolioHistoryEntry{
 			Date:          date,
 			Value:         value,
 			Change:        change,
 			ChangePercent: changePercent,
 		})
-		
+
 		baseValue = value
 	}
-	
+
 	return history, nil
 }

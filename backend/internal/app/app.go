@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"go-crypto-bot-clean/backend/internal/api"
+	"go-crypto-bot-clean/backend/internal/api/handlers"
 	"go-crypto-bot-clean/backend/internal/api/websocket"
 	"go-crypto-bot-clean/backend/internal/config"
+	"go-crypto-bot-clean/backend/internal/domain/repository"
 	"go-crypto-bot-clean/backend/internal/repository/sqlite"
 	"go-crypto-bot-clean/backend/internal/services/gemini"
 	"go-crypto-bot-clean/backend/internal/services/reporting"
@@ -23,13 +25,16 @@ import (
 
 // BotApp represents the main application
 type BotApp struct {
-	config  *config.Config
-	logger  *zap.Logger
-	db      *sql.DB
-	server  *http.Server
-	wsHub   *websocket.Hub
-	handler http.Handler
-	deps    *api.Dependencies
+	config             *config.Config
+	logger             *zap.Logger
+	db                 *sql.DB
+	server             *http.Server
+	wsHub              *websocket.Hub
+	handler            http.Handler
+	deps               *api.Dependencies
+	tradeAnalyticsRepo repository.TradeAnalyticsRepository
+	balanceHistoryRepo repository.BalanceHistoryRepository
+	reportHandler      *handlers.ReportHandler
 }
 
 // NewBotApp creates a new BotApp

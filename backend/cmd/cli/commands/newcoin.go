@@ -36,7 +36,7 @@ func newNewCoinListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List new coins",
 		Long:  `List new coins detected by the system.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_cmd *cobra.Command, _args []string) error {
 			// Setup logger
 			logger, _ := zap.NewDevelopment()
 			if !verbose {
@@ -96,7 +96,7 @@ func newNewCoinProcessCmd() *cobra.Command {
 		Use:   "process",
 		Short: "Process new coins",
 		Long:  `Process pending new coins according to trading strategy.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_cmd *cobra.Command, _args []string) error {
 			// Setup logger
 			logger, _ := zap.NewDevelopment()
 			if !verbose {
@@ -120,7 +120,7 @@ func newNewCoinProcessCmd() *cobra.Command {
 
 			// Print results
 			fmt.Printf("Processed %d new coins\n", len(results))
-			
+
 			if len(results) > 0 {
 				w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 				fmt.Fprintln(w, "Symbol\tStatus\tReason")
@@ -143,7 +143,7 @@ func newNewCoinProcessCmd() *cobra.Command {
 
 // initNewCoinService initializes the new coin service
 // This is a placeholder function that would be implemented with actual service initialization
-func initNewCoinService(ctx context.Context, logger *zap.Logger) (NewCoinService, error) {
+func initNewCoinService(_ctx context.Context, _logger *zap.Logger) (NewCoinService, error) {
 	// This would be replaced with actual service initialization
 	return &mockNewCoinService{}, nil
 }

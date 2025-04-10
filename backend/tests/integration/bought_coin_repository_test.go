@@ -108,6 +108,7 @@ func TestBoughtCoinRepository(t *testing.T) {
 	assert.Len(t, coins, 0)
 }
 
+/*
 func setupTestDB() *sqlx.DB {
 	db, err := sqlx.Open("sqlite3", ":memory:")
 	if err != nil {
@@ -122,3 +123,4 @@ func setupTestDB() *sqlx.DB {
 
 	return db
 }
+*/

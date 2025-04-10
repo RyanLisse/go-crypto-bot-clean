@@ -17,6 +17,7 @@ var (
 	ErrMissingClaims     = errors.New("missing required claims")
 	ErrInvalidSigningKey = errors.New("invalid signing key")
 	ErrInvalidSignature  = errors.New("invalid token signature")
+	ErrInvalidTokenType  = errors.New("invalid token type")
 )
 
 // TokenType represents the type of token
@@ -132,12 +133,25 @@ func (s *Service) ValidateAccessToken(tokenString string) (*CustomClaims, error)
 }
 
 // ValidateRefreshToken validates a refresh token and returns the claims
-func (s *Service) ValidateRefreshToken(tokenString string) (string, error) {
-	claims, err := s.validateToken(tokenString, s.refreshSecret, RefreshToken)
-	if err != nil {
-		return "", err
+func (s *Service) ValidateRefreshToken(token string) (*CustomClaims, error) {
+	if token == "" {
+		return nil, ErrInvalidToken
 	}
-	return claims.UserID, nil
+
+	claims := &CustomClaims{}
+	_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(s.refreshSecret), nil
+	})
+
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
+
+	if claims.Type != "refresh" {
+		return nil, ErrInvalidTokenType
+	}
+
+	return claims, nil
 }
 
 // GetAccessTTL returns the access token TTL

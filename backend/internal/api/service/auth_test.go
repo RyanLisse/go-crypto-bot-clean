@@ -38,6 +38,13 @@ func (m *mockUserRepository) GetByID(ctx context.Context, id string) (*models.Us
 	return args.Get(0).(*models.User), args.Error(1)
 }
 
+func (m *mockUserRepository) GetRefreshToken(ctx context.Context, token string) (*models.RefreshToken, error) {
+	args := m.Called(ctx, token)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.RefreshToken), args.Error(1)
+}
 func (m *mockUserRepository) GetByUsername(ctx context.Context, username string) (*models.User, error) {
 	args := m.Called(ctx, username)
 	if args.Get(0) == nil {
@@ -82,6 +89,11 @@ func (m *mockUserRepository) RevokeAllRefreshTokens(ctx context.Context, userID 
 }
 
 func (m *mockUserRepository) UpdateLastLogin(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
+func (m *mockUserRepository) Delete(ctx context.Context, userID string) error {
 	args := m.Called(ctx, userID)
 	return args.Error(0)
 }
@@ -396,9 +408,10 @@ func TestAuthService_VerifyToken(t *testing.T) {
 			ctx := context.Background()
 
 			if tt.token != "" && tt.mockError == nil {
-				claims := &jwt.Claims{
+				claims := &jwt.CustomClaims{
 					UserID: "user123",
 					Email:  "test@example.com",
+					Type:   "access",
 				}
 				mockUserRepo.On("GetByID", ctx, claims.UserID).Return(tt.mockUser, nil)
 				mockUserRepo.On("GetRoles", ctx, tt.mockUser.ID).Return(tt.mockRoles, nil)

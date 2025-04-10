@@ -225,7 +225,7 @@ func newTradeOrdersCmd() *cobra.Command {
 
 // initTradeService initializes the trade service
 // This is a placeholder function that would be implemented with actual service initialization
-func initTradeService(ctx context.Context, logger *zap.Logger) (TradeService, error) {
+func initTradeService(_ctx context.Context, _logger *zap.Logger) (TradeService, error) {
 	// This would be replaced with actual service initialization
 	return &mockTradeService{}, nil
 }

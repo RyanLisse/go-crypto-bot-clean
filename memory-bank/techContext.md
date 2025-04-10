@@ -21,10 +21,12 @@
 - **Database**:
   - TursoDB (primary)
   - SQLite (fallback/development)
-- **API Framework**: Chi Router
+- **API Framework**: 
+  - Chi Router (primary routing)
+  - Huma (OpenAPI documentation and service integration)
 - **Authentication**: Clerk SDK
 - **WebSocket**: Gorilla WebSocket
-- **Documentation**: OpenAPI/Swagger
+- **Documentation**: OpenAPI/Swagger (via Huma)
 
 ### Database
 - **Primary**: TursoDB (distributed SQLite)
@@ -106,7 +108,8 @@
 - tailwindcss - Utility CSS
 
 ### Backend Core
-- github.com/go-chi/chi/v5 - HTTP router
+- github.com/go-chi/chi/v5 - Primary HTTP router
+- github.com/danielgtaylor/huma/v2 - OpenAPI documentation and service integration
 - github.com/clerk/clerk-sdk-go - Authentication
 - github.com/gorilla/websocket - WebSocket
 - github.com/mattn/go-sqlite3 - SQLite driver
@@ -136,3 +139,82 @@
 - Local development with SQLite
 - Automated backups
 - Monitoring and maintenance
+
+## Core Technologies
+- Go 1.22+ (Primary language)
+- Cobra (CLI framework)
+- Standard library packages:
+  - `archive/tar` for archive creation
+  - `compress/gzip` for compression
+  - `path/filepath` for path manipulation
+  - `os` for file system operations
+  - `crypto/sha256` for checksums
+  - `encoding/json` for metadata serialization
+  - `time` for timestamps and retention
+  - `testing` for test framework
+
+## Development Tools
+- Go modules for dependency management
+- `golangci-lint` for code quality
+- `go test` for testing
+- Git for version control
+
+## Project Structure
+```
+backend/
+  ├── cmd/
+  │   └── cli/
+  │       └── commands/
+  │           ├── backup.go       # Backup command implementation
+  │           └── backup_test.go  # Backup command tests
+  └── pkg/
+      └── backup/
+          ├── service.go          # Backup service implementation
+          └── types.go           # Shared types and interfaces
+```
+
+## Dependencies
+- Direct dependencies:
+  - `github.com/spf13/cobra` - CLI framework
+  - `github.com/spf13/viper` - Configuration management
+  - Standard library packages only for core functionality
+
+## Technical Constraints
+- Cross-platform compatibility required
+- Minimal external dependencies
+- Standard Go idioms and patterns
+- Error handling through explicit returns
+- Comprehensive test coverage
+
+## Security Requirements
+- Input validation for all user inputs
+- Safe file system operations
+- Future: Encryption for sensitive data
+- Future: Secure credential storage
+
+## Performance Considerations
+- Efficient file system traversal
+- Compression optimization
+- Memory usage optimization for large files
+- Concurrent operations where appropriate
+
+## Testing Strategy
+- Unit tests for all packages
+- Integration tests for file system operations
+- Table-driven test patterns
+- Test coverage requirements
+- Temporary test directories
+- Cleanup of test artifacts
+
+## Monitoring and Logging
+- Structured logging
+- Operation progress tracking
+- Error tracking and reporting
+- Future: Metrics collection
+
+## Future Technical Considerations
+- Encryption implementation
+- Remote storage integration
+- Automated scheduling
+- Performance monitoring
+- Cloud service integration
