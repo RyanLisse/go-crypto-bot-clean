@@ -83,11 +83,11 @@ func (m *MemoryStorage) StoreTicker(ctx context.Context, symbol string, ticker *
 }
 
 // GetCandles implements MarketDataStorage.GetCandles
-func (m *MemoryStorage) GetCandles(ctx context.Context, symbol string, start, end time.Time) ([]*models.Candle, error) {
+func (m *MemoryStorage) GetCandles(ctx context.Context, filter MarketDataFilter) ([]*models.Candle, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	candles := m.candles[symbol]
+	candles := m.candles[filter.Symbol]
 	if len(candles) == 0 {
 		return nil, nil
 	}
@@ -95,10 +95,15 @@ func (m *MemoryStorage) GetCandles(ctx context.Context, symbol string, start, en
 	// Filter candles by time range
 	var filtered []*models.Candle
 	for _, c := range candles {
-		if (c.OpenTime.Equal(start) || c.OpenTime.After(start)) &&
-			(c.OpenTime.Equal(end) || c.OpenTime.Before(end)) {
+		if (filter.StartTime.IsZero() || c.OpenTime.Equal(filter.StartTime) || c.OpenTime.After(filter.StartTime)) &&
+			(filter.EndTime.IsZero() || c.OpenTime.Equal(filter.EndTime) || c.OpenTime.Before(filter.EndTime)) {
 			filtered = append(filtered, c)
 		}
+	}
+
+	// Apply limit if specified
+	if filter.Limit > 0 && len(filtered) > filter.Limit {
+		filtered = filtered[len(filtered)-filter.Limit:]
 	}
 
 	return filtered, nil
@@ -172,7 +177,12 @@ func (m *MemoryStorage) GetVWAP(ctx context.Context, symbol string, startTime, e
 
 // GetOHLCV implements MarketDataStorage.GetOHLCV
 func (m *MemoryStorage) GetOHLCV(ctx context.Context, symbol string, interval string, startTime, endTime time.Time) ([]*models.Candle, error) {
-	candles, err := m.GetCandles(ctx, symbol, startTime, endTime)
+	candles, err := m.GetCandles(ctx, MarketDataFilter{
+		Symbol:    symbol,
+		StartTime: startTime,
+		EndTime:   endTime,
+		Interval:  interval,
+	})
 	if err != nil {
 		return nil, err
 	}
