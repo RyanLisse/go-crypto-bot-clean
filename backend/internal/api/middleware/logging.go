@@ -21,8 +21,8 @@ func LoggingMiddleware(logger Logger) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
-			// Wrap the ResponseWriter to capture status code
-			rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+			// Wrap the ResponseWriter to capture status code and body
+			rw := newResponseWriter(w)
 
 			next.ServeHTTP(rw, r)
 
@@ -40,9 +40,15 @@ func LoggingMiddleware(logger Logger) func(http.Handler) http.Handler {
 				"request_id", requestID,
 			}
 
-			logger.Info(logFields...)
+			// Log errors with status >= 400
+			if status >= 400 {
+				logFields = append(logFields, "errors", rw.body)
+				logger.Error(logFields...)
+			} else {
+				logger.Info(logFields...)
+			}
 		})
 	}
 }
 
-// responseWriter wraps http.ResponseWriter to capture status code
+// responseWriter is defined in audit.go

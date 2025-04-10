@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// mockLogger is defined in middleware_test_helpers.go
+
 func TestLoggingMiddleware(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -75,17 +77,20 @@ func TestLoggingMiddleware(t *testing.T) {
 			// Verify logger was called correctly
 			if tt.addGinError {
 				assert.True(t, logger.errorCalled, "Error logger should have been called")
-				assert.Contains(t, logger.errorArgs, "errors")
-				errorFound := false
-				for _, arg := range logger.errorArgs {
-					if s, ok := arg.(string); ok && s != "errors" {
-						if assert.Contains(t, s, "test error") {
-							errorFound = true
-							break
+
+				// Check if errors key exists
+				errorsKeyFound := false
+				for i := 0; i < len(logger.errorArgs); i += 2 {
+					if i+1 < len(logger.errorArgs) && logger.errorArgs[i] == "errors" {
+						errorsKeyFound = true
+						// Check if the value contains "test error"
+						if errorValue, ok := logger.errorArgs[i+1].(string); ok {
+							assert.Contains(t, errorValue, "test error")
 						}
+						break
 					}
 				}
-				assert.True(t, errorFound, "Error message should contain 'test error'")
+				assert.True(t, errorsKeyFound, "Errors key should be present in log fields")
 			} else {
 				assert.True(t, logger.infoCalled, "Info logger should have been called")
 			}

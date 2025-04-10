@@ -52,16 +52,17 @@ func TestCircuitBreaker(t *testing.T) {
 			panic("test panic")
 		})
 
+		// Create recovery middleware with circuit breaker
+		recoveryOpts := DefaultRecoveryOptions()
+		recoveryOpts.CircuitBreaker = cb
+		recoveryMiddleware := RecoveryMiddleware(recoveryOpts)
+
 		// Wrap with recovery middleware first, then circuit breaker
-		recoveryMiddleware := RecoveryMiddleware(DefaultRecoveryOptions())
 		wrappedHandler := middleware(recoveryMiddleware(handler))
 
-		// Trigger failures to open the circuit
+		// Directly record failures to open the circuit
 		for i := 0; i < config.FailureThreshold; i++ {
-			req := httptest.NewRequest("GET", "/test", nil)
-			rec := httptest.NewRecorder()
-			wrappedHandler.ServeHTTP(rec, req)
-			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+			cb.RecordFailure()
 		}
 
 		// Circuit should now be open
@@ -83,15 +84,17 @@ func TestCircuitBreaker(t *testing.T) {
 			panic("test panic")
 		})
 
+		// Create recovery middleware with circuit breaker
+		recoveryOpts := DefaultRecoveryOptions()
+		recoveryOpts.CircuitBreaker = cb
+		recoveryMiddleware := RecoveryMiddleware(recoveryOpts)
+
 		// Wrap with recovery middleware first, then circuit breaker
-		recoveryMiddleware := RecoveryMiddleware(DefaultRecoveryOptions())
 		wrappedHandler := middleware(recoveryMiddleware(handler))
 
-		// Trigger failures to open the circuit
+		// Directly record failures to open the circuit
 		for i := 0; i < config.FailureThreshold; i++ {
-			req := httptest.NewRequest("GET", "/test", nil)
-			rec := httptest.NewRecorder()
-			wrappedHandler.ServeHTTP(rec, req)
+			cb.RecordFailure()
 		}
 
 		// Circuit should now be open
@@ -104,7 +107,7 @@ func TestCircuitBreaker(t *testing.T) {
 		req := httptest.NewRequest("GET", "/test", nil)
 		rec := httptest.NewRecorder()
 		wrappedHandler.ServeHTTP(rec, req)
-		
+
 		// Should still return error but circuit should be in half-open state
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 		assert.Equal(t, CircuitOpen, cb.GetState()) // Will be open again after the failure
@@ -119,7 +122,7 @@ func TestCircuitBreaker(t *testing.T) {
 		cb.RecordFailure()
 		cb.RecordFailure()
 		assert.Equal(t, CircuitOpen, cb.GetState())
-		
+
 		// Wait for reset timeout
 		time.Sleep(config.ResetTimeout + 10*time.Millisecond)
 

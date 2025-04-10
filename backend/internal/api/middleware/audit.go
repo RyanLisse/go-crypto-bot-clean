@@ -92,21 +92,28 @@ func AuditMiddleware(auditSvc audit.Service, logger *zap.Logger) func(http.Handl
 	}
 }
 
-// responseWriter is a wrapper for http.ResponseWriter that captures the status code
+// responseWriter is a wrapper for http.ResponseWriter that captures the status code and body
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode int
+	body       string
 }
 
 // newResponseWriter creates a new responseWriter
 func newResponseWriter(w http.ResponseWriter) *responseWriter {
-	return &responseWriter{w, http.StatusOK}
+	return &responseWriter{ResponseWriter: w, statusCode: http.StatusOK, body: ""}
 }
 
 // WriteHeader captures the status code
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+// Write captures the response body
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	rw.body = string(b)
+	return rw.ResponseWriter.Write(b)
 }
 
 // determineEventType determines the event type based on the path

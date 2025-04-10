@@ -535,7 +535,7 @@ func createTokenWithCustomSigningMethod(t *testing.T, method jwt.SigningMethod, 
 	return tokenString
 }
 
-func createExpiredToken(t *testing.T, service *Service) string {
+func createExpiredToken(t *testing.T, _ *Service) string {
 	token := jwt.New(jwt.SigningMethodHS256)
 	token.Claims = jwt.MapClaims{
 		"user_id": "user123",
@@ -550,7 +550,7 @@ func createExpiredToken(t *testing.T, service *Service) string {
 	return tokenString
 }
 
-func createFutureToken(t *testing.T, service *Service) string {
+func createFutureToken(t *testing.T, _ *Service) string {
 	token := jwt.New(jwt.SigningMethodHS256)
 	token.Claims = jwt.MapClaims{
 		"user_id": "user123",
@@ -566,7 +566,7 @@ func createFutureToken(t *testing.T, service *Service) string {
 	return tokenString
 }
 
-func createTokenWithWrongIssuer(t *testing.T, service *Service) string {
+func createTokenWithWrongIssuer(t *testing.T, _ *Service) string {
 	token := jwt.New(jwt.SigningMethodHS256)
 	token.Claims = jwt.MapClaims{
 		"user_id": "user123",
@@ -581,7 +581,7 @@ func createTokenWithWrongIssuer(t *testing.T, service *Service) string {
 	return tokenString
 }
 
-func createTokenWithMissingClaims(t *testing.T, service *Service) string {
+func createTokenWithMissingClaims(t *testing.T, _ *Service) string {
 	token := jwt.New(jwt.SigningMethodHS256)
 	token.Claims = jwt.MapClaims{
 		// Missing user_id and email

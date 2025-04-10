@@ -65,7 +65,7 @@ func SetupRoutes(
 }
 
 // setupMiddleware configures all necessary middleware for the router
-func setupMiddleware(r *chi.Mux, logger *zap.Logger) {
+func setupMiddleware(r *chi.Mux, _ *zap.Logger) {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)

@@ -38,6 +38,21 @@ func (m *mockUserRepository) GetByID(ctx context.Context, id string) (*models.Us
 	return args.Get(0).(*models.User), args.Error(1)
 }
 
+func (m *mockUserRepository) GetSettings(ctx context.Context, userID string) (*models.UserSettings, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.UserSettings), args.Error(1)
+}
+func (m *mockUserRepository) RemoveRole(ctx context.Context, userID string, role string) error {
+	args := m.Called(ctx, userID, role)
+	return args.Error(0)
+}
+func (m *mockUserRepository) Update(ctx context.Context, user *models.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
 func (m *mockUserRepository) GetRefreshToken(ctx context.Context, token string) (*models.RefreshToken, error) {
 	args := m.Called(ctx, token)
 	if args.Get(0) == nil {
@@ -132,7 +147,7 @@ func (m *mockAuthService) RequireAllPermissions(permissions ...string) func(http
 }
 
 // Test setup helper
-func setupAuthTest(t *testing.T) (*AuthService, *mockUserRepository, *mockAuthService) {
+func setupAuthTest(_ *testing.T) (*AuthService, *mockUserRepository, *mockAuthService) {
 	mockUserRepo := new(mockUserRepository)
 	mockAuth := new(mockAuthService)
 	authService := NewAuthService(mockAuth, mockUserRepo)
@@ -408,12 +423,7 @@ func TestAuthService_VerifyToken(t *testing.T) {
 			ctx := context.Background()
 
 			if tt.token != "" && tt.mockError == nil {
-				claims := &jwt.CustomClaims{
-					UserID: "user123",
-					Email:  "test@example.com",
-					Type:   "access",
-				}
-				mockUserRepo.On("GetByID", ctx, claims.UserID).Return(tt.mockUser, nil)
+				mockUserRepo.On("GetByID", ctx, "user123").Return(tt.mockUser, nil)
 				mockUserRepo.On("GetRoles", ctx, tt.mockUser.ID).Return(tt.mockRoles, nil)
 			}
 
