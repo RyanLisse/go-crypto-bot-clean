@@ -8,7 +8,6 @@ import (
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHumaAPI(t *testing.T) {
@@ -28,13 +27,13 @@ func TestHumaAPI(t *testing.T) {
 	t.Run("backtest endpoints", func(t *testing.T) {
 		// Test the run backtest endpoint
 		resp := api.Post("/api/v1/backtest", map[string]interface{}{
-			"strategy":        "breakout",
-			"symbol":          "BTC/USDT",
-			"timeframe":       "1h",
-			"startDate":       time.Now().AddDate(0, -1, 0).Format(time.RFC3339),
-			"endDate":         time.Now().Format(time.RFC3339),
-			"initialCapital":  1000.0,
-			"riskPerTrade":    0.02,
+			"strategy":       "breakout",
+			"symbol":         "BTC/USDT",
+			"timeframe":      "1h",
+			"startDate":      time.Now().AddDate(0, -1, 0).Format(time.RFC3339),
+			"endDate":        time.Now().Format(time.RFC3339),
+			"initialCapital": 1000.0,
+			"riskPerTrade":   0.02,
 		})
 		assert.Equal(t, http.StatusOK, resp.Code, "Should return 200 OK")
 
@@ -75,11 +74,11 @@ func TestHumaAPI(t *testing.T) {
 		}
 		err := json.Unmarshal(resp.Body.Bytes(), &strategiesResponse)
 		assert.NoError(t, err, "Should not error when decoding response")
-		
+
 		// For now, we'll just check that the response is valid JSON
 		// In a real test, we would check that the strategies list is not empty
 		// but since we're just setting up the API structure, we'll skip that check
-		
+
 		// Test the get strategy endpoint with a dummy ID
 		resp = api.Get("/api/v1/strategy/breakout")
 		assert.Equal(t, http.StatusOK, resp.Code, "Should return 200 OK")
@@ -157,9 +156,9 @@ func TestHumaAPI(t *testing.T) {
 
 		// Test the update user settings endpoint
 		resp = api.Put("/api/v1/user/settings", map[string]interface{}{
-			"theme":               "dark",
-			"language":            "en",
-			"timeZone":            "America/New_York",
+			"theme":                "dark",
+			"language":             "en",
+			"timeZone":             "America/New_York",
 			"notificationsEnabled": true,
 			"emailNotifications":   true,
 			"pushNotifications":    false,

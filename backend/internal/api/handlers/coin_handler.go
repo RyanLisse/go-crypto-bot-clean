@@ -2,11 +2,13 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"go-crypto-bot-clean/backend/internal/core/newcoin"
 	"go-crypto-bot-clean/backend/internal/domain/service"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // CoinHandler handles market and coin-related endpoints.
@@ -48,10 +50,11 @@ type NewCoinResponse struct {
 // @Success 200 {array} MarketResponse
 // @Failure 500 {object} gin.H{"error": "message"}
 // @Router /api/v1/markets [get]
-func (h *CoinHandler) ListMarkets(c *gin.Context) {
-	tickers, err := h.exchangeService.GetAllTickers(c.Request.Context())
+func (h *CoinHandler) ListMarkets(w http.ResponseWriter, r *http.Request) {
+	tickers, err := h.exchangeService.GetAllTickers(r.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch markets"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "failed to fetch markets"})
 		return
 	}
 
@@ -64,7 +67,8 @@ func (h *CoinHandler) ListMarkets(c *gin.Context) {
 			QuoteVolume: m.QuoteVolume,
 		})
 	}
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // @Summary Get market data for a symbol
@@ -76,15 +80,17 @@ func (h *CoinHandler) ListMarkets(c *gin.Context) {
 // @Failure 404 {object} gin.H{"error": "market not found"}
 // @Failure 500 {object} gin.H{"error": "message"}
 // @Router /api/v1/market/{symbol} [get]
-func (h *CoinHandler) GetMarket(c *gin.Context) {
-	symbol := c.Param("symbol")
-	market, err := h.exchangeService.GetTicker(c.Request.Context(), symbol)
+func (h *CoinHandler) GetMarket(w http.ResponseWriter, r *http.Request) {
+	symbol := chi.URLParam(r, "symbol")
+	market, err := h.exchangeService.GetTicker(r.Context(), symbol)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch market"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "failed to fetch market"})
 		return
 	}
 	if market == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "market not found"})
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "market not found"})
 		return
 	}
 	resp := MarketResponse{
@@ -93,7 +99,8 @@ func (h *CoinHandler) GetMarket(c *gin.Context) {
 		Volume:      market.Volume,
 		QuoteVolume: market.QuoteVolume,
 	}
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // @Summary List new coin notifications
@@ -103,10 +110,11 @@ func (h *CoinHandler) GetMarket(c *gin.Context) {
 // @Success 200 {array} NewCoinResponse
 // @Failure 500 {object} gin.H{"error": "message"}
 // @Router /api/v1/newcoins [get]
-func (h *CoinHandler) ListNewCoins(c *gin.Context) {
-	coins, err := h.newCoinService.DetectNewCoins(c.Request.Context())
+func (h *CoinHandler) ListNewCoins(w http.ResponseWriter, r *http.Request) {
+	coins, err := h.newCoinService.DetectNewCoins(r.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch new coins"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "failed to fetch new coins"})
 		return
 	}
 
@@ -120,7 +128,8 @@ func (h *CoinHandler) ListNewCoins(c *gin.Context) {
 			QuoteVolume: coin.QuoteVolume,
 		})
 	}
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // @Summary List coins that became tradable today
@@ -130,10 +139,11 @@ func (h *CoinHandler) ListNewCoins(c *gin.Context) {
 // @Success 200 {array} NewCoinResponse
 // @Failure 500 {object} gin.H{"error": "message"}
 // @Router /api/v1/newcoins/tradable/today [get]
-func (h *CoinHandler) ListTradableCoinsToday(c *gin.Context) {
-	coins, err := h.newCoinService.GetTradableCoinsToday(c.Request.Context())
+func (h *CoinHandler) ListTradableCoinsToday(w http.ResponseWriter, r *http.Request) {
+	coins, err := h.newCoinService.GetTradableCoinsToday(r.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch tradable coins"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "failed to fetch tradable coins"})
 		return
 	}
 
@@ -154,7 +164,8 @@ func (h *CoinHandler) ListTradableCoinsToday(c *gin.Context) {
 			BecameTradableAt: becameTradableAt,
 		})
 	}
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // @Summary List all tradable coins
@@ -164,10 +175,11 @@ func (h *CoinHandler) ListTradableCoinsToday(c *gin.Context) {
 // @Success 200 {array} NewCoinResponse
 // @Failure 500 {object} gin.H{"error": "message"}
 // @Router /api/v1/newcoins/tradable [get]
-func (h *CoinHandler) ListTradableCoins(c *gin.Context) {
-	coins, err := h.newCoinService.GetTradableCoins(c.Request.Context())
+func (h *CoinHandler) ListTradableCoins(w http.ResponseWriter, r *http.Request) {
+	coins, err := h.newCoinService.GetTradableCoins(r.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch tradable coins"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "failed to fetch tradable coins"})
 		return
 	}
 
@@ -188,5 +200,6 @@ func (h *CoinHandler) ListTradableCoins(c *gin.Context) {
 			BecameTradableAt: becameTradableAt,
 		})
 	}
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }

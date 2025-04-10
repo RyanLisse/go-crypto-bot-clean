@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go-crypto-bot-clean/backend/internal/domain/models"
+
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -168,7 +168,6 @@ func (m *MockAccountService) GetWallet(ctx context.Context) (*models.Wallet, err
 }
 
 func TestGetAccount(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 
 	// Define a wallet struct for testing
 	testWallet := &models.Wallet{
@@ -224,16 +223,12 @@ func TestGetAccount(t *testing.T) {
 			logger, _ := zap.NewDevelopment()
 			handler := NewAccountHandler(nil, mockService, logger)
 
-			// Set up router
-			router := gin.New()
-			router.GET("/test", handler.GetAccount)
-
 			// Create test request
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
 			w := httptest.NewRecorder()
 
 			// Perform request
-			router.ServeHTTP(w, req)
+			handler.GetAccount(w, req)
 
 			// Assert response status code
 			assert.Equal(t, tt.expectedStatus, w.Code)
@@ -255,7 +250,6 @@ func TestGetAccount(t *testing.T) {
 }
 
 func TestGetBalances(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 
 	// Define a wallet struct for testing
 	testWallet := &models.Wallet{
@@ -311,16 +305,12 @@ func TestGetBalances(t *testing.T) {
 			logger, _ := zap.NewDevelopment()
 			handler := NewAccountHandler(nil, mockService, logger)
 
-			// Set up router
-			router := gin.New()
-			router.GET("/test", handler.GetBalances)
-
 			// Create test request
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
 			w := httptest.NewRecorder()
 
 			// Perform request
-			router.ServeHTTP(w, req)
+			handler.GetBalances(w, req)
 
 			// Assert response status code
 			assert.Equal(t, tt.expectedStatus, w.Code)

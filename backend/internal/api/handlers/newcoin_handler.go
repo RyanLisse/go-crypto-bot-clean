@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go-crypto-bot-clean/backend/internal/api/dto/request"
 	"go-crypto-bot-clean/backend/internal/api/dto/response"
 	"go-crypto-bot-clean/backend/internal/core/newcoin"
@@ -31,13 +31,13 @@ func NewNewCoinsHandler(newCoinService newcoin.NewCoinService) *NewCoinsHandler 
 // @Success 200 {object} response.NewCoinsListResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/newcoins [get]
-func (h *NewCoinsHandler) GetDetectedCoins(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *NewCoinsHandler) GetDetectedCoins(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	// Get all new coins
 	coins, err := h.NewCoinService.GetAllNewCoins(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get new coins",
 			Details: err.Error(),
@@ -45,7 +45,6 @@ func (h *NewCoinsHandler) GetDetectedCoins(c *gin.Context) {
 		return
 	}
 
-	// Map to response DTOs
 	coinResponses := make([]response.NewCoinResponse, len(coins))
 	for i, coin := range coins {
 		coinResponses[i] = response.NewCoinResponse{
@@ -59,14 +58,14 @@ func (h *NewCoinsHandler) GetDetectedCoins(c *gin.Context) {
 		}
 	}
 
-	// Build response
 	resp := response.NewCoinsListResponse{
 		Coins:     coinResponses,
 		Count:     len(coinResponses),
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // ProcessNewCoins godoc
@@ -80,13 +79,13 @@ func (h *NewCoinsHandler) GetDetectedCoins(c *gin.Context) {
 // @Failure 400 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/newcoins/process [post]
-func (h *NewCoinsHandler) ProcessNewCoins(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *NewCoinsHandler) ProcessNewCoins(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	// Parse request
 	var req request.ProcessNewCoinsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "invalid_request",
 			Message: "Invalid request format",
 			Details: err.Error(),
@@ -94,22 +93,18 @@ func (h *NewCoinsHandler) ProcessNewCoins(c *gin.Context) {
 		return
 	}
 
-	// Process each coin
 	processedCoins := make([]response.NewCoinResponse, 0, len(req.CoinIDs))
 	for _, coinID := range req.CoinIDs {
-		// Mark as processed
 		err := h.NewCoinService.MarkAsProcessed(ctx, int64(coinID))
 		if err != nil {
 			continue
 		}
 
-		// Get the updated coin
 		coin, err := h.NewCoinService.GetCoinByID(ctx, int64(coinID))
 		if err != nil {
 			continue
 		}
 
-		// Add to processed coins
 		processedCoins = append(processedCoins, response.NewCoinResponse{
 			ID:          uint(coin.ID),
 			Symbol:      coin.Symbol,
@@ -119,14 +114,14 @@ func (h *NewCoinsHandler) ProcessNewCoins(c *gin.Context) {
 		})
 	}
 
-	// Build response
 	resp := response.ProcessNewCoinsResponse{
 		ProcessedCoins: processedCoins,
 		Count:          len(processedCoins),
 		Timestamp:      time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // DetectNewCoins godoc
@@ -138,13 +133,13 @@ func (h *NewCoinsHandler) ProcessNewCoins(c *gin.Context) {
 // @Success 200 {object} response.NewCoinsListResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/newcoins/detect [post]
-func (h *NewCoinsHandler) DetectNewCoins(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *NewCoinsHandler) DetectNewCoins(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	// Detect new coins
 	newCoins, err := h.NewCoinService.DetectNewCoins(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to detect new coins",
 			Details: err.Error(),
@@ -152,11 +147,11 @@ func (h *NewCoinsHandler) DetectNewCoins(c *gin.Context) {
 		return
 	}
 
-	// Save new coins
 	if len(newCoins) > 0 {
 		err = h.NewCoinService.SaveNewCoins(ctx, newCoins)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(response.ErrorResponse{
 				Code:    "internal_error",
 				Message: "Failed to save new coins",
 				Details: err.Error(),
@@ -165,7 +160,6 @@ func (h *NewCoinsHandler) DetectNewCoins(c *gin.Context) {
 		}
 	}
 
-	// Map to response DTOs
 	coinResponses := make([]response.NewCoinResponse, len(newCoins))
 	for i, coin := range newCoins {
 		coinResponses[i] = response.NewCoinResponse{
@@ -177,14 +171,14 @@ func (h *NewCoinsHandler) DetectNewCoins(c *gin.Context) {
 		}
 	}
 
-	// Build response
 	resp := response.NewCoinsListResponse{
 		Coins:     coinResponses,
 		Count:     len(coinResponses),
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetCoinsByDate godoc
@@ -198,13 +192,13 @@ func (h *NewCoinsHandler) DetectNewCoins(c *gin.Context) {
 // @Failure 400 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/newcoins/by-date [post]
-func (h *NewCoinsHandler) GetCoinsByDate(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *NewCoinsHandler) GetCoinsByDate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	// Parse request
 	var req request.DateFilterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "invalid_request",
 			Message: "Invalid request format",
 			Details: err.Error(),
@@ -212,10 +206,10 @@ func (h *NewCoinsHandler) GetCoinsByDate(c *gin.Context) {
 		return
 	}
 
-	// Parse date
 	date, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "invalid_date",
 			Message: "Invalid date format. Use YYYY-MM-DD",
 			Details: err.Error(),
@@ -223,10 +217,10 @@ func (h *NewCoinsHandler) GetCoinsByDate(c *gin.Context) {
 		return
 	}
 
-	// Get coins by date
 	coins, err := h.NewCoinService.GetCoinsByDate(ctx, date)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get coins by date",
 			Details: err.Error(),
@@ -234,7 +228,6 @@ func (h *NewCoinsHandler) GetCoinsByDate(c *gin.Context) {
 		return
 	}
 
-	// Map to response DTOs
 	coinResponses := make([]response.NewCoinResponse, len(coins))
 	for i, coin := range coins {
 		coinResponses[i] = response.NewCoinResponse{
@@ -246,14 +239,14 @@ func (h *NewCoinsHandler) GetCoinsByDate(c *gin.Context) {
 		}
 	}
 
-	// Build response
 	resp := response.NewCoinsListResponse{
 		Coins:     coinResponses,
 		Count:     len(coinResponses),
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetCoinsByDateRange godoc
@@ -267,13 +260,13 @@ func (h *NewCoinsHandler) GetCoinsByDate(c *gin.Context) {
 // @Failure 400 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/newcoins/by-date-range [post]
-func (h *NewCoinsHandler) GetCoinsByDateRange(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *NewCoinsHandler) GetCoinsByDateRange(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	// Parse request
 	var req request.DateRangeFilterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "invalid_request",
 			Message: "Invalid request format",
 			Details: err.Error(),
@@ -281,10 +274,10 @@ func (h *NewCoinsHandler) GetCoinsByDateRange(c *gin.Context) {
 		return
 	}
 
-	// Parse dates
 	startDate, err := time.Parse("2006-01-02", req.StartDate)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "invalid_date",
 			Message: "Invalid start date format. Use YYYY-MM-DD",
 			Details: err.Error(),
@@ -294,7 +287,8 @@ func (h *NewCoinsHandler) GetCoinsByDateRange(c *gin.Context) {
 
 	endDate, err := time.Parse("2006-01-02", req.EndDate)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "invalid_date",
 			Message: "Invalid end date format. Use YYYY-MM-DD",
 			Details: err.Error(),
@@ -302,19 +296,19 @@ func (h *NewCoinsHandler) GetCoinsByDateRange(c *gin.Context) {
 		return
 	}
 
-	// Validate date range
 	if endDate.Before(startDate) {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "invalid_date_range",
 			Message: "End date must be after start date",
 		})
 		return
 	}
 
-	// Get coins by date range
 	coins, err := h.NewCoinService.GetCoinsByDateRange(ctx, startDate, endDate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get coins by date range",
 			Details: err.Error(),
@@ -322,7 +316,6 @@ func (h *NewCoinsHandler) GetCoinsByDateRange(c *gin.Context) {
 		return
 	}
 
-	// Map to response DTOs
 	coinResponses := make([]response.NewCoinResponse, len(coins))
 	for i, coin := range coins {
 		coinResponses[i] = response.NewCoinResponse{
@@ -336,14 +329,14 @@ func (h *NewCoinsHandler) GetCoinsByDateRange(c *gin.Context) {
 		}
 	}
 
-	// Build response
 	resp := response.NewCoinsListResponse{
 		Coins:     coinResponses,
 		Count:     len(coinResponses),
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetUpcomingCoins godoc
@@ -355,13 +348,13 @@ func (h *NewCoinsHandler) GetCoinsByDateRange(c *gin.Context) {
 // @Success 200 {object} response.NewCoinsListResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/newcoins/upcoming [get]
-func (h *NewCoinsHandler) GetUpcomingCoins(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *NewCoinsHandler) GetUpcomingCoins(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	// Get upcoming coins
 	coins, err := h.NewCoinService.GetUpcomingCoins(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get upcoming coins",
 			Details: err.Error(),
@@ -369,7 +362,6 @@ func (h *NewCoinsHandler) GetUpcomingCoins(c *gin.Context) {
 		return
 	}
 
-	// Map to response DTOs
 	coinResponses := make([]response.NewCoinResponse, len(coins))
 	for i, coin := range coins {
 		coinResponses[i] = response.NewCoinResponse{
@@ -383,14 +375,14 @@ func (h *NewCoinsHandler) GetUpcomingCoins(c *gin.Context) {
 		}
 	}
 
-	// Build response
 	resp := response.NewCoinsListResponse{
 		Coins:     coinResponses,
 		Count:     len(coinResponses),
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetUpcomingCoinsForTodayAndTomorrow godoc
@@ -402,13 +394,13 @@ func (h *NewCoinsHandler) GetUpcomingCoins(c *gin.Context) {
 // @Success 200 {object} response.NewCoinsListResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/newcoins/upcoming/today-and-tomorrow [get]
-func (h *NewCoinsHandler) GetUpcomingCoinsForTodayAndTomorrow(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *NewCoinsHandler) GetUpcomingCoinsForTodayAndTomorrow(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	// Get upcoming coins for today and tomorrow
 	coins, err := h.NewCoinService.GetUpcomingCoinsForTodayAndTomorrow(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get upcoming coins for today and tomorrow",
 			Details: err.Error(),
@@ -416,7 +408,6 @@ func (h *NewCoinsHandler) GetUpcomingCoinsForTodayAndTomorrow(c *gin.Context) {
 		return
 	}
 
-	// Map to response DTOs
 	coinResponses := make([]response.NewCoinResponse, len(coins))
 	for i, coin := range coins {
 		coinResponses[i] = response.NewCoinResponse{
@@ -430,14 +421,14 @@ func (h *NewCoinsHandler) GetUpcomingCoinsForTodayAndTomorrow(c *gin.Context) {
 		}
 	}
 
-	// Build response
 	resp := response.NewCoinsListResponse{
 		Coins:     coinResponses,
 		Count:     len(coinResponses),
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetUpcomingCoinsByDate godoc
@@ -451,13 +442,13 @@ func (h *NewCoinsHandler) GetUpcomingCoinsForTodayAndTomorrow(c *gin.Context) {
 // @Failure 400 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/newcoins/upcoming/by-date [post]
-func (h *NewCoinsHandler) GetUpcomingCoinsByDate(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *NewCoinsHandler) GetUpcomingCoinsByDate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	// Parse request
 	var req request.DateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "invalid_request",
 			Message: "Invalid request format",
 			Details: err.Error(),
@@ -465,10 +456,10 @@ func (h *NewCoinsHandler) GetUpcomingCoinsByDate(c *gin.Context) {
 		return
 	}
 
-	// Parse date
 	date, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "invalid_date",
 			Message: "Invalid date format. Use YYYY-MM-DD",
 			Details: err.Error(),
@@ -476,10 +467,10 @@ func (h *NewCoinsHandler) GetUpcomingCoinsByDate(c *gin.Context) {
 		return
 	}
 
-	// Get upcoming coins by date
 	coins, err := h.NewCoinService.GetUpcomingCoinsByDate(ctx, date)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get upcoming coins by date",
 			Details: err.Error(),
@@ -487,7 +478,6 @@ func (h *NewCoinsHandler) GetUpcomingCoinsByDate(c *gin.Context) {
 		return
 	}
 
-	// Map to response DTOs
 	coinResponses := make([]response.NewCoinResponse, len(coins))
 	for i, coin := range coins {
 		coinResponses[i] = response.NewCoinResponse{
@@ -501,12 +491,12 @@ func (h *NewCoinsHandler) GetUpcomingCoinsByDate(c *gin.Context) {
 		}
 	}
 
-	// Build response
 	resp := response.NewCoinsListResponse{
 		Coins:     coinResponses,
 		Count:     len(coinResponses),
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }

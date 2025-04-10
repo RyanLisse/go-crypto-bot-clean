@@ -1,13 +1,14 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	responseDto "go-crypto-bot-clean/backend/internal/api/dto/response"
 	"go-crypto-bot-clean/backend/internal/core/account"
 	"go-crypto-bot-clean/backend/internal/domain/service"
+
 	"go.uber.org/zap"
 )
 
@@ -35,11 +36,12 @@ func NewAccountHandler(exchangeService service.ExchangeService, accountService a
 // @Success 200 {object} interface{}
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/account [get]
-func (h *AccountHandler) GetAccount(c *gin.Context) {
-	wallet, err := h.AccountService.GetWallet(c.Request.Context())
+func (h *AccountHandler) GetAccount(w http.ResponseWriter, r *http.Request) {
+	wallet, err := h.AccountService.GetWallet(r.Context())
 	if err != nil {
 		h.logger.Error("Failed to get account info", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "GET_ACCOUNT_FAILED",
 			Message: "Failed to get account info",
 			Details: err.Error(),
@@ -47,7 +49,8 @@ func (h *AccountHandler) GetAccount(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, wallet)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(wallet)
 }
 
 // GetBalances godoc
@@ -58,11 +61,12 @@ func (h *AccountHandler) GetAccount(c *gin.Context) {
 // @Success 200 {object} interface{}
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/account/balance [get]
-func (h *AccountHandler) GetBalances(c *gin.Context) {
-	balance, err := h.AccountService.GetAccountBalance(c.Request.Context())
+func (h *AccountHandler) GetBalances(w http.ResponseWriter, r *http.Request) {
+	balance, err := h.AccountService.GetAccountBalance(r.Context())
 	if err != nil {
 		h.logger.Error("Failed to get account balances", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "GET_BALANCES_FAILED",
 			Message: "Failed to get account balances",
 			Details: err.Error(),
@@ -70,7 +74,8 @@ func (h *AccountHandler) GetBalances(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, balance)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(balance)
 }
 
 // GetWallet godoc
@@ -81,11 +86,12 @@ func (h *AccountHandler) GetBalances(c *gin.Context) {
 // @Success 200 {object} interface{}
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/account/wallet [get]
-func (h *AccountHandler) GetWallet(c *gin.Context) {
-	wallet, err := h.AccountService.GetWallet(c.Request.Context())
+func (h *AccountHandler) GetWallet(w http.ResponseWriter, r *http.Request) {
+	wallet, err := h.AccountService.GetWallet(r.Context())
 	if err != nil {
 		h.logger.Error("Failed to get wallet", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "GET_WALLET_FAILED",
 			Message: "Failed to get wallet",
 			Details: err.Error(),
@@ -93,7 +99,8 @@ func (h *AccountHandler) GetWallet(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, wallet)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(wallet)
 }
 
 // GetBalanceSummary godoc
@@ -106,13 +113,17 @@ func (h *AccountHandler) GetWallet(c *gin.Context) {
 // @Failure 400 {object} responseDto.ErrorResponse
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/account/balance-summary [get]
-func (h *AccountHandler) GetBalanceSummary(c *gin.Context) {
+func (h *AccountHandler) GetBalanceSummary(w http.ResponseWriter, r *http.Request) {
 	// Parse days parameter
-	daysStr := c.DefaultQuery("days", "30")
+	daysStr := r.URL.Query().Get("days")
+	if daysStr == "" {
+		daysStr = "30"
+	}
 	days, err := strconv.Atoi(daysStr)
 	if err != nil {
 		h.logger.Error("Invalid days parameter", zap.Error(err))
-		c.JSON(http.StatusBadRequest, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "INVALID_PARAMETER",
 			Message: "Invalid days parameter",
 			Details: err.Error(),
@@ -121,10 +132,11 @@ func (h *AccountHandler) GetBalanceSummary(c *gin.Context) {
 	}
 
 	// Get balance summary
-	summary, err := h.AccountService.GetBalanceSummary(c.Request.Context(), days)
+	summary, err := h.AccountService.GetBalanceSummary(r.Context(), days)
 	if err != nil {
 		h.logger.Error("Failed to get balance summary", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "GET_BALANCE_SUMMARY_FAILED",
 			Message: "Failed to get balance summary",
 			Details: err.Error(),
@@ -132,7 +144,8 @@ func (h *AccountHandler) GetBalanceSummary(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, summary)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(summary)
 }
 
 // ValidateAPIKeys godoc
@@ -143,11 +156,12 @@ func (h *AccountHandler) GetBalanceSummary(c *gin.Context) {
 // @Success 200 {object} interface{}
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/account/validate-keys [get]
-func (h *AccountHandler) ValidateAPIKeys(c *gin.Context) {
-	valid, err := h.AccountService.ValidateAPIKeys(c.Request.Context())
+func (h *AccountHandler) ValidateAPIKeys(w http.ResponseWriter, r *http.Request) {
+	valid, err := h.AccountService.ValidateAPIKeys(r.Context())
 	if err != nil {
 		h.logger.Error("Failed to validate API keys", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "VALIDATE_KEYS_FAILED",
 			Message: "Failed to validate API keys",
 			Details: err.Error(),
@@ -155,7 +169,8 @@ func (h *AccountHandler) ValidateAPIKeys(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"valid": valid})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{"valid": valid})
 }
 
 // SyncWithExchange godoc
@@ -166,11 +181,12 @@ func (h *AccountHandler) ValidateAPIKeys(c *gin.Context) {
 // @Success 200 {object} interface{}
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/account/sync [post]
-func (h *AccountHandler) SyncWithExchange(c *gin.Context) {
-	err := h.AccountService.SyncWithExchange(c.Request.Context())
+func (h *AccountHandler) SyncWithExchange(w http.ResponseWriter, r *http.Request) {
+	err := h.AccountService.SyncWithExchange(r.Context())
 	if err != nil {
 		h.logger.Error("Failed to sync with exchange", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "SYNC_FAILED",
 			Message: "Failed to sync with exchange",
 			Details: err.Error(),
@@ -178,5 +194,6 @@ func (h *AccountHandler) SyncWithExchange(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "success"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{"status": "success"})
 }

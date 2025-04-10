@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -29,24 +28,19 @@ func (m *MockStatusService) GetStatus() (*status.SystemStatus, error) {
 	return args.Get(0).(*status.SystemStatus), args.Error(1)
 }
 
-func (m *MockStatusService) StartProcesses(ctx context.Context) (*status.SystemStatus, error) {
+// Match signature expected by handler call
+func (m *MockStatusService) StartProcesses(ctx context.Context) error {
 	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*status.SystemStatus), args.Error(1)
+	return args.Error(0) // Only return error
 }
 
-func (m *MockStatusService) StopProcesses() (*status.SystemStatus, error) {
+// Match signature expected by handler call
+func (m *MockStatusService) StopProcesses() error {
 	args := m.Called()
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*status.SystemStatus), args.Error(1)
+	return args.Error(0) // Only return error
 }
 
 func TestStatusHandler_GetStatus(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 
 	// Create mock system status
 	mockSystemStatus := &status.SystemStatus{
@@ -101,13 +95,10 @@ func TestStatusHandler_GetStatus(t *testing.T) {
 
 			handler := NewStatusHandler(mockSvc)
 
-			router := gin.New()
-			router.GET("/api/v1/status", handler.GetStatus)
-
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/status", nil)
 			w := httptest.NewRecorder()
 
-			router.ServeHTTP(w, req)
+			handler.GetStatus(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.expectError {
@@ -123,7 +114,6 @@ func TestStatusHandler_GetStatus(t *testing.T) {
 }
 
 func TestStatusHandler_StartProcesses(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 
 	// Create mock system status
 	mockSystemStatus := &status.SystemStatus{
@@ -174,17 +164,15 @@ func TestStatusHandler_StartProcesses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSvc := new(MockStatusService)
-			mockSvc.On("StartProcesses", mock.Anything).Return(tt.mockStatus, tt.mockErr)
+			// Adjust mock setup to only return error
+			mockSvc.On("StartProcesses", mock.Anything).Return(tt.mockErr)
 
 			handler := NewStatusHandler(mockSvc)
-
-			router := gin.New()
-			router.POST("/api/v1/status/start", handler.StartProcesses)
 
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/status/start", bytes.NewBuffer([]byte{}))
 			w := httptest.NewRecorder()
 
-			router.ServeHTTP(w, req)
+			handler.StartProcesses(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.expectError {
@@ -199,7 +187,6 @@ func TestStatusHandler_StartProcesses(t *testing.T) {
 }
 
 func TestStatusHandler_StopProcesses(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 
 	// Create mock system status
 	mockSystemStatus := &status.SystemStatus{
@@ -250,17 +237,15 @@ func TestStatusHandler_StopProcesses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSvc := new(MockStatusService)
-			mockSvc.On("StopProcesses").Return(tt.mockStatus, tt.mockErr)
+			// Adjust mock setup to only return error
+			mockSvc.On("StopProcesses").Return(tt.mockErr)
 
 			handler := NewStatusHandler(mockSvc)
-
-			router := gin.New()
-			router.POST("/api/v1/status/stop", handler.StopProcesses)
 
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/status/stop", bytes.NewBuffer([]byte{}))
 			w := httptest.NewRecorder()
 
-			router.ServeHTTP(w, req)
+			handler.StopProcesses(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.expectError {

@@ -8,64 +8,65 @@ import (
 	"time"
 
 	"go-crypto-bot-clean/backend/api/models"
+
 	"gorm.io/gorm"
 )
 
 // Common errors
 var (
-	ErrUserNotFound      = errors.New("user not found")
-	ErrEmailAlreadyExists = errors.New("email already exists")
+	ErrUserNotFound          = errors.New("user not found")
+	ErrEmailAlreadyExists    = errors.New("email already exists")
 	ErrUsernameAlreadyExists = errors.New("username already exists")
-	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrInvalidCredentials    = errors.New("invalid credentials")
 )
 
 // UserRepository defines the interface for user operations
 type UserRepository interface {
 	// Create creates a new user
 	Create(ctx context.Context, user *models.User) error
-	
+
 	// GetByID gets a user by ID
 	GetByID(ctx context.Context, id string) (*models.User, error)
-	
+
 	// GetByEmail gets a user by email
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
-	
+
 	// GetByUsername gets a user by username
 	GetByUsername(ctx context.Context, username string) (*models.User, error)
-	
+
 	// Update updates a user
 	Update(ctx context.Context, user *models.User) error
-	
+
 	// Delete deletes a user
 	Delete(ctx context.Context, id string) error
-	
+
 	// UpdateLastLogin updates the last login time for a user
 	UpdateLastLogin(ctx context.Context, id string) error
-	
+
 	// AddRole adds a role to a user
 	AddRole(ctx context.Context, userID string, role string) error
-	
+
 	// RemoveRole removes a role from a user
 	RemoveRole(ctx context.Context, userID string, role string) error
-	
+
 	// GetRoles gets all roles for a user
 	GetRoles(ctx context.Context, userID string) ([]string, error)
-	
+
 	// GetSettings gets the settings for a user
 	GetSettings(ctx context.Context, userID string) (*models.UserSettings, error)
-	
+
 	// UpdateSettings updates the settings for a user
 	UpdateSettings(ctx context.Context, settings *models.UserSettings) error
-	
+
 	// SaveRefreshToken saves a refresh token for a user
 	SaveRefreshToken(ctx context.Context, token *models.RefreshToken) error
-	
+
 	// GetRefreshToken gets a refresh token by token string
 	GetRefreshToken(ctx context.Context, token string) (*models.RefreshToken, error)
-	
+
 	// RevokeRefreshToken revokes a refresh token
 	RevokeRefreshToken(ctx context.Context, token string) error
-	
+
 	// RevokeAllRefreshTokens revokes all refresh tokens for a user
 	RevokeAllRefreshTokens(ctx context.Context, userID string) error
 }
@@ -286,10 +287,10 @@ func (r *GormUserRepository) GetSettings(ctx context.Context, userID string) (*m
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Create default settings
 			settings = models.UserSettings{
-				UserID:              userID,
-				Theme:               "light",
-				Language:            "en",
-				TimeZone:            "UTC",
+				UserID:               userID,
+				Theme:                "light",
+				Language:             "en",
+				TimeZone:             "UTC",
 				NotificationsEnabled: true,
 				EmailNotifications:   true,
 				PushNotifications:    false,

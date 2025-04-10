@@ -2,56 +2,34 @@ package api
 
 import (
 	"context"
-	"runtime"
 	"time"
 
-	"go-crypto-bot-clean/backend/internal/core/status"
+	"go-crypto-bot-clean/backend/internal/core/status" // Ensure this is imported
 	"go-crypto-bot-clean/backend/internal/domain/models"
 )
 
 // MockStatusService is a mock implementation of the status service
 type MockStatusService struct{}
 
-// GetStatus returns a mock system status
+// Mock methods to satisfy the interface expected by handlers.StatusHandler
 func (m *MockStatusService) GetStatus() (*status.SystemStatus, error) {
-	return &status.SystemStatus{
-		SystemInfo: status.SystemInfo{
-			Version:   "1.0.0",
-			GoVersion: runtime.Version(),
-			StartTime: time.Now().Add(-24 * time.Hour), // Pretend we've been running for a day
-			Uptime:    "24h 0m 0s",
-		},
-		Components: []status.ComponentStatus{
-			{
-				Name:      "NewCoinWatcher",
-				IsRunning: true,
-				Status:    "running",
-			},
-			{
-				Name:      "PositionMonitor",
-				IsRunning: true,
-				Status:    "running",
-			},
-		},
-		OverallStatus: "healthy",
-	}, nil
+	// Return a default status or nil, nil for mock purposes
+	return &status.SystemStatus{OverallStatus: "mocked"}, nil
 }
 
-// StartProcesses starts all system processes
-func (m *MockStatusService) StartProcesses(ctx context.Context) (*status.SystemStatus, error) {
-	return m.GetStatus()
+// Add context parameter to match handler usage (even if concrete type differs)
+func (m *MockStatusService) StartProcesses(ctx context.Context) error {
+	// No-op for mock
+	return nil
 }
 
-// StopProcesses stops all system processes
-func (m *MockStatusService) StopProcesses() (*status.SystemStatus, error) {
-	status, _ := m.GetStatus()
-	for i := range status.Components {
-		status.Components[i].IsRunning = false
-		status.Components[i].Status = "stopped"
-	}
-	status.OverallStatus = "degraded"
-	return status, nil
+// Signature matches handler usage
+func (m *MockStatusService) StopProcesses() error {
+	// No-op for mock
+	return nil
 }
+
+// Removed duplicate method definitions below
 
 // MockPortfolioService is a mock implementation of the portfolio service
 type MockPortfolioService struct{}

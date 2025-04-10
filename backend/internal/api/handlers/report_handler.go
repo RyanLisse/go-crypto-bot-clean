@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"go-crypto-bot-clean/backend/internal/domain/models"
+
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
@@ -41,23 +43,25 @@ func NewReportHandler(reportGenerator ReportGenerator, logger *zap.Logger) *Repo
 // @Failure 404 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/reports/latest [get]
-func (h *ReportHandler) GetLatestReport(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *ReportHandler) GetLatestReport(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	// Get the latest report
 	report, err := h.reportGenerator.GetLatestReport(ctx)
 	if err != nil {
 		h.logger.Error("Failed to get latest report", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get latest report"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Failed to get latest report"})
 		return
 	}
 
 	if report == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "No reports found"})
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "No reports found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, report)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(report)
 }
 
 // GetReportByID godoc
@@ -71,30 +75,32 @@ func (h *ReportHandler) GetLatestReport(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/reports/{id} [get]
-func (h *ReportHandler) GetReportByID(c *gin.Context) {
-	ctx := c.Request.Context()
-	id := c.Param("id")
+func (h *ReportHandler) GetReportByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := chi.URLParam(r, "id")
 
-	// Check if ID is empty
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Report ID is required"})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Report ID is required"})
 		return
 	}
 
-	// Get the report by ID
 	report, err := h.reportGenerator.GetReportByID(ctx, id)
 	if err != nil {
 		h.logger.Error("Failed to get report", zap.Error(err), zap.String("id", id))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get report"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Failed to get report"})
 		return
 	}
 
 	if report == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Report not found"})
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Report not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, report)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(report)
 }
 
 // GetReportsByPeriod godoc
@@ -109,14 +115,17 @@ func (h *ReportHandler) GetReportByID(c *gin.Context) {
 // @Failure 400 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/reports [get]
-func (h *ReportHandler) GetReportsByPeriod(c *gin.Context) {
-	ctx := c.Request.Context()
-	periodStr := c.Query("period")
-	limitStr := c.DefaultQuery("limit", "10")
+func (h *ReportHandler) GetReportsByPeriod(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	periodStr := r.URL.Query().Get("period")
+	limitStr := r.URL.Query().Get("limit")
+	if limitStr == "" {
+		limitStr = "10"
+	}
 
-	// Validate period
 	if periodStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Period is required"})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Period is required"})
 		return
 	}
 
@@ -125,31 +134,34 @@ func (h *ReportHandler) GetReportsByPeriod(c *gin.Context) {
 		period != models.ReportPeriodDaily &&
 		period != models.ReportPeriodWeekly &&
 		period != models.ReportPeriodMonthly {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid period"})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Invalid period"})
 		return
 	}
 
-	// Parse limit
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil || limit <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit"})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Invalid limit"})
 		return
 	}
 
-	// Get reports by period
 	reports, err := h.reportGenerator.GetReportsByPeriod(ctx, period, limit)
 	if err != nil {
 		h.logger.Error("Failed to get reports", zap.Error(err), zap.String("period", string(period)))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get reports"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Failed to get reports"})
 		return
 	}
 
 	if len(reports) == 0 {
-		c.JSON(http.StatusOK, []models.PerformanceReport{})
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode([]models.PerformanceReport{})
 		return
 	}
 
-	c.JSON(http.StatusOK, reports)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(reports)
 }
 
 // GetReportInsights godoc
@@ -163,29 +175,32 @@ func (h *ReportHandler) GetReportsByPeriod(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/reports/{id}/insights [get]
-func (h *ReportHandler) GetReportInsights(c *gin.Context) {
-	ctx := c.Request.Context()
-	id := c.Param("id")
+func (h *ReportHandler) GetReportInsights(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := chi.URLParam(r, "id")
 
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Report ID is required"})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Report ID is required"})
 		return
 	}
 
-	// Get the report by ID
 	report, err := h.reportGenerator.GetReportByID(ctx, id)
 	if err != nil {
 		h.logger.Error("Failed to get report", zap.Error(err), zap.String("id", id))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get report"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Failed to get report"})
 		return
 	}
 
 	if report == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Report not found"})
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Report not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"insights": report.Insights})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{"insights": report.Insights})
 }
 
 // GetReportMetrics godoc
@@ -199,29 +214,32 @@ func (h *ReportHandler) GetReportInsights(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/reports/{id}/metrics [get]
-func (h *ReportHandler) GetReportMetrics(c *gin.Context) {
-	ctx := c.Request.Context()
-	id := c.Param("id")
+func (h *ReportHandler) GetReportMetrics(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := chi.URLParam(r, "id")
 
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Report ID is required"})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Report ID is required"})
 		return
 	}
 
-	// Get the report by ID
 	report, err := h.reportGenerator.GetReportByID(ctx, id)
 	if err != nil {
 		h.logger.Error("Failed to get report", zap.Error(err), zap.String("id", id))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get report"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Failed to get report"})
 		return
 	}
 
 	if report == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Report not found"})
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Report not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, report.Metrics)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(report.Metrics)
 }
 
 // GetReportAnalysis godoc
@@ -235,40 +253,32 @@ func (h *ReportHandler) GetReportMetrics(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/reports/{id}/analysis [get]
-func (h *ReportHandler) GetReportAnalysis(c *gin.Context) {
-	ctx := c.Request.Context()
-	id := c.Param("id")
+func (h *ReportHandler) GetReportAnalysis(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := chi.URLParam(r, "id")
 
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Report ID is required"})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Report ID is required"})
 		return
 	}
 
-	// Get the report by ID
 	report, err := h.reportGenerator.GetReportByID(ctx, id)
 	if err != nil {
 		h.logger.Error("Failed to get report", zap.Error(err), zap.String("id", id))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get report"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Failed to get report"})
 		return
 	}
 
 	if report == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Report not found"})
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Report not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"analysis": report.Analysis})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{"analysis": report.Analysis})
 }
 
 // RegisterRoutes registers the report handler routes
-func (h *ReportHandler) RegisterRoutes(router *gin.RouterGroup) {
-	reports := router.Group("/reports")
-	{
-		reports.GET("", h.GetReportsByPeriod)
-		reports.GET("/latest", h.GetLatestReport)
-		reports.GET("/:id", h.GetReportByID)
-		reports.GET("/:id/insights", h.GetReportInsights)
-		reports.GET("/:id/metrics", h.GetReportMetrics)
-		reports.GET("/:id/analysis", h.GetReportAnalysis)
-	}
-}

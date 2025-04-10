@@ -1,133 +1,107 @@
 package api
 
 import (
+	"log"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"go-crypto-bot-clean/backend/internal/api/handlers"
 	"go-crypto-bot-clean/backend/internal/api/huma"
-	"go-crypto-bot-clean/backend/internal/api/middleware/cors"
+	"go-crypto-bot-clean/backend/internal/api/service"
 	"go-crypto-bot-clean/backend/internal/api/websocket"
+
+	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 )
 
-// SetupChiRouter initializes the Chi router with Huma for OpenAPI documentation.
-func SetupChiRouter(deps *HumaDependencies) http.Handler {
+// SetupChiRouter initializes the Chi router with conditional Huma integration for OpenAPI documentation.
+func SetupChiRouter(deps *HumaDependencies, logger *zap.Logger) http.Handler {
 	r := chi.NewRouter()
 
-	// Add middleware
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(cors.Middleware())
+	// Add core middleware
+	setupMiddleware(r, logger) // Pass logger here
 
-	// Setup Huma for OpenAPI documentation
-	humaConfig := huma.DefaultConfig()
-	humaAPI := huma.SetupHuma(r, humaConfig)
-	_ = humaAPI // Use the API to avoid unused variable warning
+	// Setup Huma conditionally based on service availability
+	if hasRequiredServices(deps.ServiceProvider) {
+		if err := setupHuma(r, deps.ServiceProvider); err != nil {
+			log.Printf("Warning: Huma setup failed: %v. API documentation will not be available.", err)
+		}
+	}
 
-	// Health check endpoint
-	r.Get("/health", adaptGinHandler(deps.HealthHandler.HealthCheck))
-
-	// Versioned API group
-	r.Route("/api/v1", func(r chi.Router) {
-		// Status endpoints
-		r.Get("/status", adaptGinHandler(deps.StatusHandler.GetStatus))
-		r.Post("/status/start", adaptGinHandler(deps.StatusHandler.StartProcesses))
-		r.Post("/status/stop", adaptGinHandler(deps.StatusHandler.StopProcesses))
-
-		// Portfolio endpoints
-		r.Get("/portfolio", adaptGinHandler(deps.PortfolioHandler.GetPortfolioSummary))
-		r.Get("/portfolio/active", adaptGinHandler(deps.PortfolioHandler.GetActiveTrades))
-		r.Get("/portfolio/performance", adaptGinHandler(deps.PortfolioHandler.GetPerformanceMetrics))
-		r.Get("/portfolio/value", adaptGinHandler(deps.PortfolioHandler.GetTotalValue))
-
-		// Trade endpoints
-		r.Get("/trade/history", adaptGinHandler(deps.TradeHandler.GetTradeHistory))
-		r.Post("/trade/buy", adaptGinHandler(deps.TradeHandler.ExecuteTrade))
-		r.Post("/trade/sell", adaptGinHandler(deps.TradeHandler.SellCoin))
-		r.Get("/trade/status/{id}", adaptGinHandler(deps.TradeHandler.GetTradeStatus))
-
-		// NewCoin endpoints
-		r.Get("/newcoins", adaptGinHandler(deps.NewCoinHandler.GetDetectedCoins))
-		r.Post("/newcoins/process", adaptGinHandler(deps.NewCoinHandler.ProcessNewCoins))
-		r.Post("/newcoins/detect", adaptGinHandler(deps.NewCoinHandler.DetectNewCoins))
-		r.Post("/newcoins/by-date", adaptGinHandler(deps.NewCoinHandler.GetCoinsByDate))
-		r.Post("/newcoins/by-date-range", adaptGinHandler(deps.NewCoinHandler.GetCoinsByDateRange))
-
-		// Config endpoints
-		r.Get("/config", adaptGinHandler(deps.ConfigHandler.GetCurrentConfig))
-		r.Put("/config", adaptGinHandler(deps.ConfigHandler.UpdateConfig))
-		r.Get("/config/defaults", adaptGinHandler(deps.ConfigHandler.GetDefaultConfig))
-
-		// Analytics endpoints
-		r.Get("/analytics", adaptGinHandler(deps.AnalyticsHandler.GetTradeAnalytics))
-		r.Get("/analytics/trades", adaptGinHandler(deps.AnalyticsHandler.GetAllTradePerformance))
-		r.Get("/analytics/trades/{id}", adaptGinHandler(deps.AnalyticsHandler.GetTradePerformance))
-		r.Get("/analytics/winrate", adaptGinHandler(deps.AnalyticsHandler.GetWinRate))
-		r.Get("/analytics/balance-history", adaptGinHandler(deps.AnalyticsHandler.GetBalanceHistory))
-		r.Get("/analytics/by-symbol", adaptGinHandler(deps.AnalyticsHandler.GetPerformanceBySymbol))
-		r.Get("/analytics/by-reason", adaptGinHandler(deps.AnalyticsHandler.GetPerformanceByReason))
-		r.Get("/analytics/by-strategy", adaptGinHandler(deps.AnalyticsHandler.GetPerformanceByStrategy))
-	})
-
-	// WebSocket endpoint
-	r.Get("/ws", adaptGinHandler(deps.WebSocketHandler.ServeWSGin))
+	// Setup all routes
+	setupRoutes(r, deps)
 
 	return r
 }
 
-// adaptGinHandler adapts a Gin handler to an http.HandlerFunc.
-func adaptGinHandler(ginHandler func(*gin.Context)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Create a test context
-		ginCtx, _ := gin.CreateTestContext(w)
-		ginCtx.Request = r
-
-		// Call the Gin handler
-		ginHandler(ginCtx)
-	}
+// setupHuma configures Huma for OpenAPI documentation if core services are available
+func setupHuma(r *chi.Mux, provider *service.Provider) error {
+	humaConfig := huma.DefaultConfig()
+	_ = huma.SetupHuma(r, humaConfig, provider)
+	return nil // Huma's SetupHuma doesn't return an error, so we'll assume success
 }
 
-// responseWriterAdapter adapts http.ResponseWriter to gin.ResponseWriter.
-type responseWriterAdapter struct {
-	http.ResponseWriter
-	size   int
-	status int
+// hasRequiredServices checks if all required services are available for Huma setup
+func hasRequiredServices(provider *service.Provider) bool {
+	// Check for required services
+	return provider != nil &&
+		provider.HasBacktestService() &&
+		provider.HasStrategyService() &&
+		provider.HasAuthService() &&
+		provider.HasUserService()
 }
 
-func (w *responseWriterAdapter) Status() int {
-	return w.status
+// setupRoutes configures all API routes
+func setupRoutes(r *chi.Mux, deps *HumaDependencies) {
+	// Health check endpoint
+	r.Get("/health", deps.HealthHandler.HealthCheck)
+
+	// Versioned API group
+	r.Route("/api/v1", func(r chi.Router) {
+		// Status endpoints
+		r.Get("/status", deps.StatusHandler.GetStatus)
+		r.Post("/status/start", deps.StatusHandler.StartProcesses)
+		r.Post("/status/stop", deps.StatusHandler.StopProcesses)
+
+		// Portfolio endpoints
+		r.Get("/portfolio", deps.PortfolioHandler.GetPortfolioSummary)
+		r.Get("/portfolio/active", deps.PortfolioHandler.GetActiveTrades)
+		r.Get("/portfolio/performance", deps.PortfolioHandler.GetPerformanceMetrics)
+		r.Get("/portfolio/value", deps.PortfolioHandler.GetTotalValue)
+
+		// Trade endpoints
+		r.Get("/trade/history", deps.TradeHandler.GetTradeHistory)
+		r.Post("/trade/buy", deps.TradeHandler.ExecuteTrade)
+		r.Post("/trade/sell", deps.TradeHandler.SellCoin)
+		r.Get("/trade/status/{id}", deps.TradeHandler.GetTradeStatus)
+
+		// NewCoin endpoints
+		r.Get("/newcoins", deps.NewCoinHandler.GetDetectedCoins)
+		r.Post("/newcoins/process", deps.NewCoinHandler.ProcessNewCoins)
+		r.Post("/newcoins/detect", deps.NewCoinHandler.DetectNewCoins)
+		r.Post("/newcoins/by-date", deps.NewCoinHandler.GetCoinsByDate)
+		r.Post("/newcoins/by-date-range", deps.NewCoinHandler.GetCoinsByDateRange)
+
+		// Config endpoints
+		r.Get("/config", deps.ConfigHandler.GetCurrentConfig)
+		r.Put("/config", deps.ConfigHandler.UpdateConfig)
+		r.Get("/config/defaults", deps.ConfigHandler.GetDefaultConfig)
+
+		// Analytics endpoints
+		r.Get("/analytics", deps.AnalyticsHandler.GetTradeAnalytics)
+		r.Get("/analytics/trades", deps.AnalyticsHandler.GetAllTradePerformance)
+		r.Get("/analytics/trades/{id}", deps.AnalyticsHandler.GetTradePerformance)
+		r.Get("/analytics/winrate", deps.AnalyticsHandler.GetWinRate)
+		r.Get("/analytics/balance-history", deps.AnalyticsHandler.GetBalanceHistory)
+		r.Get("/analytics/by-symbol", deps.AnalyticsHandler.GetPerformanceBySymbol)
+		r.Get("/analytics/by-reason", deps.AnalyticsHandler.GetPerformanceByReason)
+		r.Get("/analytics/by-strategy", deps.AnalyticsHandler.GetPerformanceByStrategy)
+	})
+
+	// WebSocket endpoint
+	r.Get("/ws", deps.WebSocketHandler.ServeWS)
 }
 
-func (w *responseWriterAdapter) Size() int {
-	return w.size
-}
-
-func (w *responseWriterAdapter) WriteHeader(code int) {
-	w.status = code
-	w.ResponseWriter.WriteHeader(code)
-}
-
-func (w *responseWriterAdapter) Write(b []byte) (int, error) {
-	n, err := w.ResponseWriter.Write(b)
-	w.size += n
-	return n, err
-}
-
-func (w *responseWriterAdapter) WriteString(s string) (int, error) {
-	n, err := w.ResponseWriter.Write([]byte(s))
-	w.size += n
-	return n, err
-}
-
-func (w *responseWriterAdapter) Written() bool {
-	return w.size > 0
-}
-
-// HumaDependencies contains all the dependencies for the Huma API.
+// HumaDependencies contains all the dependencies for the API.
 type HumaDependencies struct {
 	HealthHandler    *handlers.HealthHandler
 	StatusHandler    *handlers.StatusHandler
@@ -137,4 +111,5 @@ type HumaDependencies struct {
 	ConfigHandler    *handlers.ConfigHandler
 	WebSocketHandler *websocket.Handler
 	AnalyticsHandler *handlers.AnalyticsHandler
+	ServiceProvider  *service.Provider
 }

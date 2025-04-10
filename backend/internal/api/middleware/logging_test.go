@@ -1,18 +1,14 @@
 package middleware
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLoggingMiddleware(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	tests := []struct {
 		name         string
 		path         string
@@ -52,17 +48,18 @@ func TestLoggingMiddleware(t *testing.T) {
 			// Create a mock logger
 			logger := &mockLogger{}
 
-			// Create a test router with the logging middleware
-			router := gin.New()
-			router.Use(LoggingMiddleware(logger))
-
 			// Define a test handler
-			router.Handle(tt.method, tt.path, func(c *gin.Context) {
+			testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if tt.addGinError {
-					c.Error(errors.New("test error"))
+					// Simulate error by writing 500 status
+					http.Error(w, "test error", tt.status)
+				} else {
+					w.WriteHeader(tt.status)
 				}
-				c.Status(tt.status)
 			})
+
+			// Wrap with logging middleware
+			handler := LoggingMiddleware(logger)(testHandler)
 
 			// Make a request
 			req := httptest.NewRequest(tt.method, tt.path, nil)
@@ -70,7 +67,7 @@ func TestLoggingMiddleware(t *testing.T) {
 				req.Header.Set("X-Request-ID", "test-request-id")
 			}
 			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
+			handler.ServeHTTP(w, req)
 
 			// Check the response status
 			assert.Equal(t, tt.status, w.Code)
@@ -79,7 +76,6 @@ func TestLoggingMiddleware(t *testing.T) {
 			if tt.addGinError {
 				assert.True(t, logger.errorCalled, "Error logger should have been called")
 				assert.Contains(t, logger.errorArgs, "errors")
-				// Gin formats errors with a prefix like "Error #01: " and a newline
 				errorFound := false
 				for _, arg := range logger.errorArgs {
 					if s, ok := arg.(string); ok && s != "errors" {

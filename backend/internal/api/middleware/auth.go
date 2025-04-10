@@ -6,9 +6,11 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
+
+	"go-crypto-bot-clean/backend/internal/api/middleware/jwt"
 
 	"github.com/go-chi/chi/v5"
-	"go-crypto-bot-clean/backend/internal/api/middleware/jwt"
 )
 
 // contextKey is a type for context keys
@@ -21,13 +23,23 @@ const (
 	RolesKey  contextKey = "roles"
 )
 
+// JWTServiceInterface defines the interface for JWT service
+type JWTServiceInterface interface {
+	GenerateAccessToken(userID, email string, roles []string) (string, time.Time, error)
+	GenerateRefreshToken(userID string) (string, time.Time, error)
+	ValidateAccessToken(token string) (*jwt.CustomClaims, error)
+	ValidateRefreshToken(token string) (*jwt.CustomClaims, error)
+	IsBlacklisted(token string) bool
+	GetRefreshTTL() time.Duration
+}
+
 // AuthMiddleware provides authentication middleware
 type AuthMiddleware struct {
-	jwtService *jwt.Service
+	jwtService JWTServiceInterface
 }
 
 // NewAuthMiddleware creates a new authentication middleware
-func NewAuthMiddleware(jwtService *jwt.Service) *AuthMiddleware {
+func NewAuthMiddleware(jwtService JWTServiceInterface) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtService: jwtService,
 	}
@@ -119,6 +131,50 @@ func (m *AuthMiddleware) RequireAdmin() func(http.Handler) http.Handler {
 	return m.RequireRole("admin")
 }
 
+// RequirePermission requires the user to have a specific permission
+func (m *AuthMiddleware) RequirePermission(permission string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Get roles from context
+			roles, ok := r.Context().Value(RolesKey).([]string)
+			if !ok || len(roles) == 0 {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			// Check if user has admin role (admins have all permissions)
+			for _, role := range roles {
+				if role == "admin" {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			// TODO: Implement a proper permission system
+			// For now, we'll just check if the user has the required permission based on role
+			// In a real system, you would have a more sophisticated permission system
+			hasPermission := false
+			for _, role := range roles {
+				// Simple mapping of roles to permissions
+				switch {
+				case role == "user" && (permission == "read:users" || permission == "read:strategies"):
+					hasPermission = true
+				case role == "manager" && (permission == "read:users" || permission == "write:strategies" || permission == "read:strategies"):
+					hasPermission = true
+				}
+			}
+
+			if !hasPermission {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			// Call the next handler
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // GetUserID gets the user ID from the request context
 func GetUserID(r *http.Request) string {
 	userID, ok := r.Context().Value(UserIDKey).(string)
@@ -160,19 +216,19 @@ func HasRole(r *http.Request, role string) bool {
 // RegisterAuthMiddleware registers the authentication middleware with a router
 func RegisterAuthMiddleware(r chi.Router, jwtService *jwt.Service) {
 	authMiddleware := NewAuthMiddleware(jwtService)
-	
+
 	// Apply authentication middleware to all routes under /api/v1
 	// except for the authentication routes
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware.Authenticate)
-		
+
 		// Protected routes go here
 		// For example:
 		// r.Mount("/api/v1/user", userRouter)
 		// r.Mount("/api/v1/strategy", strategyRouter)
 		// r.Mount("/api/v1/backtest", backtestRouter)
 	})
-	
+
 	// Public routes (no authentication required)
 	// For example:
 	// r.Mount("/api/v1/auth", authRouter)

@@ -1,21 +1,38 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
 	"go-crypto-bot-clean/backend/internal/core/status"
 )
 
+type dummyStatusService struct {
+	status *status.SystemStatus
+	err    error
+}
+
+func (d *dummyStatusService) GetStatus() (*status.SystemStatus, error) {
+	return d.status, d.err
+}
+
+// Add dummy methods to satisfy status.Service interface
+func (d *dummyStatusService) StartProcesses(ctx context.Context) error {
+	return nil // No-op for this test
+}
+
+func (d *dummyStatusService) StopProcesses() error {
+	return nil // No-op for this test
+}
+
 // TestStatusHandler_GetStatusForFrontend tests that the status handler returns data in the format expected by the frontend
 func TestStatusHandler_GetStatusForFrontend(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 
 	// Create mock system status
 	mockSystemStatus := &status.SystemStatus{
@@ -41,22 +58,19 @@ func TestStatusHandler_GetStatusForFrontend(t *testing.T) {
 	}
 
 	// Create mock service
-	mockSvc := new(MockStatusService)
-	mockSvc.On("GetStatus").Return(mockSystemStatus, nil)
+	mockSvc := &dummyStatusService{status: mockSystemStatus, err: nil}
 
 	// Create handler
 	handler := NewStatusHandler(mockSvc)
 
 	// Create router
-	router := gin.New()
-	router.GET("/api/v1/status", handler.GetStatus)
 
 	// Create request
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/status", nil)
 	w := httptest.NewRecorder()
 
 	// Serve request
-	router.ServeHTTP(w, req)
+	handler.GetStatus(w, req)
 
 	// Check response
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -73,5 +87,4 @@ func TestStatusHandler_GetStatusForFrontend(t *testing.T) {
 	assert.Contains(t, response, "memory_usage")
 
 	// Verify mock expectations
-	mockSvc.AssertExpectations(t)
 }

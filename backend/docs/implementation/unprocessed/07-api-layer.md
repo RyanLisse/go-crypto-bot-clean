@@ -55,7 +55,7 @@ First, let's set up the router with Gin:
 package api
 
 import (
-    "github.com/gin-gonic/gin"
+    " "
     
     "github.com/ryanlisse/cryptobot-backend/internal/api/handlers"
     "github.com/ryanlisse/cryptobot-backend/internal/api/middleware"
@@ -163,7 +163,7 @@ package middleware
 import (
     "time"
 
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/rs/zerolog/log"
 )
 
@@ -202,7 +202,7 @@ func Logger() gin.HandlerFunc {
 // internal/api/middleware/cors.go
 package middleware
 
-import "github.com/gin-gonic/gin"
+import " "
 
 // CORS handles Cross-Origin Resource Sharing
 func CORS() gin.HandlerFunc {
@@ -230,7 +230,7 @@ package middleware
 import (
     "net/http"
 
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/rs/zerolog/log"
 )
 
@@ -268,7 +268,7 @@ import (
     "os"
     "strings"
 
-    "github.com/gin-gonic/gin"
+    " "
 )
 
 // APIKeyAuth authenticates requests using an API key
@@ -302,7 +302,7 @@ import (
     "net/http"
     "time"
 
-    "github.com/gin-gonic/gin"
+    " "
 )
 
 // HealthCheck returns the health status of the API
@@ -324,7 +324,7 @@ import (
     "net/http"
     "strconv"
 
-    "github.com/gin-gonic/gin"
+    " "
 
     "github.com/ryanlisse/cryptobot-backend/internal/domain/models"
     "github.com/ryanlisse/cryptobot-backend/internal/domain/repository"
@@ -395,7 +395,7 @@ import (
     "net/http"
     "strconv"
 
-    "github.com/gin-gonic/gin"
+    " "
 
     "github.com/ryanlisse/cryptobot-backend/internal/domain/models"
     "github.com/ryanlisse/cryptobot-backend/internal/domain/repository"
@@ -509,7 +509,7 @@ import (
     "sync"
     "time"
 
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/gorilla/websocket"
 
     "github.com/ryanlisse/cryptobot-backend/internal/core"
@@ -695,7 +695,7 @@ package api
 import (
     "net/http"
 
-    "github.com/gin-gonic/gin"
+    " "
 )
 
 // ErrorResponse represents a standardized API error response
@@ -741,7 +741,7 @@ For API documentation, we recommend using Swagger/OpenAPI. Here's how to set it 
 package main
 
 import (
-    "github.com/gin-gonic/gin"
+    " "
     swaggerFiles "github.com/swaggo/files"
     ginSwagger "github.com/swaggo/gin-swagger"
     
@@ -799,7 +799,7 @@ import (
     "net/http/httptest"
     "testing"
 
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/mock"
 

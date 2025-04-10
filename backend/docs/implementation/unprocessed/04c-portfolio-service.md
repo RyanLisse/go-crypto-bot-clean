@@ -608,7 +608,7 @@ package handlers
 import (
     "net/http"
     
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/ryanlisse/cryptobot/internal/domain/service"
 )
 

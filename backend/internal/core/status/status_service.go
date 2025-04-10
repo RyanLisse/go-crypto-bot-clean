@@ -42,6 +42,13 @@ type SystemStatus struct {
 	OverallStatus string            `json:"overall_status"`
 }
 
+// Service defines the interface for status operations used by handlers
+type Service interface {
+	GetStatus() (*SystemStatus, error)
+	StartProcesses(ctx context.Context) error
+	StopProcesses() error
+}
+
 // StatusService provides methods for checking and controlling system status
 type StatusService struct {
 	provider   StatusProvider
@@ -106,12 +113,13 @@ func (s *StatusService) GetStatus() (*SystemStatus, error) {
 }
 
 // StartProcesses starts all system processes
-func (s *StatusService) StartProcesses(ctx context.Context) (*SystemStatus, error) {
+// StartProcesses starts all system processes (implements Service interface)
+func (s *StatusService) StartProcesses(ctx context.Context) error {
 	// Start New Coin Watcher if not running
 	newCoinWatcher := s.provider.GetNewCoinWatcher()
 	if !newCoinWatcher.IsRunning() {
 		if err := newCoinWatcher.Start(ctx); err != nil {
-			return nil, fmt.Errorf("failed to start NewCoinWatcher: %w", err)
+			return fmt.Errorf("failed to start NewCoinWatcher: %w", err)
 		}
 	}
 
@@ -119,16 +127,16 @@ func (s *StatusService) StartProcesses(ctx context.Context) (*SystemStatus, erro
 	positionMonitor := s.provider.GetPositionMonitor()
 	if !positionMonitor.IsRunning() {
 		if err := positionMonitor.Start(ctx); err != nil {
-			return nil, fmt.Errorf("failed to start PositionMonitor: %w", err)
+			return fmt.Errorf("failed to start PositionMonitor: %w", err)
 		}
 	}
 
-	// Return updated status
-	return s.GetStatus()
+	return nil // Return nil error on success
 }
 
 // StopProcesses stops all system processes
-func (s *StatusService) StopProcesses() (*SystemStatus, error) {
+// StopProcesses stops all system processes (implements Service interface)
+func (s *StatusService) StopProcesses() error {
 	// Stop New Coin Watcher if running
 	newCoinWatcher := s.provider.GetNewCoinWatcher()
 	if newCoinWatcher.IsRunning() {
@@ -141,8 +149,8 @@ func (s *StatusService) StopProcesses() (*SystemStatus, error) {
 		positionMonitor.Stop()
 	}
 
-	// Return updated status
-	return s.GetStatus()
+	// TODO: Should StopProcesses return an error if stopping fails?
+	return nil // Return nil error on success
 }
 
 // getStatusString returns a human-readable status string

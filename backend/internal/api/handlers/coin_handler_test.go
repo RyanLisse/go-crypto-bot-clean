@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go-crypto-bot-clean/backend/internal/core/newcoin"
 	"go-crypto-bot-clean/backend/internal/domain/models"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -304,7 +304,6 @@ func (m *MockNewCoinWatcher) GetTradableCoinsToday(ctx context.Context) ([]model
 }
 
 func TestListTradableCoinsToday(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
 		name       string
@@ -360,16 +359,12 @@ func TestListTradableCoinsToday(t *testing.T) {
 			// Create handler
 			handler := NewCoinHandler(mockService, mockWatcher)
 
-			// Setup router
-			router := gin.New()
-			router.GET("/api/v1/newcoins/tradable/today", handler.ListTradableCoinsToday)
-
 			// Create request
 			req, _ := http.NewRequest(http.MethodGet, "/api/v1/newcoins/tradable/today", nil)
 			resp := httptest.NewRecorder()
 
 			// Perform request
-			router.ServeHTTP(resp, req)
+			handler.ListTradableCoinsToday(resp, req)
 
 			// Assert status code
 			assert.Equal(t, tt.wantStatus, resp.Code)
@@ -388,7 +383,6 @@ func TestListTradableCoinsToday(t *testing.T) {
 }
 
 func TestListTradableCoins(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
 		name       string
@@ -444,16 +438,12 @@ func TestListTradableCoins(t *testing.T) {
 			// Create handler
 			handler := NewCoinHandler(mockService, mockWatcher)
 
-			// Setup router
-			router := gin.New()
-			router.GET("/api/v1/newcoins/tradable", handler.ListTradableCoins)
-
 			// Create request
 			req, _ := http.NewRequest(http.MethodGet, "/api/v1/newcoins/tradable", nil)
 			resp := httptest.NewRecorder()
 
 			// Perform request
-			router.ServeHTTP(resp, req)
+			handler.ListTradableCoins(resp, req)
 
 			// Assert status code
 			assert.Equal(t, tt.wantStatus, resp.Code)
@@ -472,7 +462,6 @@ func TestListTradableCoins(t *testing.T) {
 }
 
 func TestListMarkets(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
 		name           string
@@ -507,15 +496,13 @@ func TestListMarkets(t *testing.T) {
 			handler := NewCoinHandler(mockService, mockWatcher)
 
 			// Set up router
-			router := gin.New()
-			router.GET("/test", handler.ListMarkets)
 
 			// Create request
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
 			w := httptest.NewRecorder()
 
 			// Perform request
-			router.ServeHTTP(w, req)
+			handler.ListMarkets(w, req)
 
 			// Assert status code
 			assert.Equal(t, tt.expectedStatus, w.Code)
@@ -535,7 +522,6 @@ func TestListMarkets(t *testing.T) {
 }
 
 func TestGetMarket(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
 		name           string
@@ -581,17 +567,9 @@ func TestGetMarket(t *testing.T) {
 
 			// For testing Gin handlers with path parameters, it's better to create a context directly
 			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-
-			// Create request
 			req := httptest.NewRequest(http.MethodGet, "/market/"+tt.symbol, nil)
-			c.Request = req
 
-			// Set the path parameter directly
-			c.Params = gin.Params{{Key: "symbol", Value: tt.symbol}}
-
-			// Call the handler directly
-			handler.GetMarket(c)
+			handler.GetMarket(w, req)
 
 			// Assert status code
 			assert.Equal(t, tt.expectedStatus, w.Code)
@@ -613,7 +591,6 @@ func TestGetMarket(t *testing.T) {
 }
 
 func TestListNewCoins(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 
 	// Create test new coins
 	testTime := time.Now()
@@ -678,14 +655,9 @@ func TestListNewCoins(t *testing.T) {
 
 			// For testing Gin handlers, create a context directly
 			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-
-			// Create request
 			req := httptest.NewRequest(http.MethodGet, "/newcoins", nil)
-			c.Request = req
 
-			// Call the handler directly
-			handler.ListNewCoins(c)
+			handler.ListNewCoins(w, req)
 
 			// Assert status code
 			assert.Equal(t, tt.expectedStatus, w.Code)

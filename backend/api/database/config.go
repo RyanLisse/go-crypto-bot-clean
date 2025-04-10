@@ -3,6 +3,7 @@ package database
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -12,16 +13,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
-
-// GormWriter implements the logger.Writer interface for GORM
-type GormWriter struct {
-	logger *zap.Logger
-}
-
-// Printf implements the logger.Writer interface
-func (w *GormWriter) Printf(format string, args ...interface{}) {
-	w.logger.Info(fmt.Sprintf(format, args...))
-}
 
 // Config holds database configuration
 type Config struct {
@@ -52,6 +43,12 @@ func NewDatabase(config Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
 	}
 
+	// Configure GORM logger
+	gormLogLevel := logger.Silent
+	if config.Debug {
+		gormLogLevel = logger.Info
+	}
+
 	// Get logger if not provided
 	zapLogger := config.Logger
 	if zapLogger == nil {
@@ -62,14 +59,9 @@ func NewDatabase(config Config) (*gorm.DB, error) {
 		}
 	}
 
-	// Configure GORM logger
-	gormLogLevel := logger.Silent
-	if config.Debug {
-		gormLogLevel = logger.Info
-	}
-
+	// Use standard logger writer
 	gormLogger := logger.New(
-		&GormWriter{logger: zapLogger}, // Use custom writer that integrates with zap
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // Standard logger
 		logger.Config{
 			SlowThreshold:             200 * time.Millisecond,
 			LogLevel:                  gormLogLevel,
@@ -116,7 +108,10 @@ func NewDatabase(config Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	zapLogger.Info("Database connection established successfully", zap.String("path", config.Path))
+	// Log successful connection
+	if zapLogger != nil {
+		zapLogger.Info("Database connection established successfully", zap.String("path", config.Path))
+	}
 
 	return db, nil
 }

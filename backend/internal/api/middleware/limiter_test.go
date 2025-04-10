@@ -6,13 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRateLimiterMiddleware(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	tests := []struct {
 		name           string
 		rate           float64
@@ -53,25 +50,26 @@ func TestRateLimiterMiddleware(t *testing.T) {
 			logger := &mockLogger{}
 
 			// Create an identifier extractor function
-			extractor := func(c *gin.Context) string {
+			extractor := func(r *http.Request) string {
 				return tt.identifier
 			}
 
 			// Create the middleware
 			middleware := RateLimiterMiddleware(tt.rate, tt.capacity, extractor, logger)
 
-			// Set up a test router with the middleware
-			router := gin.New()
-			router.Use(middleware)
-			router.GET("/test", func(c *gin.Context) {
-				c.Status(http.StatusOK)
+			// Define a test handler
+			testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
 			})
+
+			// Wrap with middleware
+			handler := middleware(testHandler)
 
 			// Make the specified number of requests
 			for i := 0; i < tt.callCount; i++ {
 				req := httptest.NewRequest(http.MethodGet, "/test", nil)
 				w := httptest.NewRecorder()
-				router.ServeHTTP(w, req)
+				handler.ServeHTTP(w, req)
 
 				// Check the response status
 				assert.Equal(t, tt.expectedStatus[i], w.Code, "Request %d should have status %d, got %d", i+1, tt.expectedStatus[i], w.Code)
@@ -92,38 +90,37 @@ func TestRateLimiterMiddleware(t *testing.T) {
 }
 
 func TestRateLimiterMiddleware_TokenRefill(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	// Create a mock logger
 	logger := &mockLogger{}
 
 	// Configure a rate limiter with 1 token per second
 	rate := 1.0
 	capacity := 1.0
-	extractor := func(c *gin.Context) string {
+	extractor := func(r *http.Request) string {
 		return "test-client"
 	}
 
 	// Create the middleware
 	middleware := RateLimiterMiddleware(rate, capacity, extractor, logger)
 
-	// Set up a test router
-	router := gin.New()
-	router.Use(middleware)
-	router.GET("/test", func(c *gin.Context) {
-		c.Status(http.StatusOK)
+	// Define a test handler
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
 	})
+
+	// Wrap with middleware
+	handler := middleware(testHandler)
 
 	// First request should succeed
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Second immediate request should be rate limited
 	req = httptest.NewRequest(http.MethodGet, "/test", nil)
 	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusTooManyRequests, w.Code)
 
 	// Wait for token to refill
@@ -132,7 +129,7 @@ func TestRateLimiterMiddleware_TokenRefill(t *testing.T) {
 	// Third request after waiting should succeed
 	req = httptest.NewRequest(http.MethodGet, "/test", nil)
 	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Verify logger was called

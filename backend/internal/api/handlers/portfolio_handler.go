@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go-crypto-bot-clean/backend/internal/api/dto/response"
 	"go-crypto-bot-clean/backend/internal/domain/models"
 )
@@ -38,13 +38,14 @@ func NewPortfolioHandler(portfolioService PortfolioServiceInterface) *PortfolioH
 // @Success 200 {object} response.PortfolioSummaryResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/portfolio [get]
-func (h *PortfolioHandler) GetPortfolioSummary(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *PortfolioHandler) GetPortfolioSummary(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Get active trades
 	activeTrades, err := h.portfolioService.GetActiveTrades(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get active trades",
 			Details: err.Error(),
@@ -55,7 +56,8 @@ func (h *PortfolioHandler) GetPortfolioSummary(c *gin.Context) {
 	// Get portfolio value
 	totalValue, err := h.portfolioService.GetPortfolioValue(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get portfolio value",
 			Details: err.Error(),
@@ -66,7 +68,8 @@ func (h *PortfolioHandler) GetPortfolioSummary(c *gin.Context) {
 	// Get performance metrics
 	metrics, err := h.portfolioService.GetTradePerformance(ctx, "all")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get performance metrics",
 			Details: err.Error(),
@@ -83,7 +86,8 @@ func (h *PortfolioHandler) GetPortfolioSummary(c *gin.Context) {
 		Timestamp:        time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetActiveTrades godoc
@@ -95,13 +99,14 @@ func (h *PortfolioHandler) GetPortfolioSummary(c *gin.Context) {
 // @Success 200 {object} response.ActiveTradesResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/portfolio/active [get]
-func (h *PortfolioHandler) GetActiveTrades(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *PortfolioHandler) GetActiveTrades(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Get active trades
 	activeTrades, err := h.portfolioService.GetActiveTrades(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get active trades",
 			Details: err.Error(),
@@ -116,7 +121,8 @@ func (h *PortfolioHandler) GetActiveTrades(c *gin.Context) {
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetPerformanceMetrics godoc
@@ -129,14 +135,18 @@ func (h *PortfolioHandler) GetActiveTrades(c *gin.Context) {
 // @Success 200 {object} response.PerformanceResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/portfolio/performance [get]
-func (h *PortfolioHandler) GetPerformanceMetrics(c *gin.Context) {
-	ctx := c.Request.Context()
-	timeRange := c.DefaultQuery("timeRange", "all")
+func (h *PortfolioHandler) GetPerformanceMetrics(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	timeRange := r.URL.Query().Get("timeRange")
+	if timeRange == "" {
+		timeRange = "all"
+	}
 
 	// Get performance metrics
 	metrics, err := h.portfolioService.GetTradePerformance(ctx, timeRange)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get performance metrics",
 			Details: err.Error(),
@@ -148,7 +158,8 @@ func (h *PortfolioHandler) GetPerformanceMetrics(c *gin.Context) {
 	resp := mapToPerformanceResponse(metrics)
 	resp.TimeRange = timeRange
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetTotalValue godoc
@@ -160,13 +171,14 @@ func (h *PortfolioHandler) GetPerformanceMetrics(c *gin.Context) {
 // @Success 200 {object} response.TotalValueResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/portfolio/value [get]
-func (h *PortfolioHandler) GetTotalValue(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *PortfolioHandler) GetTotalValue(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Get portfolio value
 	totalValue, err := h.portfolioService.GetPortfolioValue(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get portfolio value",
 			Details: err.Error(),
@@ -180,7 +192,8 @@ func (h *PortfolioHandler) GetTotalValue(c *gin.Context) {
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // Helper functions to map domain models to DTOs

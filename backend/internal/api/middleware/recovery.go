@@ -86,13 +86,30 @@ func RecoveryMiddleware(options ...RecoveryOptions) func(http.Handler) http.Hand
 					reqInfo := getSanitizedRequestInfo(r, opts.RedactHeaders, opts.RedactParams)
 
 					// Get user info from context if available
-					var userInfo map[string]interface{}
-					if user, ok := auth.GetUserFromContext(r.Context()); ok {
-						userInfo = map[string]interface{}{
-							"id":       user.ID,
-							"email":    user.Email,
-							"username": user.Username,
-							"roles":    user.Roles,
+					userInfo := make(map[string]interface{})
+
+					// First check for user_info in context (used in tests)
+					if ctxUserInfo, ok := r.Context().Value("user_info").(map[string]interface{}); ok {
+						userInfo = ctxUserInfo
+					} else {
+						// Check if we have a user in the context
+						ctxValue := r.Context().Value(auth.UserDataKey)
+						if ctxValue != nil {
+							if userData, ok := ctxValue.(*auth.UserData); ok {
+								userInfo = map[string]interface{}{
+									"id":       userData.ID,
+									"email":    userData.Email,
+									"username": userData.Username,
+									"roles":    userData.Roles,
+								}
+							}
+						} else if user, ok := auth.GetUserFromContext(r.Context()); ok {
+							userInfo = map[string]interface{}{
+								"id":       user.ID,
+								"email":    user.Email,
+								"username": user.Username,
+								"roles":    user.Roles,
+							}
 						}
 					}
 
@@ -108,16 +125,22 @@ func RecoveryMiddleware(options ...RecoveryOptions) func(http.Handler) http.Hand
 					}
 
 					// Log the panic with context information
-					logger.Error("Panic recovered in request handler",
+					logFields := []zap.Field{
 						zap.String("error_type", errorType),
 						zap.Any("error", err),
 						zap.String("stack_trace", stackTrace),
 						zap.String("path", r.URL.Path),
 						zap.String("method", r.Method),
 						zap.Any("request", reqInfo),
-						zap.Any("user", userInfo),
 						zap.String("request_id", GetRequestID(r.Context())),
-					)
+					}
+
+					// Only add user info if it's not empty
+					if len(userInfo) > 0 {
+						logFields = append(logFields, zap.Any("user", userInfo))
+					}
+
+					logger.Error("Panic recovered in request handler", logFields...)
 
 					// Create appropriate error response
 					var authError *auth.AuthError

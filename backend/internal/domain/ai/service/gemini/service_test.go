@@ -4,10 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/generative-ai-go/genai"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service"
+
+	"github.com/google/generative-ai-go/genai"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
 )
 
 // Mock dependencies
@@ -42,10 +44,14 @@ func TestGeminiAIService_ExecuteFunction(t *testing.T) {
 	// Create mock memory repository
 	mockMemoryRepo := new(MockMemoryRepository)
 
+	// Create a logger
+	logger, _ := zap.NewDevelopment()
+
 	// Create service
 	service := &GeminiAIService{
 		Client:     &genai.Client{},
 		MemoryRepo: mockMemoryRepo,
+		Logger:     logger,
 	}
 
 	// Test get_market_data function

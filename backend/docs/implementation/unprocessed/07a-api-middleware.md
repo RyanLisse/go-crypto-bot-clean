@@ -37,7 +37,7 @@ package middleware
 import (
     "time"
 
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/rs/zerolog/log"
 )
 
@@ -83,7 +83,7 @@ CORS middleware enables browser clients from different origins to interact with 
 // internal/api/middleware/cors.go
 package middleware
 
-import "github.com/gin-gonic/gin"
+import " "
 
 // CORS handles Cross-Origin Resource Sharing for browser clients
 func CORS() gin.HandlerFunc {
@@ -150,7 +150,7 @@ import (
     "net/http"
     "runtime/debug"
 
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/rs/zerolog/log"
 )
 
@@ -194,7 +194,7 @@ import (
     "os"
     "strings"
 
-    "github.com/gin-gonic/gin"
+    " "
 )
 
 // APIKeyAuth authenticates requests using an API key
@@ -307,7 +307,7 @@ import (
     "sync"
     "time"
 
-    "github.com/gin-gonic/gin"
+    " "
     "golang.org/x/time/rate"
 )
 
@@ -414,7 +414,7 @@ import (
     "strconv"
     "time"
 
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/prometheus/client_golang/prometheus"
 )
 
@@ -490,7 +490,7 @@ Here's how to register all middleware with your Gin router:
 package api
 
 import (
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/prometheus/client_golang/prometheus/promhttp"
     
     "github.com/ryanlisse/cryptobot-backend/internal/api/middleware"
@@ -568,7 +568,7 @@ import (
     "net/http/httptest"
     "testing"
 
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/rs/zerolog"
     "github.com/rs/zerolog/log"
     "github.com/stretchr/testify/assert"

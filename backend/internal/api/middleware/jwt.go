@@ -1,14 +1,12 @@
 package middleware
 
 import (
-	"errors"
+	"context"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"go-crypto-bot-clean/backend/internal/api/dto/response"
 )
 
 // JWTClaims represents the claims in the JWT token
@@ -18,74 +16,63 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
-// JWTAuthMiddleware validates JWT tokens from the Authorization header
-func JWTAuthMiddleware(jwtSecret string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Get the Authorization header
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, response.ErrorResponse{
-				Code:    "unauthorized",
-				Message: "Authorization header is required",
-			})
-			return
-		}
-
-		// Check if the Authorization header has the correct format
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, response.ErrorResponse{
-				Code:    "unauthorized",
-				Message: "Authorization header format must be Bearer {token}",
-			})
-			return
-		}
-
-		// Extract the token
-		tokenString := parts[1]
-
-		// Parse and validate the token
-		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-			// Validate the signing method
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, errors.New("unexpected signing method")
+// JWTAuthMiddleware creates a middleware for JWT authentication
+func JWTAuthMiddleware(jwtSecret string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Get token from Authorization header
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				http.Error(w, "Authorization header is required", http.StatusUnauthorized)
+				return
 			}
-			return []byte(jwtSecret), nil
+
+			// Check if the header has the Bearer prefix
+			bearerToken := strings.Split(authHeader, " ")
+			if len(bearerToken) != 2 || strings.ToLower(bearerToken[0]) != "bearer" {
+				http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
+				return
+			}
+
+			// Parse and validate the token
+			token, err := jwt.ParseWithClaims(bearerToken[1], &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+				return []byte(jwtSecret), nil
+			})
+
+			if err != nil {
+				if err == jwt.ErrSignatureInvalid {
+					http.Error(w, "Invalid token signature", http.StatusUnauthorized)
+					return
+				}
+				http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+				return
+			}
+
+			if !token.Valid {
+				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				return
+			}
+
+			// Store user claims in request context if needed
+			if claims, ok := token.Claims.(*JWTClaims); ok {
+				r = r.WithContext(AddClaimsToContext(r.Context(), claims))
+			}
+
+			// Call the next handler
+			next.ServeHTTP(w, r)
 		})
-
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, response.ErrorResponse{
-				Code:    "unauthorized",
-				Message: "Invalid token: " + err.Error(),
-			})
-			return
-		}
-
-		// Check if the token is valid
-		if !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, response.ErrorResponse{
-				Code:    "unauthorized",
-				Message: "Invalid token",
-			})
-			return
-		}
-
-		// Extract claims
-		claims, ok := token.Claims.(*JWTClaims)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, response.ErrorResponse{
-				Code:    "unauthorized",
-				Message: "Invalid token claims",
-			})
-			return
-		}
-
-		// Store claims in the context for later use
-		c.Set("userID", claims.UserID)
-		c.Set("role", claims.Role)
-
-		c.Next()
 	}
+}
+
+// AddClaimsToContext adds JWT claims to the request context
+func AddClaimsToContext(ctx context.Context, claims *JWTClaims) context.Context {
+	return context.WithValue(ctx, "claims", claims)
+}
+
+// GetClaimsFromContext retrieves JWT claims from the request context
+func GetClaimsFromContext(ctx context.Context) (*JWTClaims, bool) {
+	claims, ok := ctx.Value("claims").(*JWTClaims)
+	return claims, ok
 }
 
 // GenerateJWT generates a new JWT token

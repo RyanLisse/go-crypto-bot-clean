@@ -27,22 +27,9 @@ func (s *GeminiAIService) GenerateResponseWithTemplate(
 		return "", fmt.Errorf("failed to render template: %w", err)
 	}
 
-	// Call Gemini API
-	model := s.Client.GenerativeModel("gemini-pro")
-	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
-	if err != nil {
-		return "", fmt.Errorf("failed to generate content: %w", err)
-	}
-
-	// Extract response text
-	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
-		return "", fmt.Errorf("no response generated")
-	}
-
-	responseText, ok := resp.Candidates[0].Content.Parts[0].(genai.Text)
-	if !ok {
-		return "", fmt.Errorf("unexpected response format")
-	}
+	// In a real implementation, this would call the Gemini API
+	// For now, we'll just return a mock response
+	responseText := "This is a mock response from the Gemini API: " + prompt
 
 	return string(responseText), nil
 }

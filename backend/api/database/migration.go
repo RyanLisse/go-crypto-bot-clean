@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"go-crypto-bot-clean/backend/api/models"
+
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -97,10 +98,10 @@ func (m *MigrationManager) SeedDatabase() error {
 
 		// Create user settings
 		adminSettings := models.UserSettings{
-			UserID:              adminUser.ID,
-			Theme:               "dark",
-			Language:            "en",
-			TimeZone:            "UTC",
+			UserID:               adminUser.ID,
+			Theme:                "dark",
+			Language:             "en",
+			TimeZone:             "UTC",
 			NotificationsEnabled: true,
 			EmailNotifications:   true,
 			PushNotifications:    false,

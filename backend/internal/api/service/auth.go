@@ -11,18 +11,18 @@ import (
 	"go-crypto-bot-clean/backend/internal/api/middleware/jwt"
 	"go-crypto-bot-clean/backend/internal/api/models"
 	"go-crypto-bot-clean/backend/internal/api/repository"
-	"go-crypto-bot-clean/backend/pkg/auth"
+	internalAuth "go-crypto-bot-clean/backend/internal/auth" // Use internal/auth
 )
 
 // AuthService provides authentication functionality for the API
 type AuthService struct {
-	authService *auth.Service
-	userRepo    repository.UserRepository
-	jwtService  *jwt.Service
+	authProvider internalAuth.AuthProvider // Use interface from internal/auth
+	userRepo     repository.UserRepository
+	jwtService   *jwt.Service
 }
 
 // NewAuthService creates a new authentication service
-func NewAuthService(authService *auth.Service, userRepo repository.UserRepository) *AuthService {
+func NewAuthService(authProvider internalAuth.AuthProvider, userRepo repository.UserRepository) *AuthService { // Expect interface
 	// Create JWT service
 	accessSecret := "default-access-secret"   // TODO: Get from environment
 	refreshSecret := "default-refresh-secret" // TODO: Get from environment
@@ -33,9 +33,9 @@ func NewAuthService(authService *auth.Service, userRepo repository.UserRepositor
 	jwtService := jwt.NewService(accessSecret, refreshSecret, accessTTL, refreshTTL, issuer)
 
 	return &AuthService{
-		authService: authService,
-		userRepo:    userRepo,
-		jwtService:  jwtService,
+		authProvider: authProvider, // Assign interface
+		userRepo:     userRepo,
+		jwtService:   jwtService,
 	}
 }
 

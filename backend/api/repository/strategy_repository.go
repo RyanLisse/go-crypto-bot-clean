@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"go-crypto-bot-clean/backend/api/models"
+
 	"gorm.io/gorm"
 )
 
@@ -18,34 +19,34 @@ var (
 type StrategyRepository interface {
 	// Create creates a new strategy
 	Create(ctx context.Context, strategy *models.Strategy) error
-	
+
 	// GetByID gets a strategy by ID
 	GetByID(ctx context.Context, id string) (*models.Strategy, error)
-	
+
 	// GetByUserID gets all strategies for a user
 	GetByUserID(ctx context.Context, userID string) ([]*models.Strategy, error)
-	
+
 	// Update updates a strategy
 	Update(ctx context.Context, strategy *models.Strategy) error
-	
+
 	// Delete deletes a strategy
 	Delete(ctx context.Context, id string) error
-	
+
 	// GetParameters gets all parameters for a strategy
 	GetParameters(ctx context.Context, strategyID string) ([]*models.StrategyParameter, error)
-	
+
 	// AddParameter adds a parameter to a strategy
 	AddParameter(ctx context.Context, parameter *models.StrategyParameter) error
-	
+
 	// UpdateParameter updates a parameter
 	UpdateParameter(ctx context.Context, parameter *models.StrategyParameter) error
-	
+
 	// DeleteParameter deletes a parameter
 	DeleteParameter(ctx context.Context, id uint) error
-	
+
 	// GetPerformance gets the performance metrics for a strategy
 	GetPerformance(ctx context.Context, strategyID string) ([]*models.StrategyPerformance, error)
-	
+
 	// AddPerformance adds performance metrics for a strategy
 	AddPerformance(ctx context.Context, performance *models.StrategyPerformance) error
 }

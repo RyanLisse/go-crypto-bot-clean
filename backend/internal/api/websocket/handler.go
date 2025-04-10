@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
 	"go-crypto-bot-clean/backend/internal/core/newcoin"
@@ -67,6 +66,7 @@ func (h *Handler) StartMarketDataService(symbols []string) {
 func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		http.Error(w, "Could not upgrade connection", http.StatusInternalServerError)
 		return
 	}
 	client := NewClient(h.hub, conn)
@@ -74,11 +74,6 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 
 	go client.WritePump()
 	go client.ReadPump()
-}
-
-// ServeWSGin handles WebSocket requests from Gin.
-func (h *Handler) ServeWSGin(c *gin.Context) {
-	h.ServeWS(c.Writer, c.Request)
 }
 
 // BroadcastMarketData broadcasts market data to all clients.

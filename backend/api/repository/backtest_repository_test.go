@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"go-crypto-bot-clean/backend/api/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go-crypto-bot-clean/backend/api/models"
 )
 
 func TestBacktestRepository(t *testing.T) {

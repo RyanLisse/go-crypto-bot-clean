@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	responseDto "go-crypto-bot-clean/backend/internal/api/dto/response"
 	"go-crypto-bot-clean/backend/internal/domain/models"
 )
@@ -42,13 +42,14 @@ func NewEnhancedAccountHandler(accountService AccountServiceInterface) *Enhanced
 // @Success 200 {object} responseDto.AccountResponse
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/account/details [get]
-func (h *EnhancedAccountHandler) GetAccountDetails(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *EnhancedAccountHandler) GetAccountDetails(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Get account balance
 	balance, err := h.accountService.GetAccountBalance(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get account balance",
 			Details: err.Error(),
@@ -59,7 +60,8 @@ func (h *EnhancedAccountHandler) GetAccountDetails(c *gin.Context) {
 	// Get wallet
 	wallet, err := h.accountService.GetWallet(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get wallet",
 			Details: err.Error(),
@@ -70,7 +72,8 @@ func (h *EnhancedAccountHandler) GetAccountDetails(c *gin.Context) {
 	// Get current exposure
 	exposure, err := h.accountService.GetCurrentExposure(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get current exposure",
 			Details: err.Error(),
@@ -87,7 +90,8 @@ func (h *EnhancedAccountHandler) GetAccountDetails(c *gin.Context) {
 		Timestamp:       time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // ValidateAPIKeys godoc
@@ -99,13 +103,14 @@ func (h *EnhancedAccountHandler) GetAccountDetails(c *gin.Context) {
 // @Success 200 {object} responseDto.APIKeyValidationResponse
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/account/validate-keys [get]
-func (h *EnhancedAccountHandler) ValidateAPIKeys(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *EnhancedAccountHandler) ValidateAPIKeys(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Validate API keys
 	valid, err := h.accountService.ValidateAPIKeys(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to validate API keys",
 			Details: err.Error(),
@@ -119,7 +124,8 @@ func (h *EnhancedAccountHandler) ValidateAPIKeys(c *gin.Context) {
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetListenKey godoc
@@ -131,13 +137,14 @@ func (h *EnhancedAccountHandler) ValidateAPIKeys(c *gin.Context) {
 // @Success 200 {object} responseDto.ListenKeyResponse
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/account/listen-key [get]
-func (h *EnhancedAccountHandler) GetListenKey(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *EnhancedAccountHandler) GetListenKey(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Get listen key
 	listenKey, err := h.accountService.GetListenKey(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get listen key",
 			Details: err.Error(),
@@ -152,7 +159,8 @@ func (h *EnhancedAccountHandler) GetListenKey(c *gin.Context) {
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // RenewListenKey godoc
@@ -166,13 +174,14 @@ func (h *EnhancedAccountHandler) GetListenKey(c *gin.Context) {
 // @Failure 400 {object} responseDto.ErrorResponse
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/account/listen-key/renew [put]
-func (h *EnhancedAccountHandler) RenewListenKey(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *EnhancedAccountHandler) RenewListenKey(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Get listen key from query parameter
-	listenKey := c.Query("listen_key")
+	listenKey := r.URL.Query().Get("listen_key")
 	if listenKey == "" {
-		c.JSON(http.StatusBadRequest, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "missing_parameter",
 			Message: "Missing listen_key parameter",
 		})
@@ -182,7 +191,8 @@ func (h *EnhancedAccountHandler) RenewListenKey(c *gin.Context) {
 	// Renew listen key
 	err := h.accountService.RenewListenKey(ctx, listenKey)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to renew listen key",
 			Details: err.Error(),
@@ -197,7 +207,8 @@ func (h *EnhancedAccountHandler) RenewListenKey(c *gin.Context) {
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // CloseListenKey godoc
@@ -211,13 +222,14 @@ func (h *EnhancedAccountHandler) RenewListenKey(c *gin.Context) {
 // @Failure 400 {object} responseDto.ErrorResponse
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/account/listen-key/close [delete]
-func (h *EnhancedAccountHandler) CloseListenKey(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *EnhancedAccountHandler) CloseListenKey(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Get listen key from query parameter
-	listenKey := c.Query("listen_key")
+	listenKey := r.URL.Query().Get("listen_key")
 	if listenKey == "" {
-		c.JSON(http.StatusBadRequest, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "missing_parameter",
 			Message: "Missing listen_key parameter",
 		})
@@ -227,7 +239,8 @@ func (h *EnhancedAccountHandler) CloseListenKey(c *gin.Context) {
 	// Close listen key
 	err := h.accountService.CloseListenKey(ctx, listenKey)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to close listen key",
 			Details: err.Error(),
@@ -236,7 +249,8 @@ func (h *EnhancedAccountHandler) CloseListenKey(c *gin.Context) {
 	}
 
 	// Build response
-	c.JSON(http.StatusOK, responseDto.SuccessResponse{
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(responseDto.SuccessResponse{
 		Message:   "Listen key closed successfully",
 		Timestamp: time.Now(),
 	})

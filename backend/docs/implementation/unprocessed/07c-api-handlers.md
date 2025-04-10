@@ -65,7 +65,7 @@ import (
     "net/http"
     "time"
 
-    "github.com/gin-gonic/gin"
+    " "
 )
 
 // HealthCheck returns the health status of the API
@@ -90,7 +90,7 @@ import (
     "strconv"
     "context"
 
-    "github.com/gin-gonic/gin"
+    " "
 
     "github.com/ryanlisse/cryptobot/internal/domain/models"
     "github.com/ryanlisse/cryptobot/internal/domain/repository"
@@ -149,7 +149,7 @@ import (
     "strconv"
     "time"
 
-    "github.com/gin-gonic/gin"
+    " "
 
     "github.com/ryanlisse/cryptobot/internal/domain/models"
     "github.com/ryanlisse/cryptobot/internal/domain/repository"

@@ -10,34 +10,26 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	_ "github.com/mattn/go-sqlite3"
 	"go-crypto-bot-clean/backend/internal/api"
-	"go-crypto-bot-clean/backend/internal/api/handlers"
 	"go-crypto-bot-clean/backend/internal/api/websocket"
 	"go-crypto-bot-clean/backend/internal/config"
-	"go-crypto-bot-clean/backend/internal/core/status"
-	"go-crypto-bot-clean/backend/internal/domain/repository"
 	"go-crypto-bot-clean/backend/internal/repository/sqlite"
 	"go-crypto-bot-clean/backend/internal/services/gemini"
 	"go-crypto-bot-clean/backend/internal/services/reporting"
+
+	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
 )
 
 // BotApp represents the main application
 type BotApp struct {
-	config             *config.Config
-	logger             *zap.Logger
-	db                 *sql.DB
-	router             *gin.Engine
-	server             *http.Server
-	wsHub              *websocket.Hub
-	statusHandler      *handlers.StatusHandler
-	reportHandler      *handlers.ReportHandler
-	wsHandler          *handlers.WebSocketHandler
-	accountHandler     *handlers.AccountHandler
-	tradeAnalyticsRepo repository.TradeAnalyticsRepository
-	balanceHistoryRepo repository.BalanceHistoryRepository
+	config  *config.Config
+	logger  *zap.Logger
+	db      *sql.DB
+	server  *http.Server
+	wsHub   *websocket.Hub
+	handler http.Handler
+	deps    *api.Dependencies
 }
 
 // NewBotApp creates a new BotApp
@@ -45,7 +37,6 @@ func NewBotApp(cfg *config.Config, logger *zap.Logger) *BotApp {
 	return &BotApp{
 		config: cfg,
 		logger: logger,
-		router: gin.Default(),
 	}
 }
 
@@ -62,13 +53,15 @@ func (a *BotApp) Initialize(ctx context.Context) error {
 	a.wsHub = websocket.NewHub()
 	go a.wsHub.Run()
 
-	// Initialize handlers and services
-	if err := a.initializeHandlers(ctx); err != nil {
-		return err
+	// Initialize dependencies
+	deps, err := api.NewDependencies(a.config)
+	if err != nil {
+		return fmt.Errorf("failed to initialize dependencies: %w", err)
 	}
+	a.deps = deps
 
-	// Set up API routes
-	a.setupRoutes()
+	// Setup consolidated Chi router with Huma integration
+	a.handler = api.SetupConsolidatedRouter(deps)
 
 	return nil
 }
@@ -78,7 +71,7 @@ func (a *BotApp) Run(ctx context.Context) error {
 	// Create server
 	a.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", 8081),
-		Handler: a.router,
+		Handler: a.handler,
 	}
 
 	// Channel to listen for errors coming from the server
@@ -126,27 +119,6 @@ func (a *BotApp) Close() error {
 }
 
 // initializeHandlers initializes the handlers
-func (a *BotApp) initializeHandlers(ctx context.Context) error {
-	// Initialize status handler
-	statusProvider := status.NewMockStatusProvider()
-	statusService := status.NewStatusService(statusProvider, "1.0.0")
-	a.statusHandler = handlers.NewStatusHandler(statusService)
-
-	// Initialize WebSocket handler
-	a.wsHandler = handlers.NewWebSocketHandler(a.wsHub, a.logger)
-
-	// Initialize account handler
-	a.accountHandler = handlers.NewAccountHandler(nil, nil, a.logger)
-
-	// Initialize report handler
-	reportGenerator, err := a.setupReportGenerator(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to set up report generator: %w", err)
-	}
-	a.reportHandler = handlers.NewReportHandler(reportGenerator, a.logger)
-
-	return nil
-}
 
 // setupReportGenerator sets up the report generator
 func (a *BotApp) setupReportGenerator(ctx context.Context) (*reporting.ReportGenerator, error) {
@@ -171,14 +143,3 @@ func (a *BotApp) setupReportGenerator(ctx context.Context) (*reporting.ReportGen
 }
 
 // setupRoutes sets up the API routes
-func (a *BotApp) setupRoutes() {
-	// Set up routes
-	api.SetupRoutes(
-		a.router,
-		a.statusHandler,
-		a.reportHandler,
-		a.wsHandler,
-		a.accountHandler,
-		a.logger,
-	)
-}

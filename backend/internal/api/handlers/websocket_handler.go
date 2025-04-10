@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	ws "go-crypto-bot-clean/backend/internal/api/websocket"
 	"go-crypto-bot-clean/backend/internal/core/account"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
 
@@ -43,9 +44,9 @@ func NewWebSocketHandlerWithAccountService(hub *ws.Hub, accountService account.A
 }
 
 // HandleWebSocket handles WebSocket connections
-func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
+func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Upgrade the HTTP connection to a WebSocket connection
-	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		h.logger.Error("Failed to upgrade connection", zap.Error(err))
 		return
@@ -64,11 +65,8 @@ func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
 }
 
 // RegisterRoutes registers the WebSocket handler routes
-func (h *WebSocketHandler) RegisterRoutes(router *gin.RouterGroup) {
-	ws := router.Group("/ws")
-	{
-		ws.GET("", h.HandleWebSocket)
-	}
+func (h *WebSocketHandler) RegisterRoutes(router chi.Router) {
+	router.Get("/ws", h.HandleWebSocket)
 
 	// Start sending account updates if account service is available
 	if h.accountService != nil {

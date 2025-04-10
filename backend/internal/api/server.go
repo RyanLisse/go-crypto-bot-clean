@@ -19,8 +19,6 @@ import (
 	"go-crypto-bot-clean/backend/internal/domain/models"
 	"go-crypto-bot-clean/backend/internal/domain/security"
 
-	"github.com/gin-gonic/gin"
-
 	"go.uber.org/zap"
 )
 
@@ -267,65 +265,15 @@ func (m *mockTradeService) CancelOrder(ctx context.Context, orderID string) erro
 }
 
 func (m *mockTradeService) GetActiveTrades(ctx context.Context) ([]*models.BoughtCoin, error) {
-	return []*models.BoughtCoin{
-		{
-			ID:           1,
-			Symbol:       "BTCUSDT",
-			BuyPrice:     50000.0,
-			CurrentPrice: 55000.0,
-			Quantity:     0.1,
-			BoughtAt:     time.Now().Add(-24 * time.Hour),
-		},
-		{
-			ID:           2,
-			Symbol:       "ETHUSDT",
-			BuyPrice:     3000.0,
-			CurrentPrice: 3200.0,
-			Quantity:     1.0,
-			BoughtAt:     time.Now().Add(-12 * time.Hour),
-		},
-	}, nil
+	return []*models.BoughtCoin{}, nil
 }
 
 func (m *mockTradeService) ExecuteTrade(ctx context.Context, order *models.Order) (*models.Order, error) {
-	// Create a copy of the order with additional fields
-	result := *order
-	result.ID = "123456"
-	result.OrderID = "MEXC123456"
-	result.Status = models.OrderStatusFilled
-	result.CreatedAt = time.Now()
-	result.UpdatedAt = time.Now()
-	result.Time = time.Now()
-	return &result, nil
+	return order, nil
 }
 
 func (m *mockTradeService) GetTradeHistory(ctx context.Context, startTime time.Time, limit int) ([]*models.Order, error) {
-	return []*models.Order{
-		{
-			ID:        "1",
-			OrderID:   "MEXC123456",
-			Symbol:    "BTCUSDT",
-			Side:      models.OrderSideBuy,
-			Type:      models.OrderTypeMarket,
-			Quantity:  0.1,
-			Price:     50000.0,
-			Status:    models.OrderStatusFilled,
-			CreatedAt: time.Now().Add(-24 * time.Hour),
-			Time:      time.Now().Add(-24 * time.Hour),
-		},
-		{
-			ID:        "2",
-			OrderID:   "MEXC123457",
-			Symbol:    "ETHUSDT",
-			Side:      models.OrderSideBuy,
-			Type:      models.OrderTypeMarket,
-			Quantity:  1.0,
-			Price:     3000.0,
-			Status:    models.OrderStatusFilled,
-			CreatedAt: time.Now().Add(-12 * time.Hour),
-			Time:      time.Now().Add(-12 * time.Hour),
-		},
-	}, nil
+	return []*models.Order{}, nil
 }
 
 func (m *mockTradeService) GetOrderStatus(ctx context.Context, orderID string) (*models.Order, error) {
@@ -644,13 +592,13 @@ func (m *mockNewCoinService) GetTradableCoinsToday(ctx context.Context) ([]model
 // Server wraps the HTTP server and router.
 type Server struct {
 	httpServer *http.Server
-	router     *gin.Engine
+	router     http.Handler
 }
 
 // NewServer creates a new API server instance.
 func NewServer(deps *Dependencies, addr string) *Server {
-	// Use Gin router by default
-	router := SetupRouter(deps)
+	// Use consolidated Chi router
+	router := SetupConsolidatedRouter(deps)
 
 	srv := &http.Server{
 		Addr:    addr,
@@ -660,33 +608,6 @@ func NewServer(deps *Dependencies, addr string) *Server {
 	return &Server{
 		httpServer: srv,
 		router:     router,
-	}
-}
-
-// NewHumaServer creates a new API server instance with Huma for OpenAPI documentation.
-func NewHumaServer(deps *Dependencies, addr string) *Server {
-	// Convert Dependencies to HumaDependencies
-	humaDeps := &HumaDependencies{
-		HealthHandler:    deps.HealthHandler,
-		StatusHandler:    deps.StatusHandler,
-		PortfolioHandler: deps.PortfolioHandler,
-		TradeHandler:     deps.TradeHandler,
-		NewCoinHandler:   deps.NewCoinHandler,
-		ConfigHandler:    deps.ConfigHandler,
-		WebSocketHandler: deps.WebSocketHandler,
-		AnalyticsHandler: deps.AnalyticsHandler,
-	}
-	// Use Chi router with Huma
-	router := SetupChiRouter(humaDeps)
-
-	srv := &http.Server{
-		Addr:    addr,
-		Handler: router,
-	}
-
-	return &Server{
-		httpServer: srv,
-		router:     nil, // Chi router is not a gin.Engine
 	}
 }
 

@@ -1,13 +1,14 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
 	"go-crypto-bot-clean/backend/internal/backtest"
 	"go-crypto-bot-clean/backend/internal/domain/models"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 )
 
 // BacktestHandler handles backtest-related API requests
@@ -42,34 +43,32 @@ type BacktestResponse struct {
 }
 
 // RunBacktest handles the request to run a backtest
-func (h *BacktestHandler) RunBacktest(c *gin.Context) {
+func (h *BacktestHandler) RunBacktest(w http.ResponseWriter, r *http.Request) {
 	var req BacktestRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": err.Error()})
 		return
 	}
 
-	// Create the configuration expected by the backtest service
 	serviceConfig := &backtest.BacktestRequestConfig{
 		Strategy:       req.Strategy,
-		Symbol:         req.Symbol,    // Service uses single symbol
-		Timeframe:      req.Timeframe, // Service uses Timeframe
+		Symbol:         req.Symbol,
+		Timeframe:      req.Timeframe,
 		StartTime:      req.StartDate,
 		EndTime:        req.EndDate,
 		InitialCapital: req.InitialCapital,
-		RiskPerTrade:   req.RiskPerTrade, // Pass through strategy-specific params
+		RiskPerTrade:   req.RiskPerTrade,
 	}
 
-	// Run backtest using the service configuration
-	result, err := h.backtestService.RunBacktest(c.Request.Context(), serviceConfig)
+	result, err := h.backtestService.RunBacktest(r.Context(), serviceConfig)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": err.Error()})
 		return
 	}
 
-	// Create response (assuming BacktestResult structure is compatible)
-	// Note: The structure of BacktestResponse might need adjustment if
-	// the service's BacktestResult differs significantly.
 	response := &BacktestResponse{
 		EquityCurve:        result.EquityCurve,
 		DrawdownCurve:      result.DrawdownCurve,
@@ -77,21 +76,21 @@ func (h *BacktestHandler) RunBacktest(c *gin.Context) {
 		Trades:             result.Trades,
 	}
 
-	c.JSON(http.StatusOK, response)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 // GetBacktestResults handles the request to get backtest results
-func (h *BacktestHandler) GetBacktestResults(c *gin.Context) {
-	id := c.Param("id")
+func (h *BacktestHandler) GetBacktestResults(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
 
-	// Get backtest results
-	result, err := h.backtestService.GetBacktestResult(c.Request.Context(), id)
+	result, err := h.backtestService.GetBacktestResult(r.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": err.Error()})
 		return
 	}
 
-	// Create response
 	response := &BacktestResponse{
 		EquityCurve:        result.EquityCurve,
 		DrawdownCurve:      result.DrawdownCurve,
@@ -99,17 +98,19 @@ func (h *BacktestHandler) GetBacktestResults(c *gin.Context) {
 		Trades:             result.Trades,
 	}
 
-	c.JSON(http.StatusOK, response)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 // ListBacktestResults handles the request to list backtest results
-func (h *BacktestHandler) ListBacktestResults(c *gin.Context) {
-	// Get backtest results
-	results, err := h.backtestService.ListBacktestResults(c.Request.Context())
+func (h *BacktestHandler) ListBacktestResults(w http.ResponseWriter, r *http.Request) {
+	results, err := h.backtestService.ListBacktestResults(r.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, results)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(results)
 }

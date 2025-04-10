@@ -1,10 +1,11 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
 	"go-crypto-bot-clean/backend/internal/api/handlers"
-	"go-crypto-bot-clean/backend/internal/api/middleware"
+	"go-crypto-bot-clean/backend/internal/api/middleware" // Corrected path
 	"go-crypto-bot-clean/backend/internal/config"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // AuthDependencies contains the dependencies for authentication.
@@ -22,29 +23,26 @@ func NewAuthDependencies(cfg *config.Config) *AuthDependencies {
 		Config: cfg,
 	}
 
+	// Create auth service
+	// authService is no longer needed here as AuthHandler doesn't require it
+
 	// Initialize auth handler
-	deps.AuthHandler = handlers.NewAuthHandler(
-		cfg.Auth.JWTSecret,
-		cfg.Auth.JWTExpiry,
-		cfg.Auth.CookieName,
-	)
+	// Auth handler no longer needs service injection
+	deps.AuthHandler = handlers.NewAuthHandler()
 
 	return deps
 }
 
 // SetupAuthRoutes adds authentication routes to the router.
-func SetupAuthRoutes(router *gin.Engine, deps *AuthDependencies) {
-	// Authentication endpoints
-	authGroup := router.Group("/auth")
-	{
-		authGroup.POST("/login", deps.AuthHandler.Login)
-		authGroup.POST("/logout", deps.AuthHandler.Logout)
+func SetupAuthRoutes(r chi.Router, deps *AuthDependencies) {
+	r.Route("/auth", func(r chi.Router) {
+		// Login/Logout routes removed as they are likely handled by Clerk frontend/middleware
 
-		// Protected auth endpoints
-		authProtected := authGroup.Group("")
-		if deps.Config.Auth.Enabled {
-			authProtected.Use(middleware.JWTAuthMiddleware(deps.Config.Auth.JWTSecret))
-		}
-		authProtected.GET("/me", deps.AuthHandler.GetCurrentUser)
-	}
+		r.Route("/", func(r chi.Router) {
+			if deps.Config.Auth.Enabled {
+				r.Use(middleware.JWTAuthMiddleware(deps.Config.Auth.JWTSecret))
+			}
+			r.Get("/me", deps.AuthHandler.GetCurrentUser)
+		})
+	})
 }

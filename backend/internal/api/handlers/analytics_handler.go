@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
 	"go-crypto-bot-clean/backend/internal/api/dto/request"
@@ -29,17 +29,35 @@ func NewAnalyticsHandler(analyticsService analytics.TradeAnalyticsService, logge
 }
 
 // GetTradeAnalytics handles requests for trade analytics
-func (h *AnalyticsHandler) GetTradeAnalytics(c *gin.Context) {
+func (h *AnalyticsHandler) GetTradeAnalytics(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
 	// Parse request parameters
 	var req request.TradeAnalyticsRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	req.TimeFrame = query.Get("timeFrame")
+
+	startTimeStr := query.Get("startTime")
+	endTimeStr := query.Get("endTime")
+
+	var err error
+	if startTimeStr != "" {
+		req.StartTime, err = time.Parse(time.RFC3339, startTimeStr)
+		if err != nil {
+			http.Error(w, "Invalid start time", http.StatusBadRequest)
+			return
+		}
+	}
+
+	if endTimeStr != "" {
+		req.EndTime, err = time.Parse(time.RFC3339, endTimeStr)
+		if err != nil {
+			http.Error(w, "Invalid end time", http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Set default time range if not provided
 	if req.StartTime.IsZero() {
-		// Default to 30 days ago
 		req.StartTime = time.Now().AddDate(0, 0, -30)
 	}
 	if req.EndTime.IsZero() {
@@ -62,46 +80,50 @@ func (h *AnalyticsHandler) GetTradeAnalytics(c *gin.Context) {
 	}
 
 	// Get analytics from service
-	analytics, err := h.analyticsService.GetTradeAnalytics(c.Request.Context(), timeFrame, req.StartTime, req.EndTime)
+	analytics, err := h.analyticsService.GetTradeAnalytics(r.Context(), timeFrame, req.StartTime, req.EndTime)
 	if err != nil {
 		h.logger.Error("Failed to get trade analytics", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get trade analytics"})
+		http.Error(w, "Failed to get trade analytics", http.StatusInternalServerError)
 		return
 	}
 
 	// Convert to response DTO
 	resp := response.TradeAnalyticsFromModel(analytics)
-	c.JSON(http.StatusOK, resp)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetTradePerformance handles requests for individual trade performance
-func (h *AnalyticsHandler) GetTradePerformance(c *gin.Context) {
+func (h *AnalyticsHandler) GetTradePerformance(w http.ResponseWriter, r *http.Request) {
 	// Get trade ID from path
-	tradeID := c.Param("id")
+	tradeID := r.URL.Query().Get("id")
 	if tradeID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Trade ID is required"})
+		http.Error(w, "Trade ID is required", http.StatusBadRequest)
 		return
 	}
 
 	// Get trade performance from service
-	performance, err := h.analyticsService.GetTradePerformance(c.Request.Context(), tradeID)
+	performance, err := h.analyticsService.GetTradePerformance(r.Context(), tradeID)
 	if err != nil {
 		h.logger.Error("Failed to get trade performance", zap.Error(err), zap.String("tradeID", tradeID))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get trade performance"})
+		http.Error(w, "Failed to get trade performance", http.StatusInternalServerError)
 		return
 	}
 
 	// Convert to response DTO
 	resp := response.TradePerformanceFromModel(performance)
-	c.JSON(http.StatusOK, resp)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetAllTradePerformance handles requests for all trade performances
-func (h *AnalyticsHandler) GetAllTradePerformance(c *gin.Context) {
+func (h *AnalyticsHandler) GetAllTradePerformance(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
 	// Parse request parameters
-	startTimeStr := c.Query("start_time")
-	endTimeStr := c.Query("end_time")
-	limitStr := c.Query("limit")
+	startTimeStr := query.Get("start_time")
+	endTimeStr := query.Get("end_time")
+	limitStr := query.Get("limit")
 
 	var startTime, endTime time.Time
 	var err error
@@ -110,11 +132,10 @@ func (h *AnalyticsHandler) GetAllTradePerformance(c *gin.Context) {
 	if startTimeStr != "" {
 		startTime, err = time.Parse(time.RFC3339, startTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_time format"})
+			http.Error(w, "Invalid start_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
-		// Default to 30 days ago
 		startTime = time.Now().AddDate(0, 0, -30)
 	}
 
@@ -122,7 +143,7 @@ func (h *AnalyticsHandler) GetAllTradePerformance(c *gin.Context) {
 	if endTimeStr != "" {
 		endTime, err = time.Parse(time.RFC3339, endTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_time format"})
+			http.Error(w, "Invalid end_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
@@ -130,10 +151,10 @@ func (h *AnalyticsHandler) GetAllTradePerformance(c *gin.Context) {
 	}
 
 	// Get trade performances from service
-	performances, err := h.analyticsService.GetAllTradePerformance(c.Request.Context(), startTime, endTime)
+	performances, err := h.analyticsService.GetAllTradePerformance(r.Context(), startTime, endTime)
 	if err != nil {
 		h.logger.Error("Failed to get trade performances", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get trade performances"})
+		http.Error(w, "Failed to get trade performances", http.StatusInternalServerError)
 		return
 	}
 
@@ -141,7 +162,7 @@ func (h *AnalyticsHandler) GetAllTradePerformance(c *gin.Context) {
 	if limitStr != "" {
 		limit, err := strconv.Atoi(limitStr)
 		if err != nil || limit <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit"})
+			http.Error(w, "Invalid limit", http.StatusBadRequest)
 			return
 		}
 
@@ -156,14 +177,17 @@ func (h *AnalyticsHandler) GetAllTradePerformance(c *gin.Context) {
 		resp[i] = response.TradePerformanceFromModel(perf)
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetWinRate handles requests for win rate
-func (h *AnalyticsHandler) GetWinRate(c *gin.Context) {
+func (h *AnalyticsHandler) GetWinRate(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
 	// Parse request parameters
-	startTimeStr := c.Query("start_time")
-	endTimeStr := c.Query("end_time")
+	startTimeStr := query.Get("start_time")
+	endTimeStr := query.Get("end_time")
 
 	var startTime, endTime time.Time
 	var err error
@@ -172,11 +196,10 @@ func (h *AnalyticsHandler) GetWinRate(c *gin.Context) {
 	if startTimeStr != "" {
 		startTime, err = time.Parse(time.RFC3339, startTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_time format"})
+			http.Error(w, "Invalid start_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
-		// Default to 30 days ago
 		startTime = time.Now().AddDate(0, 0, -30)
 	}
 
@@ -184,7 +207,7 @@ func (h *AnalyticsHandler) GetWinRate(c *gin.Context) {
 	if endTimeStr != "" {
 		endTime, err = time.Parse(time.RFC3339, endTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_time format"})
+			http.Error(w, "Invalid end_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
@@ -192,22 +215,25 @@ func (h *AnalyticsHandler) GetWinRate(c *gin.Context) {
 	}
 
 	// Get win rate from service
-	winRate, err := h.analyticsService.GetWinRate(c.Request.Context(), startTime, endTime)
+	winRate, err := h.analyticsService.GetWinRate(r.Context(), startTime, endTime)
 	if err != nil {
 		h.logger.Error("Failed to get win rate", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get win rate"})
+		http.Error(w, "Failed to get win rate", http.StatusInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"win_rate": winRate})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]float64{"win_rate": winRate})
 }
 
 // GetBalanceHistory handles requests for balance history
-func (h *AnalyticsHandler) GetBalanceHistory(c *gin.Context) {
+func (h *AnalyticsHandler) GetBalanceHistory(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
 	// Parse request parameters
-	startTimeStr := c.Query("start_time")
-	endTimeStr := c.Query("end_time")
-	intervalStr := c.Query("interval")
+	startTimeStr := query.Get("start_time")
+	endTimeStr := query.Get("end_time")
+	intervalStr := query.Get("interval")
 
 	var startTime, endTime time.Time
 	var interval time.Duration
@@ -217,11 +243,10 @@ func (h *AnalyticsHandler) GetBalanceHistory(c *gin.Context) {
 	if startTimeStr != "" {
 		startTime, err = time.Parse(time.RFC3339, startTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_time format"})
+			http.Error(w, "Invalid start_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
-		// Default to 30 days ago
 		startTime = time.Now().AddDate(0, 0, -30)
 	}
 
@@ -229,7 +254,7 @@ func (h *AnalyticsHandler) GetBalanceHistory(c *gin.Context) {
 	if endTimeStr != "" {
 		endTime, err = time.Parse(time.RFC3339, endTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_time format"})
+			http.Error(w, "Invalid end_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
@@ -240,19 +265,18 @@ func (h *AnalyticsHandler) GetBalanceHistory(c *gin.Context) {
 	if intervalStr != "" {
 		interval, err = time.ParseDuration(intervalStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid interval format"})
+			http.Error(w, "Invalid interval format", http.StatusBadRequest)
 			return
 		}
 	} else {
-		// Default to 1 day
 		interval = 24 * time.Hour
 	}
 
 	// Get balance history from service
-	balanceHistory, err := h.analyticsService.GetBalanceHistory(c.Request.Context(), startTime, endTime, interval)
+	balanceHistory, err := h.analyticsService.GetBalanceHistory(r.Context(), startTime, endTime, interval)
 	if err != nil {
 		h.logger.Error("Failed to get balance history", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get balance history"})
+		http.Error(w, "Failed to get balance history", http.StatusInternalServerError)
 		return
 	}
 
@@ -265,14 +289,17 @@ func (h *AnalyticsHandler) GetBalanceHistory(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetPerformanceBySymbol handles requests for performance by symbol
-func (h *AnalyticsHandler) GetPerformanceBySymbol(c *gin.Context) {
+func (h *AnalyticsHandler) GetPerformanceBySymbol(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
 	// Parse request parameters
-	startTimeStr := c.Query("start_time")
-	endTimeStr := c.Query("end_time")
+	startTimeStr := query.Get("start_time")
+	endTimeStr := query.Get("end_time")
 
 	var startTime, endTime time.Time
 	var err error
@@ -281,11 +308,10 @@ func (h *AnalyticsHandler) GetPerformanceBySymbol(c *gin.Context) {
 	if startTimeStr != "" {
 		startTime, err = time.Parse(time.RFC3339, startTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_time format"})
+			http.Error(w, "Invalid start_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
-		// Default to 30 days ago
 		startTime = time.Now().AddDate(0, 0, -30)
 	}
 
@@ -293,7 +319,7 @@ func (h *AnalyticsHandler) GetPerformanceBySymbol(c *gin.Context) {
 	if endTimeStr != "" {
 		endTime, err = time.Parse(time.RFC3339, endTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_time format"})
+			http.Error(w, "Invalid end_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
@@ -301,10 +327,10 @@ func (h *AnalyticsHandler) GetPerformanceBySymbol(c *gin.Context) {
 	}
 
 	// Get performance by symbol from service
-	performance, err := h.analyticsService.GetPerformanceBySymbol(c.Request.Context(), startTime, endTime)
+	performance, err := h.analyticsService.GetPerformanceBySymbol(r.Context(), startTime, endTime)
 	if err != nil {
 		h.logger.Error("Failed to get performance by symbol", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get performance by symbol"})
+		http.Error(w, "Failed to get performance by symbol", http.StatusInternalServerError)
 		return
 	}
 
@@ -314,14 +340,17 @@ func (h *AnalyticsHandler) GetPerformanceBySymbol(c *gin.Context) {
 		resp[symbol] = response.SymbolPerformanceFromModel(perf)
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetPerformanceByReason handles requests for performance by reason
-func (h *AnalyticsHandler) GetPerformanceByReason(c *gin.Context) {
+func (h *AnalyticsHandler) GetPerformanceByReason(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
 	// Parse request parameters
-	startTimeStr := c.Query("start_time")
-	endTimeStr := c.Query("end_time")
+	startTimeStr := query.Get("start_time")
+	endTimeStr := query.Get("end_time")
 
 	var startTime, endTime time.Time
 	var err error
@@ -330,11 +359,10 @@ func (h *AnalyticsHandler) GetPerformanceByReason(c *gin.Context) {
 	if startTimeStr != "" {
 		startTime, err = time.Parse(time.RFC3339, startTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_time format"})
+			http.Error(w, "Invalid start_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
-		// Default to 30 days ago
 		startTime = time.Now().AddDate(0, 0, -30)
 	}
 
@@ -342,7 +370,7 @@ func (h *AnalyticsHandler) GetPerformanceByReason(c *gin.Context) {
 	if endTimeStr != "" {
 		endTime, err = time.Parse(time.RFC3339, endTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_time format"})
+			http.Error(w, "Invalid end_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
@@ -350,10 +378,10 @@ func (h *AnalyticsHandler) GetPerformanceByReason(c *gin.Context) {
 	}
 
 	// Get performance by reason from service
-	performance, err := h.analyticsService.GetPerformanceByReason(c.Request.Context(), startTime, endTime)
+	performance, err := h.analyticsService.GetPerformanceByReason(r.Context(), startTime, endTime)
 	if err != nil {
 		h.logger.Error("Failed to get performance by reason", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get performance by reason"})
+		http.Error(w, "Failed to get performance by reason", http.StatusInternalServerError)
 		return
 	}
 
@@ -363,14 +391,17 @@ func (h *AnalyticsHandler) GetPerformanceByReason(c *gin.Context) {
 		resp[reason] = response.ReasonPerformanceFromModel(perf)
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetPerformanceByStrategy handles requests for performance by strategy
-func (h *AnalyticsHandler) GetPerformanceByStrategy(c *gin.Context) {
+func (h *AnalyticsHandler) GetPerformanceByStrategy(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
 	// Parse request parameters
-	startTimeStr := c.Query("start_time")
-	endTimeStr := c.Query("end_time")
+	startTimeStr := query.Get("start_time")
+	endTimeStr := query.Get("end_time")
 
 	var startTime, endTime time.Time
 	var err error
@@ -379,11 +410,10 @@ func (h *AnalyticsHandler) GetPerformanceByStrategy(c *gin.Context) {
 	if startTimeStr != "" {
 		startTime, err = time.Parse(time.RFC3339, startTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_time format"})
+			http.Error(w, "Invalid start_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
-		// Default to 30 days ago
 		startTime = time.Now().AddDate(0, 0, -30)
 	}
 
@@ -391,7 +421,7 @@ func (h *AnalyticsHandler) GetPerformanceByStrategy(c *gin.Context) {
 	if endTimeStr != "" {
 		endTime, err = time.Parse(time.RFC3339, endTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_time format"})
+			http.Error(w, "Invalid end_time format", http.StatusBadRequest)
 			return
 		}
 	} else {
@@ -399,10 +429,10 @@ func (h *AnalyticsHandler) GetPerformanceByStrategy(c *gin.Context) {
 	}
 
 	// Get performance by strategy from service
-	performance, err := h.analyticsService.GetPerformanceByStrategy(c.Request.Context(), startTime, endTime)
+	performance, err := h.analyticsService.GetPerformanceByStrategy(r.Context(), startTime, endTime)
 	if err != nil {
 		h.logger.Error("Failed to get performance by strategy", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get performance by strategy"})
+		http.Error(w, "Failed to get performance by strategy", http.StatusInternalServerError)
 		return
 	}
 
@@ -412,5 +442,6 @@ func (h *AnalyticsHandler) GetPerformanceByStrategy(c *gin.Context) {
 		resp[strategy] = response.StrategyPerformanceFromModel(perf)
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }

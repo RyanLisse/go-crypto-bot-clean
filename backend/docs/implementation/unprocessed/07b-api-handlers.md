@@ -71,7 +71,7 @@ import (
     "net/http"
     "time"
 
-    "github.com/gin-gonic/gin"
+    " "
 )
 
 // HealthCheck returns the health status of the API
@@ -93,7 +93,7 @@ import (
     "net/http"
     "strconv"
 
-    "github.com/gin-gonic/gin"
+    " "
 
     "github.com/ryanlisse/cryptobot-backend/internal/domain/models"
     "github.com/ryanlisse/cryptobot-backend/internal/domain/repository"
@@ -223,7 +223,7 @@ import (
     "net/http"
     "strconv"
 
-    "github.com/gin-gonic/gin"
+    " "
 
     "github.com/ryanlisse/cryptobot-backend/internal/domain/models"
     "github.com/ryanlisse/cryptobot-backend/internal/domain/repository"
@@ -336,7 +336,7 @@ import (
     "net/http"
     "strconv"
 
-    "github.com/gin-gonic/gin"
+    " "
 
     "github.com/ryanlisse/cryptobot-backend/internal/domain/models"
     "github.com/ryanlisse/cryptobot-backend/internal/domain/repository"
@@ -446,7 +446,7 @@ import (
     "net/http"
     "strconv"
 
-    "github.com/gin-gonic/gin"
+    " "
 
     "github.com/ryanlisse/cryptobot-backend/internal/domain/service"
 )
@@ -517,7 +517,7 @@ import (
     "sync"
     "time"
 
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/gorilla/websocket"
 
     "github.com/ryanlisse/cryptobot-backend/internal/core"
@@ -657,7 +657,7 @@ import (
     "net/http/httptest"
     "testing"
 
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/mock"
 

@@ -6,12 +6,13 @@ import (
 	"fmt"
 
 	"go-crypto-bot-clean/backend/internal/api/handlers"
+	apirepository "go-crypto-bot-clean/backend/internal/api/repository" // API layer repos
+	"go-crypto-bot-clean/backend/internal/api/service"
 	"go-crypto-bot-clean/backend/internal/api/websocket"
 	"go-crypto-bot-clean/backend/internal/auth"
 	"go-crypto-bot-clean/backend/internal/config"
-	"go-crypto-bot-clean/backend/internal/core/account"
-	"go-crypto-bot-clean/backend/internal/domain/ai/service"
-	"go-crypto-bot-clean/backend/internal/domain/repositories"
+	aiservice "go-crypto-bot-clean/backend/internal/domain/ai/service"
+	"go-crypto-bot-clean/backend/internal/domain/repositories" // Domain repos
 	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -35,11 +36,12 @@ type Dependencies struct {
 	BacktestHandler        *handlers.BacktestHandler
 
 	// AI Service
-	AIService service.AIService
+	AIService aiservice.AIService
 
 	// Repositories
 	BoughtCoinRepository repositories.BoughtCoinRepository
 	NewCoinRepository    repositories.NewCoinRepository
+	UserRepository       apirepository.UserRepository // Use the one from internal/api/repository
 
 	// Authentication
 	ValidAPIKeys map[string]struct{}
@@ -52,6 +54,12 @@ type Dependencies struct {
 		Capacity int
 	}
 
+	// Services for Huma integration
+	BacktestService *service.BacktestService
+	StrategyService *service.StrategyService
+	UserService     *service.UserService
+
+	// Logger
 	logger *zap.Logger
 }
 
@@ -82,14 +90,11 @@ func NewDependencies(cfg *config.Config) (*Dependencies, error) {
 
 	// Initialize handlers
 	deps.HealthHandler = handlers.NewHealthHandler()
-	deps.AuthHandler = handlers.NewAuthHandler(
-		cfg.Auth.JWTSecret,
-		cfg.Auth.JWTExpiry,
-		cfg.Auth.CookieName,
-	)
+	// Auth handler no longer needs arguments
+	deps.AuthHandler = handlers.NewAuthHandler()
 
-	// Initialize status handler with mock service
-	deps.StatusHandler = handlers.NewStatusHandler(&MockStatusService{})
+	// Initialize status handler
+	deps.InitializeStatusHandler()
 
 	// Validate API keys before proceeding
 	if cfg.Mexc.APIKey == "" || cfg.Mexc.SecretKey == "" {
@@ -118,44 +123,14 @@ func NewDependencies(cfg *config.Config) (*Dependencies, error) {
 	}
 
 	// Initialize Database dependencies (must be first)
-	deps.InitializeDatabaseDependencies()
+	// deps.InitializeDatabaseDependencies() // Method doesn't exist, remove call
+	// TODO: Initialize repositories here directly once DB connection is available
 
 	// Initialize portfolio handler
-	if err != nil || mexcClient == nil {
-		// Fall back to mock service if we can't create the MEXC client
-		logger.Error("Using mock portfolio service due to MEXC client initialization failure")
-		deps.PortfolioHandler = handlers.NewPortfolioHandler(&MockPortfolioService{})
-	} else {
-		// Create real portfolio service adapter
-		logger.Info("Using real portfolio service with MEXC client")
-		// We don't pass the repository here as it has a different interface
-		portfolioAdapter := NewRealPortfolioServiceAdapter(mexcClient, nil, logger)
-		deps.PortfolioHandler = handlers.NewPortfolioHandler(portfolioAdapter)
-	}
+	deps.InitializePortfolioHandler()
 
-	// Initialize enhanced account handler with real account service
-	if err != nil || mexcClient == nil {
-		// Fall back to mock service if we can't create the MEXC client
-		logger.Error("Using mock account service due to MEXC client initialization failure")
-		deps.EnhancedAccountHandler = handlers.NewEnhancedAccountHandler(&MockAccountService{})
-	} else {
-		// Create mock config for the account service
-		logger.Info("Using real account service with MEXC client")
-		mockConfig := &MockAccountConfig{}
-
-		// Create real account service - pass nil for the repositories that don't match the interface
-		accountService := account.NewRealAccountService(
-			mexcClient, // MexcRESTClient
-			nil,        // MexcWebSocketClient - we don't have a compatible implementation
-			nil,        // BoughtCoinRepository - interface mismatch
-			nil,        // WalletRepository
-			nil,        // TransactionRepository
-			mockConfig, // Config
-		)
-		// Create adapter to make it compatible with the AccountServiceInterface
-		accountAdapter := NewRealAccountServiceAdapter(accountService)
-		deps.EnhancedAccountHandler = handlers.NewEnhancedAccountHandler(accountAdapter)
-	}
+	// Initialize enhanced account handler
+	deps.InitializeAccountHandler()
 
 	// Initialize NewCoin dependencies with the MEXC client
 	deps.InitializeNewCoinDependencies()
@@ -176,4 +151,19 @@ func NewDependencies(cfg *config.Config) (*Dependencies, error) {
 	deps.InitializeBacktestDependencies()
 
 	return deps, nil
+}
+
+// Initialize the status handler with a mock service
+func (deps *Dependencies) InitializeStatusHandler() {
+	deps.StatusHandler = handlers.NewStatusHandler(&MockStatusService{})
+}
+
+// Initialize the account handler with a mock service
+func (deps *Dependencies) InitializeAccountHandler() {
+	deps.EnhancedAccountHandler = handlers.NewEnhancedAccountHandler(&MockAccountService{})
+}
+
+// Initialize the portfolio handler with a mock service
+func (deps *Dependencies) InitializePortfolioHandler() {
+	deps.PortfolioHandler = handlers.NewPortfolioHandler(&MockPortfolioService{})
 }

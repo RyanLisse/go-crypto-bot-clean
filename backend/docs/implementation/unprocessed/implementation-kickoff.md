@@ -290,7 +290,7 @@ module github.com/ryanlisse/go-crypto-bot
 go 1.21
 
 require (
-	github.com/gin-gonic/gin v1.9.1
+	  v1.9.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattn/go-sqlite3 v1.14.17
@@ -446,7 +446,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	" "
 	"github.com/ryanlisse/go-crypto-bot/internal/config"
 	"github.com/ryanlisse/go-crypto-bot/internal/database"
 )

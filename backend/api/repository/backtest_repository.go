@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"go-crypto-bot-clean/backend/api/models"
+
 	"gorm.io/gorm"
 )
 
@@ -18,31 +19,31 @@ var (
 type BacktestRepository interface {
 	// Create creates a new backtest
 	Create(ctx context.Context, backtest *models.Backtest) error
-	
+
 	// GetByID gets a backtest by ID
 	GetByID(ctx context.Context, id string) (*models.Backtest, error)
-	
+
 	// GetByUserID gets all backtests for a user
 	GetByUserID(ctx context.Context, userID string) ([]*models.Backtest, error)
-	
+
 	// GetByStrategyID gets all backtests for a strategy
 	GetByStrategyID(ctx context.Context, strategyID string) ([]*models.Backtest, error)
-	
+
 	// Update updates a backtest
 	Update(ctx context.Context, backtest *models.Backtest) error
-	
+
 	// Delete deletes a backtest
 	Delete(ctx context.Context, id string) error
-	
+
 	// AddTrade adds a trade to a backtest
 	AddTrade(ctx context.Context, trade *models.BacktestTrade) error
-	
+
 	// GetTrades gets all trades for a backtest
 	GetTrades(ctx context.Context, backtestID string) ([]*models.BacktestTrade, error)
-	
+
 	// AddEquityPoint adds an equity point to a backtest
 	AddEquityPoint(ctx context.Context, equity *models.BacktestEquity) error
-	
+
 	// GetEquityCurve gets the equity curve for a backtest
 	GetEquityCurve(ctx context.Context, backtestID string) ([]*models.BacktestEquity, error)
 }

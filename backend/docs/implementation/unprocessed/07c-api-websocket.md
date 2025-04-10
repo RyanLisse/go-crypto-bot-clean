@@ -34,7 +34,7 @@ import (
     "sync"
     "time"
 
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/gorilla/websocket"
 
     "github.com/ryanlisse/cryptobot-backend/internal/domain/models"
@@ -340,7 +340,7 @@ Register the WebSocket handler with the router:
 package api
 
 import (
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/ryanlisse/cryptobot-backend/internal/api/handlers"
 )
 
@@ -419,7 +419,7 @@ import (
     "strings"
     "testing"
     
-    "github.com/gin-gonic/gin"
+    " "
     "github.com/gorilla/websocket"
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/mock"

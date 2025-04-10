@@ -130,11 +130,11 @@ func TestStatusService_StartProcesses(t *testing.T) {
 	service := NewStatusService(mockProvider, "1.0.0")
 
 	// Start processes
-	status, err := service.StartProcesses(context.Background())
+	err := service.StartProcesses(context.Background()) // Now returns only error
 
 	// Assertions
 	assert.NoError(t, err)
-	assert.NotNil(t, status)
+	// Status is no longer returned, only check error
 
 	// Verify mocks
 	mockNewCoinWatcher.AssertExpectations(t)
@@ -164,11 +164,11 @@ func TestStatusService_StopProcesses(t *testing.T) {
 	service := NewStatusService(mockProvider, "1.0.0")
 
 	// Stop processes
-	status, err := service.StopProcesses()
+	err := service.StopProcesses() // Now returns only error
 
 	// Assertions
 	assert.NoError(t, err)
-	assert.NotNil(t, status)
+	// Status is no longer returned, only check error
 
 	// Verify mocks
 	mockNewCoinWatcher.AssertExpectations(t)

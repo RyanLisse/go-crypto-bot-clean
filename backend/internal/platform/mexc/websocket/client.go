@@ -9,10 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"go-crypto-bot-clean/backend/internal/config"
 	"go-crypto-bot-clean/backend/internal/domain/models"
 	"go-crypto-bot-clean/backend/pkg/ratelimiter"
+
+	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
 
@@ -29,7 +30,13 @@ const (
 	defaultReconnectDelay    = 5 * time.Second
 	defaultMaxReconnectDelay = 60 * time.Second
 	defaultMaxReconnects     = 10
+
+	// Connect timeout
+	defaultConnectTimeout = 10 * time.Second
 )
+
+// Add this error definition near the top of the file
+var ErrConnectionRateLimitExceeded = errors.New("connection rate limit exceeded")
 
 // Client represents a MEXC WebSocket client
 type Client struct {
@@ -225,81 +232,64 @@ func (c *Client) SetReconnectHandler(handler func() error) {
 }
 
 // Connect establishes a WebSocket connection
-// Constants for WebSocket operations
-const (
-	writeWait = 10 * time.Second // Time allowed to write a message to the peer
-	pongWait = 60 * time.Second  // Time allowed to read the next pong message from the peer
-	pingPeriod = 30 * time.Second // Send pings to peer with this period (must be less than pongWait)
-)
-
-// Connect establishes a WebSocket connection
 func (c *Client) Connect(ctx context.Context) error {
+	// Prevent multiple connections or reconnections at the same time
 	c.connMutex.Lock()
-	defer c.connMutex.Unlock()
-
-	// Check if already connected
 	if c.connected {
-		return nil
+		c.connMutex.Unlock()
+		return nil // Already connected
 	}
+	c.connMutex.Unlock()
 
-	// Increment connection attempts (used for testing)
+	// Increment connection attempts (thread-safe)
 	c.connAttemptsMutex.Lock()
 	c.connectionAttempts++
 	c.connAttemptsMutex.Unlock()
 
-	// Check if the rate limiter allows us to connect
-	if err := c.connRateLimiter.Wait(ctx); err != nil {
-		c.logger.Error("Connection rate limited",
-			zap.Error(err),
-			zap.Float64("rate", c.connRateLimiter.GetRate()))
-		return fmt.Errorf("connection rate limited: %w", err)
+	// Check for client rate limiting
+	if c.connRateLimiter != nil {
+		if err := c.connRateLimiter.Wait(ctx); err != nil {
+			c.logger.Error("Connection rate limited", zap.Error(err))
+			return fmt.Errorf("connection rate limited: %w", err)
+		}
 	}
 
-	// Set up WebSocket connection
-	endpoint := c.endpoint
-	c.logger.Info("Connecting to WebSocket", zap.String("endpoint", endpoint))
-
-	// Create dialer if not exists
-	if c.dialer == nil {
-		c.dialer = websocket.DefaultDialer
+	// Create context with timeout if not already done
+	connectCtx := ctx
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		connectCtx, cancel = context.WithTimeout(ctx, defaultConnectTimeout)
+		defer cancel()
 	}
 
-	// Connect to WebSocket
-	conn, _, err := c.dialer.DialContext(ctx, endpoint, nil)
+	// Log the connection attempt
+	c.logger.Info("Connecting to WebSocket", zap.String("endpoint", c.cfg.Mexc.WebsocketURL))
+
+	// Create a dialer with the context
+	dialer := websocket.Dialer{
+		HandshakeTimeout: defaultConnectTimeout,
+	}
+
+	// Connect to the WebSocket server
+	conn, _, err := dialer.DialContext(connectCtx, c.cfg.Mexc.WebsocketURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to connect to WebSocket: %w", err)
 	}
 
-	// Set ping handler
-	conn.SetPingHandler(func(message string) error {
-		c.logger.Debug("Received ping", zap.String("message", message))
-		err := conn.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(writeWait))
-		if err != nil {
-			c.logger.Warn("Failed to send pong response", zap.Error(err))
-		}
-		return nil
-	})
-
-	// Set pong handler
-	conn.SetPongHandler(func(string) error {
-		c.mu.Lock()
-		c.lastPongTime = time.Now()
-		c.mu.Unlock()
-		return nil
-	})
-
 	// Store the connection
+	c.connMutex.Lock()
 	c.conn = conn
 	c.connected = true
+	c.connMutex.Unlock()
 
-	// Start ping ticker
-	c.startPingTicker()
-
-	// Send initial ping to verify connection
-	c.sendPing()
-
-	// Start message handling goroutine
+	// Setup read message handling in a goroutine
 	go c.handleMessages()
+
+	// Start ping ticker in a separate goroutine to avoid deadlocks
+	go c.startPingTicker()
+
+	// Log successful connection
+	c.logger.Info("Successfully connected to WebSocket")
 
 	return nil
 }
@@ -638,7 +628,7 @@ func (c *Client) startPingTicker() {
 	// Create new ticker
 	c.pingTicker = time.NewTicker(c.cfg.WebSocket.PingInterval)
 	localPingTicker := c.pingTicker // Create a local reference to avoid nil pointer issues
-	
+
 	// Reset last pong time
 	c.lastPongTime = time.Now()
 
@@ -662,12 +652,12 @@ func (c *Client) startPingTicker() {
 			case <-localPingTicker.C:
 				// Use the local reference instead of accessing c.pingTicker directly
 				// to avoid race conditions and nil pointer derefs
-				
+
 				c.mu.Lock()
 				lastPongTime := c.lastPongTime
 				pongTimeout := c.pongTimeout
 				c.mu.Unlock()
-				
+
 				if time.Since(lastPongTime) > pongTimeout {
 					c.logger.Warn("No pong received within timeout period, reconnecting",
 						zap.Duration("timeout", pongTimeout),
@@ -730,34 +720,38 @@ func (c *Client) sendPing() {
 		return
 	}
 
-	// Send ping message
-	c.connMutex.Lock()
+	// Use a separate local variable for conn to avoid locking during send
+	var conn *websocket.Conn
+	var connected bool
 
-	if c.conn == nil || !c.connected {
-		c.connMutex.Unlock() // Unlock if connection is already gone
+	// Critical section - just copy conn pointer to local var
+	c.connMutex.Lock()
+	conn = c.conn
+	connected = c.connected
+	c.connMutex.Unlock()
+
+	// Early return if no connection
+	if conn == nil || !connected {
 		return
 	}
 
-	// Store connection locally to use safely
-	conn := c.conn
-
 	// Set write deadline
-	conn.SetWriteDeadline(time.Now().Add(defaultWriteTimeout))
-
-	// Send ping message
-	err = conn.WriteMessage(websocket.TextMessage, data)
-
-	// MUST unlock before potentially calling Disconnect
-	c.connMutex.Unlock()
-
-	if err != nil {
-		c.logger.Error("Failed to send ping message", zap.Error(err))
-		// Trigger reconnection now that mutex is released
-		go c.Disconnect() // <-- Now safe to call
-		return // Return after signaling disconnect
+	writeErr := conn.SetWriteDeadline(time.Now().Add(defaultWriteTimeout))
+	if writeErr != nil {
+		c.logger.Error("Failed to set write deadline", zap.Error(writeErr))
+		go c.Disconnect() // Trigger reconnection in background
+		return
 	}
 
-	// Increment ping sent counter (for testing) - outside connMutex scope
+	// Send ping message - no lock held during network I/O
+	writeErr = conn.WriteMessage(websocket.TextMessage, data)
+	if writeErr != nil {
+		c.logger.Error("Failed to send ping message", zap.Error(writeErr))
+		go c.Disconnect() // Trigger reconnection in background
+		return
+	}
+
+	// Increment ping sent counter (for testing)
 	c.pingMutex.Lock()
 	c.pingSentCount++
 	c.pingMutex.Unlock()

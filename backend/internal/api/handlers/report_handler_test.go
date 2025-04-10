@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go-crypto-bot-clean/backend/internal/domain/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap/zaptest"
@@ -60,9 +60,6 @@ func TestNewReportHandler(t *testing.T) {
 }
 
 func TestReportHandler_GetLatestReport(t *testing.T) {
-	// Set up Gin
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
 
 	// Create dependencies
 	reportGenerator := &MockReportGenerator{}
@@ -70,9 +67,6 @@ func TestReportHandler_GetLatestReport(t *testing.T) {
 
 	// Create handler
 	handler := NewReportHandler(reportGenerator, logger)
-
-	// Register routes
-	router.GET("/api/v1/reports/latest", handler.GetLatestReport)
 
 	// Create test data
 	report := &models.PerformanceReport{
@@ -104,7 +98,7 @@ func TestReportHandler_GetLatestReport(t *testing.T) {
 				reportGenerator.On("GetLatestReport", mock.Anything).Return(nil, nil).Once()
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedBody:   gin.H{"error": "No reports found"},
+			expectedBody:   map[string]string{"error": "No reports found"},
 		},
 		{
 			name: "Error",
@@ -112,7 +106,7 @@ func TestReportHandler_GetLatestReport(t *testing.T) {
 				reportGenerator.On("GetLatestReport", mock.Anything).Return(nil, errors.New("test error")).Once()
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   gin.H{"error": "Failed to get latest report"},
+			expectedBody:   map[string]string{"error": "Failed to get latest report"},
 		},
 	}
 
@@ -127,7 +121,7 @@ func TestReportHandler_GetLatestReport(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			// Serve request
-			router.ServeHTTP(w, req)
+			handler.GetLatestReport(w, req)
 
 			// Assert status code
 			assert.Equal(t, tt.expectedStatus, w.Code)
@@ -145,7 +139,7 @@ func TestReportHandler_GetLatestReport(t *testing.T) {
 				var response map[string]string
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(gin.H)["error"], response["error"])
+				assert.Equal(t, tt.expectedBody.(map[string]string)["error"], response["error"])
 			}
 
 			// Verify all expectations were met
@@ -155,9 +149,6 @@ func TestReportHandler_GetLatestReport(t *testing.T) {
 }
 
 func TestReportHandler_GetReportByID(t *testing.T) {
-	// Set up Gin
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
 
 	// Create dependencies
 	reportGenerator := &MockReportGenerator{}
@@ -165,13 +156,6 @@ func TestReportHandler_GetReportByID(t *testing.T) {
 
 	// Create handler
 	handler := NewReportHandler(reportGenerator, logger)
-
-	// Register routes
-	router.GET("/api/v1/reports/:id", handler.GetReportByID)
-	// Add a route for the root path to test missing ID
-	router.GET("/api/v1/reports", func(c *gin.Context) {
-		handler.GetReportByID(c)
-	})
 
 	// Create test data
 	id := "test-id"
@@ -207,7 +191,7 @@ func TestReportHandler_GetReportByID(t *testing.T) {
 				reportGenerator.On("GetReportByID", mock.Anything, id).Return(nil, nil).Once()
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedBody:   gin.H{"error": "Report not found"},
+			expectedBody:   map[string]string{"error": "Report not found"},
 		},
 		{
 			name: "Error",
@@ -216,7 +200,7 @@ func TestReportHandler_GetReportByID(t *testing.T) {
 				reportGenerator.On("GetReportByID", mock.Anything, id).Return(nil, errors.New("test error")).Once()
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   gin.H{"error": "Failed to get report"},
+			expectedBody:   map[string]string{"error": "Failed to get report"},
 		},
 	}
 
@@ -235,7 +219,7 @@ func TestReportHandler_GetReportByID(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			// Serve request
-			router.ServeHTTP(w, req)
+			handler.GetReportByID(w, req)
 
 			// Assert status code
 			assert.Equal(t, tt.expectedStatus, w.Code)
@@ -253,7 +237,7 @@ func TestReportHandler_GetReportByID(t *testing.T) {
 				var response map[string]string
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(gin.H)["error"], response["error"])
+				assert.Equal(t, tt.expectedBody.(map[string]string)["error"], response["error"])
 			}
 
 			// Verify all expectations were met
@@ -263,16 +247,13 @@ func TestReportHandler_GetReportByID(t *testing.T) {
 
 	// Test missing ID separately
 	t.Run("Missing ID", func(t *testing.T) {
-		// Create a new Gin context
 		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
 
 		// Create a request with no ID parameter
 		req, _ := http.NewRequest(http.MethodGet, "/api/v1/reports", nil)
-		c.Request = req
 
 		// Call the handler directly
-		handler.GetReportByID(c)
+		handler.GetReportByID(w, req)
 
 		// Assert status code
 		assert.Equal(t, http.StatusBadRequest, w.Code)
@@ -286,9 +267,6 @@ func TestReportHandler_GetReportByID(t *testing.T) {
 }
 
 func TestReportHandler_GetReportsByPeriod(t *testing.T) {
-	// Set up Gin
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
 
 	// Create dependencies
 	reportGenerator := &MockReportGenerator{}
@@ -296,9 +274,6 @@ func TestReportHandler_GetReportsByPeriod(t *testing.T) {
 
 	// Create handler
 	handler := NewReportHandler(reportGenerator, logger)
-
-	// Register routes
-	router.GET("/api/v1/reports", handler.GetReportsByPeriod)
 
 	// Create test data
 	period := models.ReportPeriodHourly
@@ -357,7 +332,7 @@ func TestReportHandler_GetReportsByPeriod(t *testing.T) {
 				reportGenerator.On("GetReportsByPeriod", mock.Anything, period, limit).Return(nil, errors.New("test error")).Once()
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   gin.H{"error": "Failed to get reports"},
+			expectedBody:   map[string]string{"error": "Failed to get reports"},
 		},
 		{
 			name:           "Missing period",
@@ -365,7 +340,7 @@ func TestReportHandler_GetReportsByPeriod(t *testing.T) {
 			limit:          "10",
 			setupMock:      func() {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "Period is required"},
+			expectedBody:   map[string]string{"error": "Period is required"},
 		},
 		{
 			name:           "Invalid period",
@@ -373,7 +348,7 @@ func TestReportHandler_GetReportsByPeriod(t *testing.T) {
 			limit:          "10",
 			setupMock:      func() {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "Invalid period"},
+			expectedBody:   map[string]string{"error": "Invalid period"},
 		},
 		{
 			name:           "Invalid limit",
@@ -381,7 +356,7 @@ func TestReportHandler_GetReportsByPeriod(t *testing.T) {
 			limit:          "invalid",
 			setupMock:      func() {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "Invalid limit"},
+			expectedBody:   map[string]string{"error": "Invalid limit"},
 		},
 	}
 
@@ -400,7 +375,7 @@ func TestReportHandler_GetReportsByPeriod(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			// Serve request
-			router.ServeHTTP(w, req)
+			handler.GetReportsByPeriod(w, req)
 
 			// Assert status code
 			assert.Equal(t, tt.expectedStatus, w.Code)
@@ -418,7 +393,7 @@ func TestReportHandler_GetReportsByPeriod(t *testing.T) {
 				var response map[string]string
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(gin.H)["error"], response["error"])
+				assert.Equal(t, tt.expectedBody.(map[string]string)["error"], response["error"])
 			}
 
 			// Verify all expectations were met

@@ -2,75 +2,89 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"go-crypto-bot-clean/backend/internal/api/handlers"
-	"go-crypto-bot-clean/backend/internal/api/middleware"
+	"go-crypto-bot-clean/backend/internal/api/middleware/cors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 )
 
-// ZapLoggerAdapter adapts zap.Logger to middleware.Logger
-type ZapLoggerAdapter struct {
-	logger *zap.Logger
-}
-
-// Info implements middleware.Logger.Info
-func (a *ZapLoggerAdapter) Info(args ...interface{}) {
-	a.logger.Sugar().Info(args...)
-}
-
-// Error implements middleware.Logger.Error
-func (a *ZapLoggerAdapter) Error(args ...interface{}) {
-	a.logger.Sugar().Error(args...)
-}
-
 // SetupRoutes configures the API routes
 func SetupRoutes(
-	router *gin.Engine,
 	statusHandler *handlers.StatusHandler,
 	reportHandler *handlers.ReportHandler,
 	wsHandler *handlers.WebSocketHandler,
 	accountHandler *handlers.AccountHandler,
+	healthHandler *handlers.HealthHandler,
 	logger *zap.Logger,
-) {
-	// Create logger adapter
-	loggerAdapter := &ZapLoggerAdapter{logger: logger}
+) http.Handler {
+	r := chi.NewRouter()
 
-	// Middleware
-	router.Use(middleware.LoggingMiddleware(loggerAdapter))
-	router.Use(middleware.CORSMiddleware())
-	router.Use(gin.WrapH(middleware.RecoveryMiddleware(middleware.RecoveryOptions{
-		Logger:           logger,
-		EnableStackTrace: true,
-	})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))))
+	// Add core middleware
+	setupMiddleware(r, logger)
+
+	// Health check route
+	r.Get("/health", healthHandler.HealthCheck)
 
 	// API v1 routes
-	v1 := router.Group("/api/v1")
-	{
+	r.Route("/api/v1", func(r chi.Router) {
 		// Status routes
-		v1.GET("/status", statusHandler.GetStatus)
-		v1.POST("/status/start", statusHandler.StartProcesses)
-		v1.POST("/status/stop", statusHandler.StopProcesses)
+		r.Get("/status", statusHandler.GetStatus)
+		r.Post("/status/start", statusHandler.StartProcesses)
+		r.Post("/status/stop", statusHandler.StopProcesses)
 
 		// Report routes
-		reportHandler.RegisterRoutes(v1)
+		r.Route("/report", func(r chi.Router) {
+			// TODO: Review these mappings - are they correct?
+			r.Get("/", reportHandler.GetReportsByPeriod)     // Mapped from GetReport
+			r.Get("/summary", reportHandler.GetLatestReport) // Mapped from GetSummary
+			r.Get("/details", reportHandler.GetReportByID)   // Mapped from GetDetails - Needs ID param?
+		})
 
-		// WebSocket routes
-		wsHandler.RegisterRoutes(v1)
+		// WebSocket endpoint
+		r.Get("/ws", wsHandler.HandleWebSocket) // Corrected method name
 
 		// Account routes
-		account := v1.Group("/account")
-		{
-			account.GET("", accountHandler.GetAccount)
-			account.GET("/balance", accountHandler.GetBalances)
-			account.GET("/wallet", accountHandler.GetWallet)
-			account.GET("/balance-summary", accountHandler.GetBalanceSummary)
-			account.GET("/validate-keys", accountHandler.ValidateAPIKeys)
-			account.POST("/sync", accountHandler.SyncWithExchange)
-		}
-	}
+		r.Route("/account", func(r chi.Router) {
+			r.Get("/", accountHandler.GetAccount)
+			r.Get("/balance", accountHandler.GetBalances)
+			r.Get("/wallet", accountHandler.GetWallet)
+			r.Get("/balance-summary", accountHandler.GetBalanceSummary)
+			r.Get("/validate-keys", accountHandler.ValidateAPIKeys)
+			r.Post("/sync", accountHandler.SyncWithExchange)
+		})
+	})
 
 	// Static routes for testing
-	router.Static("/test", "./static")
+	FileServer(r, "/test", http.Dir("./static"))
+
+	return r
+}
+
+// setupMiddleware configures all necessary middleware for the router
+func setupMiddleware(r *chi.Mux, logger *zap.Logger) {
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(cors.Middleware())
+}
+
+// FileServer conveniently sets up a http.FileServer handler to serve static files from a http.FileSystem
+func FileServer(r chi.Router, path string, root http.FileSystem) {
+	if path != "/" && path[len(path)-1] != '/' {
+		r.Get(path, http.RedirectHandler(path+"/", http.StatusMovedPermanently).ServeHTTP)
+		path += "/"
+	}
+	path += "*"
+
+	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
+		rctx := chi.RouteContext(r.Context())
+		pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
+		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
+		fs.ServeHTTP(w, r)
+	})
 }

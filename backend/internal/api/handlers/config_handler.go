@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go-crypto-bot-clean/backend/internal/api/dto/request"
 	"go-crypto-bot-clean/backend/internal/api/dto/response"
 	"go-crypto-bot-clean/backend/internal/config"
@@ -31,7 +31,7 @@ func NewConfigHandler(cfg *config.Config) *ConfigHandler {
 // @Success 200 {object} response.ConfigResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/config [get]
-func (h *ConfigHandler) GetCurrentConfig(c *gin.Context) {
+func (h *ConfigHandler) GetCurrentConfig(w http.ResponseWriter, r *http.Request) {
 	// Build response
 	resp := response.ConfigResponse{
 		USDTPerTrade:     h.Config.Trading.DefaultQuantity,
@@ -41,7 +41,8 @@ func (h *ConfigHandler) GetCurrentConfig(c *gin.Context) {
 		UpdatedAt:        time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // UpdateConfig godoc
@@ -55,11 +56,13 @@ func (h *ConfigHandler) GetCurrentConfig(c *gin.Context) {
 // @Failure 400 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/config [put]
-func (h *ConfigHandler) UpdateConfig(c *gin.Context) {
+func (h *ConfigHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
 	// Parse request
 	var req request.ConfigUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.ErrorResponse{
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
 			Code:    "invalid_request",
 			Message: "Invalid request format",
 			Details: err.Error(),
@@ -90,7 +93,8 @@ func (h *ConfigHandler) UpdateConfig(c *gin.Context) {
 		UpdatedAt:        time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetDefaultConfig godoc
@@ -102,7 +106,7 @@ func (h *ConfigHandler) UpdateConfig(c *gin.Context) {
 // @Success 200 {object} response.ConfigResponse
 // @Failure 500 {object} response.ErrorResponse
 // @Router /api/v1/config/defaults [get]
-func (h *ConfigHandler) GetDefaultConfig(c *gin.Context) {
+func (h *ConfigHandler) GetDefaultConfig(w http.ResponseWriter, r *http.Request) {
 	// Build response with default values
 	resp := response.ConfigResponse{
 		USDTPerTrade:     20.0,
@@ -112,5 +116,6 @@ func (h *ConfigHandler) GetDefaultConfig(c *gin.Context) {
 		UpdatedAt:        time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }

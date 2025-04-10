@@ -1,15 +1,17 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go-crypto-bot-clean/backend/internal/api/dto/request"
 	responseDto "go-crypto-bot-clean/backend/internal/api/dto/response"
 	"go-crypto-bot-clean/backend/internal/core/trade"
 	"go-crypto-bot-clean/backend/internal/domain/repositories"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // TradeHandler handles trade-related endpoints
@@ -35,13 +37,14 @@ func NewTradeHandler(tradeService trade.TradeService, boughtCoinRepo repositorie
 // @Success 200 {object} responseDto.TradeHistoryResponse
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/trade/history [get]
-func (h *TradeHandler) GetTradeHistory(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *TradeHandler) GetTradeHistory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Get all trades
 	allTrades, err := h.BoughtCoinRepo.FindAll(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to get trade history",
 			Details: err.Error(),
@@ -81,7 +84,8 @@ func (h *TradeHandler) GetTradeHistory(c *gin.Context) {
 		Timestamp: time.Now(),
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // ExecuteTrade godoc
@@ -95,13 +99,14 @@ func (h *TradeHandler) GetTradeHistory(c *gin.Context) {
 // @Failure 400 {object} responseDto.ErrorResponse
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/trade/buy [post]
-func (h *TradeHandler) ExecuteTrade(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *TradeHandler) ExecuteTrade(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Parse request
 	var req request.TradeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, responseDto.ErrorResponse{
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "invalid_request",
 			Message: "Invalid request format",
 			Details: err.Error(),
@@ -112,7 +117,8 @@ func (h *TradeHandler) ExecuteTrade(c *gin.Context) {
 	// Execute purchase
 	coin, err := h.TradeService.ExecutePurchase(ctx, req.Symbol, req.Amount, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "execution_failed",
 			Message: "Failed to execute trade",
 			Details: err.Error(),
@@ -131,7 +137,8 @@ func (h *TradeHandler) ExecuteTrade(c *gin.Context) {
 		Status:        "completed",
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // SellCoin godoc
@@ -146,13 +153,14 @@ func (h *TradeHandler) ExecuteTrade(c *gin.Context) {
 // @Failure 404 {object} responseDto.ErrorResponse
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/trade/sell [post]
-func (h *TradeHandler) SellCoin(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *TradeHandler) SellCoin(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Parse request
 	var req request.SellRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, responseDto.ErrorResponse{
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "invalid_request",
 			Message: "Invalid request format",
 			Details: err.Error(),
@@ -163,7 +171,8 @@ func (h *TradeHandler) SellCoin(c *gin.Context) {
 	// Get the coin
 	coin, err := h.BoughtCoinRepo.FindByID(ctx, int64(req.CoinID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to find coin",
 			Details: err.Error(),
@@ -172,7 +181,8 @@ func (h *TradeHandler) SellCoin(c *gin.Context) {
 	}
 
 	if coin == nil {
-		c.JSON(http.StatusNotFound, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "not_found",
 			Message: "Coin not found",
 		})
@@ -188,7 +198,8 @@ func (h *TradeHandler) SellCoin(c *gin.Context) {
 	// Execute sell
 	order, err := h.TradeService.SellCoin(ctx, coin, amount)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "execution_failed",
 			Message: "Failed to sell coin",
 			Details: err.Error(),
@@ -207,7 +218,8 @@ func (h *TradeHandler) SellCoin(c *gin.Context) {
 		Status:        "completed",
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetTradeStatus godoc
@@ -222,14 +234,15 @@ func (h *TradeHandler) SellCoin(c *gin.Context) {
 // @Failure 404 {object} responseDto.ErrorResponse
 // @Failure 500 {object} responseDto.ErrorResponse
 // @Router /api/v1/trade/status/{id} [get]
-func (h *TradeHandler) GetTradeStatus(c *gin.Context) {
-	ctx := c.Request.Context()
+func (h *TradeHandler) GetTradeStatus(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// Parse trade ID
-	idStr := c.Param("id")
+	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "invalid_id",
 			Message: "Invalid trade ID format",
 			Details: err.Error(),
@@ -240,7 +253,8 @@ func (h *TradeHandler) GetTradeStatus(c *gin.Context) {
 	// Get the coin
 	coin, err := h.BoughtCoinRepo.FindByID(ctx, int64(id))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "internal_error",
 			Message: "Failed to find trade",
 			Details: err.Error(),
@@ -249,7 +263,8 @@ func (h *TradeHandler) GetTradeStatus(c *gin.Context) {
 	}
 
 	if coin == nil {
-		c.JSON(http.StatusNotFound, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "not_found",
 			Message: "Trade not found",
 		})
@@ -283,15 +298,17 @@ func (h *TradeHandler) GetTradeStatus(c *gin.Context) {
 		},
 	}
 
-	c.JSON(http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // ExecutePurchaseHandler is the legacy handler for executing purchases
 // This is kept for backward compatibility
-func (h *TradeHandler) ExecutePurchaseHandler(c *gin.Context) {
+func (h *TradeHandler) ExecutePurchaseHandler(w http.ResponseWriter, r *http.Request) {
 	var req CreateTradeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, responseDto.ErrorResponse{
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "INVALID_REQUEST",
 			Message: "Invalid request payload",
 			Details: err.Error(),
@@ -299,9 +316,10 @@ func (h *TradeHandler) ExecutePurchaseHandler(c *gin.Context) {
 		return
 	}
 
-	boughtCoin, err := h.TradeService.ExecutePurchase(c.Request.Context(), req.Symbol, req.Quantity, nil)
+	boughtCoin, err := h.TradeService.ExecutePurchase(r.Context(), req.Symbol, req.Quantity, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, responseDto.ErrorResponse{
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(responseDto.ErrorResponse{
 			Code:    "TRADE_EXECUTION_FAILED",
 			Message: "Failed to execute purchase",
 			Details: err.Error(),
@@ -309,7 +327,8 @@ func (h *TradeHandler) ExecutePurchaseHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, TradeResponse{
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(TradeResponse{
 		Symbol:   boughtCoin.Symbol,
 		Price:    boughtCoin.BuyPrice,
 		Quantity: boughtCoin.Quantity,

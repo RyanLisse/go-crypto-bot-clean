@@ -8,6 +8,7 @@ import (
 	"go-crypto-bot-clean/backend/internal/domain/ai/service"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service/function"
 	"go-crypto-bot-clean/backend/internal/domain/ai/service/templates"
+	"go-crypto-bot-clean/backend/internal/domain/ai/types"
 )
 
 // MockAIService is a mock implementation of the AIService interface
@@ -98,6 +99,62 @@ func (m *MockAIService) ListUserSessions(ctx context.Context, userID int, limit 
 func (m *MockAIService) DeleteSession(ctx context.Context, userID int, sessionID string) error {
 	// Do nothing in the mock implementation
 	return nil
+}
+
+// FindSimilarMessages finds messages similar to the given query
+func (m *MockAIService) FindSimilarMessages(ctx context.Context, query string, limit int) ([]types.SimilarMessage, error) {
+	// Return mock similar messages
+	return []types.SimilarMessage{
+		{
+			ConversationID: "mock_conversation_1",
+			MessageID:      "mock_message_1",
+			Content:        "This is a mock similar message 1",
+			Similarity:     0.95,
+			Metadata: map[string]interface{}{
+				"indexed_at": time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
+			},
+		},
+		{
+			ConversationID: "mock_conversation_2",
+			MessageID:      "mock_message_2",
+			Content:        "This is a mock similar message 2",
+			Similarity:     0.85,
+			Metadata: map[string]interface{}{
+				"indexed_at": time.Now().Add(-2 * time.Hour).Format(time.RFC3339),
+			},
+		},
+	}, nil
+}
+
+// IndexMessage indexes a message for similarity search
+func (m *MockAIService) IndexMessage(ctx context.Context, conversationID, messageID, content string, metadata map[string]interface{}) error {
+	// Do nothing in the mock implementation
+	return nil
+}
+
+// GenerateInsights generates AI insights based on portfolio and trade history
+func (m *MockAIService) GenerateInsights(ctx context.Context, userID int, portfolio map[string]interface{}, tradeHistory []map[string]interface{}, insightTypes []string) ([]service.Insight, error) {
+	// Return mock insights
+	return []service.Insight{
+		{
+			ID:             "insight_1",
+			Type:           "portfolio_allocation",
+			Title:          "Portfolio Allocation Insight",
+			Description:    "Your portfolio is well-diversified across major cryptocurrencies.",
+			Importance:     "medium",
+			Timestamp:      time.Now(),
+			Recommendation: "Continue with current allocation strategy.",
+		},
+		{
+			ID:             "insight_2",
+			Type:           "risk_assessment",
+			Title:          "Risk Assessment Insight",
+			Description:    "Your current risk level is moderate based on your trading history.",
+			Importance:     "high",
+			Timestamp:      time.Now(),
+			Recommendation: "Consider reducing exposure to volatile assets.",
+		},
+	}, nil
 }
 
 // ApplyRiskGuardrails applies risk guardrails to a trade recommendation
