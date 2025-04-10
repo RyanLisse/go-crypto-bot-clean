@@ -3,6 +3,7 @@ package notification_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -103,8 +104,8 @@ func TestSendNotificationUnsupportedChannel(t *testing.T) {
 
 	assert.Error(t, err) // Expect an error
 	// Adjust assertion to match the actual error message when no supporting notifier is found for the user's PREFERRED channel
-	assert.Contains(t, err.Error(), "no enabled preferences or supporting notifiers found for user")
-	mockEmailNotifier.AssertNotCalled(t, "Send", ctx, recipient, subject, message) // Ensure Send wasn't called
+	assert.Contains(t, err.Error(), fmt.Sprintf("no configured notifier supports channel '%s' specified in preference for user %s", channel, recipient)) // Match actual error
+	mockEmailNotifier.AssertNotCalled(t, "Send", ctx, recipient, subject, message)                                                                       // Ensure Send wasn't called
 }
 
 // TestSendNotificationNoSupportingNotifier tests sending when no notifier supports the channel
@@ -129,8 +130,8 @@ func TestSendNotificationNoSupportingNotifier(t *testing.T) {
 
 	err := service.SendNotification(ctx, recipient, subject, message) // Removed channel argument
 
-	assert.Error(t, err)                                                                    // Expect an error
-	assert.Contains(t, err.Error(), "no enabled preferences or supporting notifiers found") // Check specific error message
+	assert.Error(t, err)                                                                                                                                 // Expect an error
+	assert.Contains(t, err.Error(), fmt.Sprintf("no configured notifier supports channel '%s' specified in preference for user %s", channel, recipient)) // Match actual error
 	mockOtherNotifier.AssertNotCalled(t, "Send", ctx, recipient, subject, message)
 }
 

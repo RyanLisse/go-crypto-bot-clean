@@ -41,8 +41,8 @@ func TestMexcClientDeadlock(t *testing.T) {
 	// Ensure we disconnect even if the test fails
 	defer func() {
 		disconnect := func() error {
-			// Create timeout context for disconnect but we don't need to track it
-			discCtx, discCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			// Create timeout context for disconnect
+			_, discCancel := context.WithTimeout(context.Background(), 100*time.Millisecond) // Use blank identifier
 			defer discCancel()
 
 			err := client.Disconnect()
@@ -51,7 +51,7 @@ func TestMexcClientDeadlock(t *testing.T) {
 			}
 
 			// Wait for the context to finish to ensure operation completes or times out
-			<-discCtx.Done()
+			// discCtx is no longer defined, remove wait
 			return nil
 		}
 
@@ -88,7 +88,8 @@ func TestMexcClientDeadlock(t *testing.T) {
 	}
 
 	// Send a mock ticker update with timeout to avoid blocking
-	updateSent := false
+	// updateSent := false // Removed unused variable
+	// sentUpdate was declared but not used, removing for now
 	go func() {
 		select {
 		case <-time.After(100 * time.Millisecond):
@@ -110,21 +111,23 @@ func TestMexcClientDeadlock(t *testing.T) {
 			data, _ := json.Marshal(tickerUpdate)
 			err := mockServer.WriteToClient(websocket.TextMessage, data)
 			if err == nil {
-				updateSent = true
-				t.Logf("Successfully sent ticker update: %v", updateSent)
+				// updateSent = true // Declared but not used
+				t.Logf("Successfully sent ticker update")
 			}
 		case <-ctx.Done():
-			return
+			return // Exit goroutine if main context finishes
 		}
 	}()
 
 	// Wait to receive ticker update with timeout
+	// receivedTicker := false // Declared but not used
 	select {
 	case <-tickerCh:
+		// receivedTicker = true // Declared but not used
 		t.Log("Received ticker update")
 	case <-time.After(500 * time.Millisecond):
 		// We're not testing ticker receipt, just deadlocks
-		t.Log("Ticker update timeout, but continuing test")
+		t.Log("Ticker update timeout, but continuing test") // Keep this log
 	}
 
 	// Clean disconnect, testing for deadlocks

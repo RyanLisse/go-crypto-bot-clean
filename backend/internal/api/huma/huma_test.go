@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"go-crypto-bot-clean/backend/internal/api/service"
-	"go-crypto-bot-clean/backend/pkg/auth"
+	internalAuth "go-crypto-bot-clean/backend/internal/auth" // Use internal/auth
 	"go-crypto-bot-clean/backend/pkg/backtest"
 	"go-crypto-bot-clean/backend/pkg/strategy"
 
@@ -21,13 +21,14 @@ func TestSetupHuma(t *testing.T) {
 	// Create mock services
 	backtestService := backtest.NewService()
 	strategyFactory := strategy.NewFactory()
-	authService := auth.NewService("dummy-secret-key")
+	// Use internal/auth; using disabled service for this test as auth isn't the focus
+	authProvider := internalAuth.NewDisabledService()
 
 	// Create mock service provider
 	serviceProvider := &service.Provider{
 		BacktestService: service.NewBacktestService(&backtestService),
 		StrategyService: service.NewStrategyService(&strategyFactory),
-		AuthService:     service.NewAuthService(&authService, nil),
+		AuthService:     service.NewAuthService(authProvider, nil), // Pass internal/auth provider
 		UserService:     service.NewUserService(nil),
 	}
 

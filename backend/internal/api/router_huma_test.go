@@ -7,7 +7,9 @@ import (
 
 	"go-crypto-bot-clean/backend/internal/api/handlers"
 	"go-crypto-bot-clean/backend/internal/api/websocket"
+
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap" // Import zap
 )
 
 func TestSetupChiRouter(t *testing.T) {
@@ -23,7 +25,7 @@ func TestSetupChiRouter(t *testing.T) {
 	}
 
 	// Setup router
-	router := SetupChiRouter(deps)
+	router := SetupChiRouter(deps, zap.NewNop()) // Pass Nop logger
 
 	// Create a test server
 	server := httptest.NewServer(router)
@@ -58,7 +60,7 @@ func TestCORSMiddleware(t *testing.T) {
 	}
 
 	// Setup router
-	router := SetupChiRouter(deps)
+	router := SetupChiRouter(deps, zap.NewNop()) // Pass Nop logger
 
 	// Create a test server
 	server := httptest.NewServer(router)

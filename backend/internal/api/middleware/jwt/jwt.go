@@ -4,6 +4,7 @@ package jwt
 import (
 	"errors"
 	"fmt"
+	"sync" // Import sync package
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -44,6 +45,8 @@ type Service struct {
 	accessTTL     time.Duration
 	refreshTTL    time.Duration
 	issuer        string
+	blacklist     map[string]time.Time // Map to store blacklisted tokens and their expiry
+	blacklistMux  sync.RWMutex         // Mutex for blacklist map
 }
 
 // NewService creates a new JWT service
@@ -54,11 +57,19 @@ func NewService(accessSecret, refreshSecret string, accessTTL, refreshTTL time.D
 		accessTTL:     accessTTL,
 		refreshTTL:    refreshTTL,
 		issuer:        issuer,
+		blacklist:     make(map[string]time.Time), // Initialize blacklist map
 	}
 }
 
 // GenerateAccessToken generates a new access token
 func (s *Service) GenerateAccessToken(userID, email string, roles []string) (string, time.Time, error) {
+	if userID == "" {
+		return "", time.Time{}, fmt.Errorf("userID cannot be empty")
+	}
+	if email == "" {
+		return "", time.Time{}, fmt.Errorf("email cannot be empty")
+	}
+
 	expiresAt := time.Now().Add(s.accessTTL)
 
 	claims := CustomClaims{
@@ -87,6 +98,10 @@ func (s *Service) GenerateAccessToken(userID, email string, roles []string) (str
 
 // GenerateRefreshToken generates a new refresh token
 func (s *Service) GenerateRefreshToken(userID string) (string, time.Time, error) {
+	if userID == "" {
+		return "", time.Time{}, fmt.Errorf("userID cannot be empty")
+	}
+
 	expiresAt := time.Now().Add(s.refreshTTL)
 
 	claims := CustomClaims{
@@ -117,8 +132,12 @@ func (s *Service) ValidateAccessToken(tokenString string) (*CustomClaims, error)
 }
 
 // ValidateRefreshToken validates a refresh token and returns the claims
-func (s *Service) ValidateRefreshToken(tokenString string) (*CustomClaims, error) {
-	return s.validateToken(tokenString, s.refreshSecret, RefreshToken)
+func (s *Service) ValidateRefreshToken(tokenString string) (string, error) {
+	claims, err := s.validateToken(tokenString, s.refreshSecret, RefreshToken)
+	if err != nil {
+		return "", err
+	}
+	return claims.UserID, nil
 }
 
 // GetAccessTTL returns the access token TTL
@@ -168,13 +187,55 @@ func (s *Service) validateToken(tokenString string, secret []byte, tokenType Tok
 // BlacklistToken adds a token to the blacklist
 // In a real implementation, this would store the token in a database or cache
 func (s *Service) BlacklistToken(tokenString string) error {
-	// TODO: Implement token blacklisting
+	// Validate token first to get expiry
+	claims, err := s.validateToken(tokenString, s.accessSecret, AccessToken) // Assume blacklisting access tokens for now
+	if err != nil {
+		// Also try validating as refresh token if needed, or handle error differently
+		// For simplicity, we'll just blacklist based on string if validation fails, but store no expiry
+		claimsRefresh, errRefresh := s.validateToken(tokenString, s.refreshSecret, RefreshToken)
+		if errRefresh != nil {
+			// Cannot determine expiry, blacklist indefinitely (or until cleanup)
+			s.blacklistMux.Lock()
+			s.blacklist[tokenString] = time.Time{} // Zero time could mean indefinite or handle differently
+			s.blacklistMux.Unlock()
+			return fmt.Errorf("token validation failed, blacklisted without expiry: %v, %v", err, errRefresh)
+		}
+		claims = claimsRefresh // Use refresh token claims if access validation failed
+	}
+
+	s.blacklistMux.Lock()
+	defer s.blacklistMux.Unlock()
+
+	// Store token with its original expiry time
+	if claims != nil && claims.ExpiresAt != nil {
+		s.blacklist[tokenString] = claims.ExpiresAt.Time
+	} else {
+		// Fallback if expiry couldn't be determined (e.g., invalid token)
+		// Blacklist for a default duration or handle as needed
+		s.blacklist[tokenString] = time.Now().Add(s.accessTTL + s.refreshTTL) // Example: blacklist for max possible lifetime
+	}
+
 	return nil
 }
 
 // IsBlacklisted checks if a token is blacklisted
 // In a real implementation, this would check the database or cache
 func (s *Service) IsBlacklisted(tokenString string) bool {
-	// TODO: Implement blacklist checking
+	s.blacklistMux.RLock()
+	defer s.blacklistMux.RUnlock()
+
+	expiry, exists := s.blacklist[tokenString]
+	if !exists {
+		return false // Not in blacklist
+	}
+
+	// If expiry is zero time, consider it blacklisted indefinitely (or until cleaned)
+	// Or if expiry is in the future, it's still blacklisted
+	if expiry.IsZero() || expiry.After(time.Now()) {
+		return true
+	}
+
+	// Token was blacklisted but has expired, treat as not blacklisted anymore
+	// (Optional: could remove expired tokens here or in a separate cleanup routine)
 	return false
 }

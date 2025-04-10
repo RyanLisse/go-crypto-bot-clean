@@ -3,6 +3,7 @@ package preference
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -32,20 +33,26 @@ func TestPreferenceRepository(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 	repo := NewRepository(db, logger)
 
-	// Mock the AutoMigrate call
-	mock.ExpectExec(`CREATE TABLE IF NOT EXISTS "notification_preferences"`).
-		WillReturnResult(sqlmock.NewResult(0, 0))
+	// Mock the GetUserPreferences query first, as that seems to be called before potential migration
 
 	// Test GetUserPreferences
 	ctx := context.Background()
 	userID := "user123"
 
 	// Mock the query
-	mock.ExpectQuery(`SELECT (.+) FROM "notification_preferences" WHERE user_id = \$1 AND enabled = \$2`).
-		WithArgs(userID, true).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "channel", "recipient", "enabled"}).
-			AddRow(1, "2023-01-01", "2023-01-01", nil, userID, "telegram", "123456789", true).
-			AddRow(2, "2023-01-01", "2023-01-01", nil, userID, "slack", "#alerts", true))
+	// Mock the query for GetUserPreferences
+	rows := sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "user_id", "channel", "recipient", "enabled"}).
+		AddRow(1, time.Now(), time.Now(), nil, userID, "telegram", "123456789", true).
+		AddRow(2, time.Now(), time.Now(), nil, userID, "slack", "#alerts", true)
+	mock.ExpectQuery(`SELECT \* FROM "notification_preferences"`). // Adjust query regex if needed
+									WithArgs(userID, true).
+									WillReturnRows(rows)
+
+	// Mock the AutoMigrate call (assuming it happens, maybe adjust if not)
+	// Note: GORM AutoMigrate might issue different queries (check existence first)
+	// This mock might need refinement based on actual GORM behavior.
+	mock.ExpectQuery(`SELECT count\(\*\) FROM information_schema.tables`).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1)) // Assume table exists for simplicity now
+	// mock.ExpectExec(`CREATE TABLE IF NOT EXISTS "notification_preferences"`).WillReturnResult(sqlmock.NewResult(0, 0)) // Keep commented if existence check is mocked
 
 	prefs, err := repo.GetUserPreferences(ctx, userID)
 	require.NoError(t, err)

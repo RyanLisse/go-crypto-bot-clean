@@ -3,12 +3,14 @@ package service
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
 	"go-crypto-bot-clean/backend/internal/api/middleware/jwt"
 	"go-crypto-bot-clean/backend/internal/api/models"
 	"go-crypto-bot-clean/backend/internal/api/repository"
+	"go-crypto-bot-clean/backend/internal/auth"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -89,19 +91,32 @@ type mockAuthService struct {
 	mock.Mock
 }
 
-func (m *mockAuthService) Authenticate(ctx context.Context, username, password string) (string, error) {
-	args := m.Called(ctx, username, password)
-	return args.String(0), args.Error(1)
+func (m *mockAuthService) Authenticate(r *http.Request) (*auth.UserData, error) {
+	args := m.Called(r)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*auth.UserData), args.Error(1)
 }
 
-func (m *mockAuthService) ValidateToken(token string) (string, error) {
-	args := m.Called(token)
-	return args.String(0), args.Error(1)
+func (m *mockAuthService) RequireRole(role string) func(http.Handler) http.Handler {
+	args := m.Called(role)
+	return args.Get(0).(func(http.Handler) http.Handler)
 }
 
-func (m *mockAuthService) RefreshToken(token string) (string, error) {
-	args := m.Called(token)
-	return args.String(0), args.Error(1)
+func (m *mockAuthService) RequirePermission(permission string) func(http.Handler) http.Handler {
+	args := m.Called(permission)
+	return args.Get(0).(func(http.Handler) http.Handler)
+}
+
+func (m *mockAuthService) RequireAnyPermission(permissions ...string) func(http.Handler) http.Handler {
+	args := m.Called(permissions)
+	return args.Get(0).(func(http.Handler) http.Handler)
+}
+
+func (m *mockAuthService) RequireAllPermissions(permissions ...string) func(http.Handler) http.Handler {
+	args := m.Called(permissions)
+	return args.Get(0).(func(http.Handler) http.Handler)
 }
 
 // Test setup helper

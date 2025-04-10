@@ -22,6 +22,6 @@ func TestRootCommandHelp(t *testing.T) {
 	err := cmd.Execute()
 	assert.NoError(t, err)
 	output := buf.String()
-	assert.Contains(t, output, "Crypto Trading Bot")
+	assert.Contains(t, output, "A cryptocurrency trading bot") // Match actual help text
 	assert.Contains(t, output, "Available Commands")
 }

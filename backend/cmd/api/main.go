@@ -17,7 +17,10 @@ import (
 	"go-crypto-bot-clean/backend/internal/api/middleware/jwt"
 	"go-crypto-bot-clean/backend/internal/api/repository"
 	"go-crypto-bot-clean/backend/internal/api/service"
-	"go-crypto-bot-clean/backend/pkg/auth"
+	internalAuth "go-crypto-bot-clean/backend/internal/auth" // Use internal/auth
+	"go-crypto-bot-clean/backend/internal/config"
+
+	// "go-crypto-bot-clean/backend/pkg/auth" // Removed pkg/auth import
 	"go-crypto-bot-clean/backend/pkg/backtest"
 	"go-crypto-bot-clean/backend/pkg/strategy"
 )
@@ -30,10 +33,16 @@ func main() {
 	}
 	defer logger.Sync()
 
+	// Load configuration first
+	cfg, err := config.LoadConfig(".") // Assuming config is in the current dir or handled by LoadConfig
+	if err != nil {
+		logger.Fatal("cannot load config:", zap.Error(err))
+	}
+
 	// Initialize database
 	dbConfig := database.DefaultConfig()
-	dbConfig.Path = getEnv("DB_PATH", dbConfig.Path)
-	dbConfig.Debug = getEnvBool("DB_DEBUG", false)
+	dbConfig.Path = cfg.Database.Path // Use config value
+	dbConfig.Debug = cfg.App.Debug    // Use config value from App struct
 	dbConfig.Logger = logger
 
 	db, err := database.NewDatabase(dbConfig)
@@ -48,7 +57,7 @@ func main() {
 	}
 
 	// Seed database with initial data
-	if getEnvBool("DB_SEED", false) {
+	if getEnvBool("DB_SEED", false) { // Use environment variable check
 		if err := migrationManager.SeedDatabase(); err != nil {
 			logger.Fatal("Failed to seed database", zap.Error(err))
 		}
@@ -71,7 +80,13 @@ func main() {
 	// Initialize services
 	backtestService := backtest.NewService()
 	strategyFactory := strategy.NewFactory()
-	authService := auth.NewService("dummy-secret-key") // Use a dummy secret key for development
+	// Use internal/auth and config key
+	var authProvider internalAuth.AuthProvider
+	if cfg.Auth.Enabled {
+		authProvider = internalAuth.NewService(cfg.Auth.ClerkSecretKey)
+	} else {
+		authProvider = internalAuth.NewDisabledService() // Use disabled service if auth is off
+	}
 
 	// Initialize JWT service
 	accessSecret := getEnv("JWT_ACCESS_SECRET", "default-access-secret")
@@ -101,7 +116,7 @@ func main() {
 	serviceProvider := service.NewProvider(
 		&backtestService, // Convert to pointer to interface
 		&strategyFactory, // Convert to pointer to interface
-		&authService,     // Convert to pointer to interface
+		authProvider,     // Pass the internal/auth provider (already an interface)
 		userRepo,
 		strategyRepo,
 		backtestRepo,

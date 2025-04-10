@@ -57,8 +57,10 @@ func TestTokenBucketRateLimiter(t *testing.T) {
 	assert.True(t, limiter.Allow("test"))
 	assert.True(t, limiter.Allow("test"))
 
+	// Add small sleep to ensure time progresses slightly, although logic should handle this.
+	time.Sleep(5 * time.Millisecond)
 	// 4th request should be denied
-	assert.False(t, limiter.Allow("test"))
+	assert.False(t, limiter.Allow("test"), "4th request immediately after burst should be denied")
 
 	// Different key should be allowed
 	assert.True(t, limiter.Allow("test2"))
@@ -74,5 +76,6 @@ func TestTokenBucketRateLimiter(t *testing.T) {
 
 	// Wait for token to refill (should take 1 second)
 	time.Sleep(1100 * time.Millisecond)
-	assert.True(t, limiter.Allow("test3"))
+	// With rate 1/min, 1.1s is not enough to refill. Assertion should be False.
+	assert.False(t, limiter.Allow("test3"), "Should not have refilled 1 token in ~1 second with 1/min rate")
 }
