@@ -269,14 +269,6 @@ func (s *Service) RequireAllPermissions(permissions ...string) func(http.Handler
 	}
 }
 
-// Helper function to safely get string value from pointer
-func stringValue(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
 // DisabledService is a no-op implementation of the auth service
 type DisabledService struct{}
 

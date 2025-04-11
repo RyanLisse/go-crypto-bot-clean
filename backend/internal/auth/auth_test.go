@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,8 +25,8 @@ func TestService_Authenticate(t *testing.T) {
 			setupMock: func() *http.Request {
 				// Create a request with valid session claims
 				r := httptest.NewRequest(http.MethodGet, "/", nil)
-				ctx := context.WithValue(r.Context(), sessionClaimsContextKey, &clerk.SessionClaims{
-					Subject: "user_123",
+				ctx := context.WithValue(r.Context(), sessionClaimsContextKey, map[string]interface{}{
+					"sub": "user_123",
 				})
 				return r.WithContext(ctx)
 			},

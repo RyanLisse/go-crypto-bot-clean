@@ -2,15 +2,18 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"go-crypto-bot-clean/backend/internal/auth"
 	"go-crypto-bot-clean/backend/internal/config"
 	"go-crypto-bot-clean/backend/internal/database"
 	"go-crypto-bot-clean/backend/internal/health"
+	"go-crypto-bot-clean/backend/internal/middleware"
 	"go-crypto-bot-clean/backend/internal/models"
 	"go-crypto-bot-clean/backend/internal/repositories"
 
@@ -67,33 +70,52 @@ func main() {
 	// Configure logger based on config
 	configureLogger(logger, cfg)
 
-	// Initialize database if enabled
-	var dbManager *database.SQLiteManager
-	var repo *repositories.MinimalRepository
+	// Initialize authentication if enabled
+	var clerkAuth *auth.ClerkAuth
+	if cfg.Auth.Enabled {
+		clerkAuth, err = auth.FromMinimalConfig(cfg, logger)
+		if err != nil {
+			logger.Error("Failed to initialize authentication", zap.Error(err))
+		} else {
+			logger.Info("Authentication initialized",
+				zap.Bool("enabled", cfg.Auth.Enabled),
+				zap.String("domain", cfg.Auth.ClerkDomain),
+			)
+		}
+	} else {
+		logger.Info("Authentication is disabled")
+	}
 
+	// Initialize database if enabled
+	var sqliteManager *database.SQLiteManager
+	var tursoManager *database.TursoManager
+	var syncManager *database.SyncManager
+	var repo *repositories.MinimalRepository
+	
 	// Force database enablement for testing
 	cfg.Database.Enabled = true
-
+	
 	// Set default values if not provided
 	if cfg.Database.Path == "" {
 		cfg.Database.Path = "./data/minimal.db"
 	}
-
+	
 	if cfg.Database.MaxOpenConns <= 0 {
 		cfg.Database.MaxOpenConns = 10
 	}
-
+	
 	if cfg.Database.MaxIdleConns <= 0 {
 		cfg.Database.MaxIdleConns = 5
 	}
-
+	
 	if cfg.Database.ConnMaxLifetimeSeconds <= 0 {
 		cfg.Database.ConnMaxLifetimeSeconds = 300
 	}
-
+	
+	// Initialize SQLite database
 	if cfg.Database.Enabled {
 		// Create database manager
-		dbManager = database.NewSQLiteManager(database.SQLiteConfig{
+		sqliteManager = database.NewSQLiteManager(database.SQLiteConfig{
 			Path:                   cfg.Database.Path,
 			MaxOpenConns:           cfg.Database.MaxOpenConns,
 			MaxIdleConns:           cfg.Database.MaxIdleConns,
@@ -102,13 +124,13 @@ func main() {
 		}, logger)
 
 		// Connect to database
-		if err := dbManager.Connect(); err != nil {
+		if err := sqliteManager.Connect(); err != nil {
 			logger.Fatal("Failed to connect to database", zap.Error(err))
 		}
-		defer dbManager.Close()
+		defer sqliteManager.Close()
 
 		// Auto migrate models
-		if err := dbManager.AutoMigrate(
+		if err := sqliteManager.AutoMigrate(
 			&models.SystemInfo{},
 			&models.HealthCheck{},
 			&models.LogEntry{},
@@ -117,7 +139,7 @@ func main() {
 		}
 
 		// Create repository
-		repo = repositories.NewMinimalRepository(dbManager.DB(), logger)
+		repo = repositories.NewMinimalRepository(sqliteManager.DB(), logger)
 
 		// Save system info
 		systemInfo := &models.SystemInfo{
@@ -130,9 +152,53 @@ func main() {
 			logger.Error("Failed to save system info", zap.Error(err))
 		}
 
-		logger.Info("Database initialized successfully",
+		// Initialize Turso if enabled
+		if cfg.Database.Turso.Enabled {
+			// Create Turso manager
+			tursoManager = database.NewTursoManager(database.TursoConfig{
+				Enabled:             cfg.Database.Turso.Enabled,
+				URL:                 cfg.Database.Turso.URL,
+				AuthToken:           cfg.Database.Turso.AuthToken,
+				SyncEnabled:         cfg.Database.Turso.SyncEnabled,
+				SyncIntervalSeconds: cfg.Database.Turso.SyncIntervalSeconds,
+			}, logger)
+
+			// Connect to Turso
+			if err := tursoManager.Connect(context.Background()); err != nil {
+				logger.Error("Failed to connect to Turso database", zap.Error(err))
+			} else {
+				defer tursoManager.Close()
+				logger.Info("Connected to Turso database",
+					zap.String("url", cfg.Database.Turso.URL),
+					zap.Bool("syncEnabled", cfg.Database.Turso.SyncEnabled),
+				)
+
+				// Initialize sync manager if both SQLite and Turso are connected
+				if cfg.Database.Turso.SyncEnabled {
+					syncManager = database.NewSyncManager(database.SyncConfig{
+						Enabled:             cfg.Database.Turso.SyncEnabled,
+						SyncIntervalSeconds: cfg.Database.Turso.SyncIntervalSeconds,
+						BatchSize:           cfg.Database.Turso.BatchSize,
+						MaxRetries:          cfg.Database.Turso.MaxRetries,
+						RetryDelaySeconds:   cfg.Database.Turso.RetryDelaySeconds,
+					}, sqliteManager.DB(), tursoManager.DB(), logger)
+
+					// Start sync
+					if err := syncManager.StartSync(); err != nil {
+						logger.Error("Failed to start database synchronization", zap.Error(err))
+					} else {
+						logger.Info("Database synchronization started")
+					}
+
+					// We'll add Turso component to health check later
+				}
+			}
+		}
+
+		logger.Info("Database initialized successfully", 
 			zap.String("path", cfg.Database.Path),
 			zap.Bool("debug", cfg.App.Debug),
+			zap.Bool("tursoEnabled", cfg.Database.Turso.Enabled),
 		)
 	} else {
 		logger.Info("Database is disabled")
@@ -154,8 +220,23 @@ func main() {
 	healthCheck.AddComponent("system", health.StatusUp, "System is running")
 
 	// Add database component to health check if enabled
-	if cfg.Database.Enabled && dbManager != nil {
+	if cfg.Database.Enabled && sqliteManager != nil {
 		healthCheck.AddComponent("database", health.StatusUp, "Database is connected")
+	}
+
+	// Add Turso component to health check if enabled
+	if cfg.Database.Turso.Enabled && tursoManager != nil {
+		healthCheck.AddComponent("turso", health.StatusUp, "Turso database is connected")
+	}
+
+	// Add sync component to health check if enabled
+	if cfg.Database.Turso.SyncEnabled && syncManager != nil {
+		healthCheck.AddComponent("sync", health.StatusUp, "Database synchronization is active")
+	}
+
+	// Add authentication component to health check if enabled
+	if cfg.Auth.Enabled && clerkAuth != nil {
+		healthCheck.AddComponent("auth", health.StatusUp, "Authentication is enabled")
 	}
 
 	// Add health check endpoints
@@ -193,41 +274,59 @@ func main() {
 			"database": map[string]any{
 				"enabled": cfg.Database.Enabled,
 				"path":    cfg.Database.Path,
+				"turso": map[string]any{
+					"enabled":             cfg.Database.Turso.Enabled,
+					"syncEnabled":         cfg.Database.Turso.SyncEnabled,
+					"syncIntervalSeconds": cfg.Database.Turso.SyncIntervalSeconds,
+				},
+			},
+			"auth": map[string]any{
+				"enabled":      cfg.Auth.Enabled,
+				"clerkDomain": cfg.Auth.ClerkDomain,
 			},
 		}
 
 		json.NewEncoder(w).Encode(safeConfig)
 	})
 
+	// Add sync status endpoint if enabled
+	if cfg.Database.Turso.SyncEnabled && syncManager != nil {
+		router.Get("/sync/status", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(syncManager.GetSyncStatus())
+		})
+	}
+
 	// Add database endpoints if enabled
 	if cfg.Database.Enabled && repo != nil {
 		// Add system info endpoint
 		router.Get("/system", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-
+			
 			info, err := repo.GetSystemInfo()
 			if err != nil {
 				logger.Error("Failed to get system info", zap.Error(err))
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-
+			
 			if info == nil {
 				http.Error(w, "System info not found", http.StatusNotFound)
 				return
 			}
-
+			
 			// Update uptime
 			info.Uptime = int64(time.Since(info.StartTime).Seconds())
-
+			
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(info)
 		})
-
+		
 		// Add health checks endpoint
 		router.Get("/health/history", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-
+			
 			limit := 10 // Default limit
 			checks, err := repo.GetHealthChecks(limit)
 			if err != nil {
@@ -235,11 +334,11 @@ func main() {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-
+			
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(checks)
 		})
-
+		
 		// Add log entry endpoint
 		router.Post("/logs", func(w http.ResponseWriter, r *http.Request) {
 			var entry models.LogEntry
@@ -247,38 +346,80 @@ func main() {
 				http.Error(w, "Invalid request body", http.StatusBadRequest)
 				return
 			}
-
+			
 			// Set ID and timestamp
 			entry.ID = uuid.New()
 			entry.Timestamp = time.Now()
-
+			
 			if err := repo.SaveLogEntry(&entry); err != nil {
 				logger.Error("Failed to save log entry", zap.Error(err))
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-
+			
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(entry)
 		})
-
+		
 		// Add logs endpoint
 		router.Get("/logs", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-
+			
 			limit := 10 // Default limit
 			level := r.URL.Query().Get("level")
-
+			
 			entries, err := repo.GetLogEntries(limit, level)
 			if err != nil {
 				logger.Error("Failed to get log entries", zap.Error(err))
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-
+			
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(entries)
 		})
+	}
+
+	// Add authentication endpoints if enabled
+	if cfg.Auth.Enabled && clerkAuth != nil {
+		// Create a protected router group
+		protected := chi.NewRouter()
+		protected.Use(middleware.RequireAuthMiddleware(clerkAuth, logger))
+
+		// Add protected endpoints
+		protected.Get("/me", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			
+			// Get user from context
+			token, err := clerkAuth.GetUserFromContext(r.Context())
+			if err != nil {
+				logger.Error("Failed to get user from context", zap.Error(err))
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			
+			// Get user ID
+			userID, err := clerkAuth.GetUserID(token)
+			if err != nil {
+				logger.Error("Failed to get user ID", zap.Error(err))
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			
+			// Get user profile
+			user, err := clerkAuth.GetUserProfile(r.Context(), userID)
+			if err != nil {
+				logger.Error("Failed to get user profile", zap.Error(err))
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(user)
+		})
+		
+		// Mount protected router
+		router.Mount("/api", protected)
 	}
 
 	// Start server
@@ -288,6 +429,7 @@ func main() {
 		zap.String("environment", cfg.App.Environment),
 		zap.String("log_level", cfg.App.LogLevel),
 		zap.Bool("database_enabled", cfg.Database.Enabled),
+		zap.Bool("auth_enabled", cfg.Auth.Enabled),
 	)
 
 	if err := http.ListenAndServe(":"+port, router); err != nil {

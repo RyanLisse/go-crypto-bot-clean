@@ -20,22 +20,23 @@ type TradingConfig struct {
 // Config represents the application configuration
 type Config struct {
 	App struct {
-		Name        string `mapstructure:"name"`
-		Environment string `mapstructure:"environment"`
-		LogLevel    string `mapstructure:"log_level"`
+		Name        string `mapstructure:"name" validate:"required"`
+		Environment string `mapstructure:"environment" validate:"required,oneof=development staging production"`
+		LogLevel    string `mapstructure:"log_level" validate:"required,oneof=debug info warn error"`
 		Debug       bool   `mapstructure:"debug"`
-	} `mapstructure:"app"`
+	} `mapstructure:"app" validate:"required"`
 
 	Auth struct {
 		Enabled    bool   `mapstructure:"enabled"`
-		JWTSecret  string `mapstructure:"jwt_secret"`
-		JWTExpiry  int    `mapstructure:"jwt_expiry"` // in hours
-		CookieName string `mapstructure:"cookie_name"`
+		JWTSecret  string `mapstructure:"jwt_secret" validate:"required_if=Enabled true"`
+		JWTExpiry  int    `mapstructure:"jwt_expiry" validate:"omitempty,min=1"` // in hours
+		CookieName string `mapstructure:"cookie_name" validate:"required_if=Enabled true"`
 		// For API key auth
 		APIKeys []string `mapstructure:"api_keys"`
 		// Clerk configuration
-		ClerkSecretKey string `mapstructure:"clerk_secret_key"`
-	} `mapstructure:"auth"`
+		ClerkSecretKey string `mapstructure:"clerk_secret_key" validate:"required_if=Enabled true"`
+		ClerkDomain    string `mapstructure:"clerk_domain" validate:"required_if=Enabled true"`
+	} `mapstructure:"auth" validate:"required"`
 
 	Mexc struct {
 		APIKey       string `mapstructure:"api_key"`
@@ -79,20 +80,20 @@ type Config struct {
 	} `mapstructure:"logging"`
 
 	Database struct {
-		Type                   string `mapstructure:"type"`
-		Path                   string `mapstructure:"path"`
-		MaxOpenConns           int    `mapstructure:"maxOpenConns"`
-		MaxIdleConns           int    `mapstructure:"maxIdleConns"`
-		ConnMaxLifetimeSeconds int    `mapstructure:"connMaxLifetimeSeconds"`
+		Type                   string `mapstructure:"type" validate:"required,oneof=sqlite postgres mysql"`
+		Path                   string `mapstructure:"path" validate:"required_if=Type sqlite"`
+		MaxOpenConns           int    `mapstructure:"maxOpenConns" validate:"required,min=1"`
+		MaxIdleConns           int    `mapstructure:"maxIdleConns" validate:"required,min=1"`
+		ConnMaxLifetimeSeconds int    `mapstructure:"connMaxLifetimeSeconds" validate:"required,min=1"`
 		Turso                  struct {
 			Enabled             bool   `mapstructure:"enabled"`
-			URL                 string `mapstructure:"url"`
-			AuthToken           string `mapstructure:"authToken"`
+			URL                 string `mapstructure:"url" validate:"required_if=Enabled true"`
+			AuthToken           string `mapstructure:"authToken" validate:"required_if=Enabled true"`
 			SyncEnabled         bool   `mapstructure:"syncEnabled"`
-			SyncIntervalSeconds int    `mapstructure:"syncIntervalSeconds"`
-		} `mapstructure:"turso"`
+			SyncIntervalSeconds int    `mapstructure:"syncIntervalSeconds" validate:"required_if=SyncEnabled true,min=1"`
+		} `mapstructure:"turso" validate:"required"`
 		ShadowMode bool `mapstructure:"shadowMode"`
-	} `mapstructure:"database"`
+	} `mapstructure:"database" validate:"required"`
 }
 
 // LoadConfig loads the configuration from a YAML file and environment variables
