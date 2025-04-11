@@ -16,7 +16,7 @@ RUN go mod download
 COPY . .
 
 # Build the application with security flags
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -ldflags="-s -w" -o crypto-bot .
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -ldflags="-s -w" -o crypto-bot ./cmd/api
 
 # Create a minimal runtime image
 FROM alpine:latest
@@ -59,7 +59,7 @@ EXPOSE 8080
 ENTRYPOINT ["/app/crypto-bot"]
 
 # Default command
-CMD ["serve"]
+CMD []
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
