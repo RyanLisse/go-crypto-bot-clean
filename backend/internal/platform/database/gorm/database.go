@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go-crypto-bot-clean/backend/internal/domain/models"
+
 	"go.uber.org/zap"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -122,6 +123,9 @@ func RunMigrations(db *gorm.DB, logger *zap.Logger) error {
 		&models.BoughtCoin{},
 		&models.NewCoin{},
 		&models.BalanceHistory{},
+		&models.Position{},
+		&models.Order{},
+		&models.Transaction{},
 		// Add other models as needed:
 		// &models.PurchaseDecision{},
 		// &models.LogEvent{},

@@ -1,7 +1,7 @@
 # Active Context
 
 ## Current Focus
-The current focus is on implementing the Railway deployment for the backend (Task 1), which involves deploying the Go backend to Railway using an incremental approach. We've completed Phase 1 (basic API, health check, configuration management) and are now working on Phase 2 (database integration). We have also fixed critical issues with the MEXC client implementation, specifically with symbol format handling.
+The current focus is on implementing the Railway deployment for the backend (Task 1), which involves deploying the Go backend to Railway using an incremental approach. We've completed Phase 1 (basic API, health check, configuration management) and are now working on Phase 2 (database integration). We have fixed critical issues with the MEXC client implementation, specifically with symbol format handling, and implemented GORM repositories for Position and Transaction models.
 
 ### Tasks
 
@@ -112,6 +112,11 @@ The current focus is on implementing the Railway deployment for the backend (Tas
 5. Document the migration process for future reference
 
 ## Recent Changes
+- Implemented GORM repositories for core models:
+  - Added PositionRepository implementation 
+  - Added TransactionRepository implementation
+  - Created a RepositoryFactory to manage and provide access to these repositories
+  - Updated database migrations to include new models
 - Fixed inconsistent symbol format handling in the MEXC client:
   - Updated the formatSymbol function to handle conversions in both directions (BTC/USDT ↔ BTCUSDT)
   - Ensured GetTicker, GetAllTickers, GetKlines, and GetOrderBook methods use consistent symbol formatting

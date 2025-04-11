@@ -459,3 +459,13 @@ None currently identified.
 - Improved cache implementation with proper TTL handling
 - Fixed WebSocket client reconnection logic with exponential backoff
 - Added connection attempt tracking for better testing and monitoring
+
+## Database & Persistence Layer (May 2025)
+- Implemented core GORM repositories:
+  - Position repository with full CRUD operations and order management
+  - Transaction repository with time-based queries
+  - Created repository factory for centralized access
+  - Added proper logging throughout repository implementations
+  - Updated database migrations for new models
+- Improved SQLite configuration with proper connection pooling settings
+- Set up auto-migrations for all domain models
