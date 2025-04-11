@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"go.uber.org/zap"
 
 	"go-crypto-bot-clean/backend/internal/api/database"
@@ -76,6 +77,18 @@ func main() {
 	router.Use(chimiddleware.Recoverer)
 	router.Use(chimiddleware.RequestID)
 	router.Use(chimiddleware.RealIP)
+
+	// Add CORS middleware
+	corsMiddleware := cors.New(cors.Options{
+		// AllowedOrigins: []string{"http://localhost:5173"}, // Use specific origin in production
+		AllowedOrigins:   []string{"*"}, // Allow all origins for development
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	})
+	router.Use(corsMiddleware.Handler)
 
 	// Initialize services
 	backtestService := backtest.NewService()

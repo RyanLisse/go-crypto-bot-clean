@@ -4,9 +4,7 @@ import (
 	// Standard library
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -36,9 +34,7 @@ import (
 
 	// UUID generation
 	"github.com/google/uuid"
-
 	// Project imports
-	"go-crypto-bot-clean/backend/internal/config"
 )
 
 // This file is used to import and initialize key dependencies
@@ -47,6 +43,7 @@ import (
 
 // initDependencies initializes key dependencies for demonstration purposes
 // This function is not called in the minimal API but serves as a reference
+// nolint:unused,deadcode
 func initDependencies() {
 	// This function is not meant to be called
 	// It's here to ensure dependencies are included in the build
@@ -95,7 +92,7 @@ func initDependencies() {
 	defer sqlDB.Close()
 
 	// Initialize GORM
-	gormDB, _ := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+	_, _ = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 

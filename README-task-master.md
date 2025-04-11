@@ -131,7 +131,7 @@ In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
 Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at scripts/prd.txt.
 ```
 
-The agent will execute:
+The agent will execute:usddd
 ```bash
 task-master parse-prd scripts/prd.txt
 ```

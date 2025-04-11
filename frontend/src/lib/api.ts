@@ -1,6 +1,16 @@
-// Define API base URL
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+// Removed Clerk import to rely on global instance and avoid duplicate identifier errors
+
+// Define API base URL based on environment
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 console.log('API_BASE_URL:', API_BASE_URL);
+
+// Define a type for the window object with Clerk - Ensure Clerk type is available globally or import if needed
+// Assuming Clerk is globally available via script tag for now.
+// Define a type for the window object with Clerk - Ensure Clerk type is available globally or import if needed
+// Assuming Clerk is globally available via script tag for now.
+interface WindowWithClerk extends Window {
+  Clerk?: { session?: { getToken: () => Promise<string | null> } };
+}
 
 // Default fetch options with timeout
 const DEFAULT_FETCH_OPTIONS: RequestInit = {
@@ -27,6 +37,43 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
     clearTimeout(id);
     throw error;
   }
+}
+
+// Helper function to fetch with authentication token and timeout
+async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  // Ensure Clerk is loaded before trying to get the token
+  // Note: This relies on window.Clerk being available. Ensure ClerkJS is loaded appropriately.
+  // Access Clerk instance safely from the window object using the defined interface
+  const clerkInstance = (window as WindowWithClerk).Clerk;
+  let token: string | null = null;
+
+  if (clerkInstance && clerkInstance.session) {
+    try {
+      token = await clerkInstance.session.getToken();
+    } catch (error) {
+      console.error("Error getting Clerk token:", error);
+      // Handle token retrieval error if necessary, e.g., redirect to login
+    }
+  }
+
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
+  // Merge headers correctly into a Record<string, string> compatible with HeadersInit
+  const finalHeaders: Record<string, string> = {
+    ...(DEFAULT_FETCH_OPTIONS.headers as Record<string, string>), // Start with defaults
+    ...(options.headers as Record<string, string>), // Add options headers
+    // Add/override auth header conditionally
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  const finalOptions: RequestInit = {
+    ...DEFAULT_FETCH_OPTIONS, // Apply default options first
+    ...options, // Apply caller-specific options
+    headers: finalHeaders, // Use the merged headers object
+  };
+
+  // Use the existing fetchWithTimeout logic
+  return fetchWithTimeout(url, finalOptions);
 }
 
 // Helper function to generate mock balance history data
@@ -80,8 +127,17 @@ function getRandomChange(): string {
   return isPositive ? `+${changeValue}%` : `-${changeValue}%`;
 }
 
+// Define an interface for mock holdings
+interface MockHolding {
+  symbol: string;
+  name: string;
+  value: string;
+  valueRaw: number;
+  change: string;
+  isPositive: boolean;
+}
 // Helper function to generate mock top holdings
-function getMockTopHoldings(): any[] {
+function getMockTopHoldings(): MockHolding[] {
   return [
     {
       symbol: "BTC",
@@ -243,8 +299,8 @@ export const api = {
   getAccountBalance: async (): Promise<{ fiat: number, available: { [symbol: string]: number } }> => {
     try {
       console.log('Fetching account balance from portfolio endpoint...');
-      // Use the portfolio endpoint instead of account/balance
-      const response = await fetch(`${API_BASE_URL}/portfolio`);
+      // Use authenticatedFetch as portfolio data is user-specific
+      const response = await authenticatedFetch(`${API_BASE_URL}/portfolio`);
       console.log('Account balance response:', response);
 
       if (!response.ok) {
@@ -258,16 +314,17 @@ export const api = {
       // Extract account balance from portfolio data
       // The portfolio endpoint returns active trades which we can use to construct the balance
       const activeTrades = data.active_trades || [];
-      const available = {};
+      const available: Record<string, number> = {}; // Define type
 
       // Add holdings from active trades
-      activeTrades.forEach(trade => {
+      activeTrades.forEach((trade: TradeResponse) => { // Explicitly type trade
         const symbol = trade.symbol.replace('USDT', '');
-        available[symbol] = (available[symbol] || 0) + trade.quantity;
+        // Use trade.amount based on TradeResponse interface
+        available[symbol] = (available[symbol] || 0) + trade.amount;
       });
 
       // Add USDT balance (assuming the total_value includes all assets)
-      const totalInTrades = activeTrades.reduce((sum, trade) => sum + trade.current_value, 0);
+      const totalInTrades = activeTrades.reduce((sum: number, trade: TradeResponse) => sum + trade.value, 0); // Explicitly type trade and sum
       const usdtBalance = data.total_value - totalInTrades;
       available['USDT'] = usdtBalance;
 
@@ -293,8 +350,8 @@ export const api = {
     try {
       console.log('Fetching wallet from account details endpoint...');
       console.log('API URL:', `${API_BASE_URL}/account/details`);
-      // Use the account/details endpoint for more accurate wallet data
-      const response = await fetchWithTimeout(`${API_BASE_URL}/account/details`);
+      // Use the account/details endpoint - Requires authentication
+      const response = await authenticatedFetch(`${API_BASE_URL}/account/details`);
       console.log('Wallet response:', response);
       console.log('Wallet response status:', response.status, response.statusText);
 
@@ -310,16 +367,16 @@ export const api = {
 
       // Extract wallet data from account details data
       const assets = data.assets || [];
-      const balances = {};
+      const balances: WalletResponse['balances'] = {}; // Define type
 
       // Add all assets from the response
-      assets.forEach(asset => {
-        balances[asset.symbol] = {
-          asset: asset.symbol,
+      assets.forEach((asset: WalletResponse['balances'][string]) => { // Explicitly type asset
+        balances[asset.asset] = { // Use asset.asset as key
+          asset: asset.asset,
           free: asset.free,
           locked: asset.locked,
           total: asset.total,
-          price: asset.price || 0 // Include price if available
+          price: asset.price || 0,
         };
       });
 
@@ -340,8 +397,8 @@ export const api = {
     try {
       console.log('Fetching wallet from portfolio endpoint (fallback)...');
       console.log('API URL:', `${API_BASE_URL}/portfolio`);
-      // Use the portfolio endpoint instead of account/wallet
-      const response = await fetch(`${API_BASE_URL}/portfolio`);
+      // Use authenticatedFetch as portfolio data is user-specific
+      const response = await authenticatedFetch(`${API_BASE_URL}/portfolio`);
       console.log('Portfolio response:', response);
       console.log('Portfolio response status:', response.status, response.statusText);
 
@@ -355,21 +412,21 @@ export const api = {
 
       // Extract wallet data from portfolio data
       const activeTrades = data.active_trades || [];
-      const balances = {};
+      const balances: WalletResponse['balances'] = {}; // Define type
 
       // Add holdings from active trades
-      activeTrades.forEach(trade => {
+      activeTrades.forEach((trade: TradeResponse) => { // Explicitly type trade
         const symbol = trade.symbol.replace('USDT', '');
         balances[symbol] = {
           asset: symbol,
-          free: trade.quantity,
+          free: trade.amount, // Use trade.amount
           locked: 0,
-          total: trade.quantity
+          total: trade.amount, // Use trade.amount
         };
       });
 
       // Add USDT balance
-      const totalInTrades = activeTrades.reduce((sum, trade) => sum + trade.current_value, 0);
+      const totalInTrades = activeTrades.reduce((sum: number, trade: TradeResponse) => sum + trade.value, 0); // Explicitly type trade and sum
       const usdtBalance = data.total_value - totalInTrades;
       balances['USDT'] = {
         asset: 'USDT',
@@ -414,8 +471,8 @@ export const api = {
   getBalanceSummary: async (days: number = 30): Promise<BalanceSummaryResponse> => {
     try {
       console.log('Fetching balance summary from portfolio endpoint...');
-      // Use the portfolio/performance endpoint instead of account/balance-summary
-      const response = await fetch(`${API_BASE_URL}/portfolio/performance`);
+      // Use the portfolio/performance endpoint - Requires authentication
+      const response = await authenticatedFetch(`${API_BASE_URL}/portfolio/performance`);
       console.log('Balance summary response:', response);
 
       if (!response.ok) {
@@ -452,8 +509,8 @@ export const api = {
   validateAPIKeys: async (): Promise<{ valid: boolean, message?: string }> => {
     try {
       console.log('Validating API keys through status endpoint...');
-      // Use the status endpoint to check if the API is working
-      const response = await fetch(`${API_BASE_URL}/status`);
+      // Use the status endpoint - Public, no auth needed
+      const response = await fetchWithTimeout(`${API_BASE_URL}/status`);
       console.log('API key validation response:', response);
 
       if (!response.ok) {
@@ -495,9 +552,9 @@ export const api = {
   },
 
   // Start processes
-  startProcesses: async (): Promise<StatusResponse> => {
-    const response = await fetch(`${API_BASE_URL}/status/start`, {
-      method: 'POST'
+  startProcesses: async (): Promise<StatusResponse> => { // Requires auth
+    const response = await authenticatedFetch(`${API_BASE_URL}/status/start`, {
+      method: 'POST',
     });
     if (!response.ok) {
       throw new Error('Failed to start processes');
@@ -506,9 +563,9 @@ export const api = {
   },
 
   // Stop processes
-  stopProcesses: async (): Promise<StatusResponse> => {
-    const response = await fetch(`${API_BASE_URL}/status/stop`, {
-      method: 'POST'
+  stopProcesses: async (): Promise<StatusResponse> => { // Requires auth
+    const response = await authenticatedFetch(`${API_BASE_URL}/status/stop`, {
+      method: 'POST',
     });
     if (!response.ok) {
       throw new Error('Failed to stop processes');
@@ -517,8 +574,8 @@ export const api = {
   },
 
   // Get portfolio data
-  getPortfolio: async (): Promise<PortfolioResponse> => {
-    const response = await fetch(`${API_BASE_URL}/portfolio`);
+  getPortfolio: async (): Promise<PortfolioResponse> => { // Requires auth
+    const response = await authenticatedFetch(`${API_BASE_URL}/portfolio`);
     if (!response.ok) {
       throw new Error('Failed to fetch portfolio');
     }
@@ -528,8 +585,8 @@ export const api = {
   // Get portfolio performance data
   getPortfolioPerformance: async (): Promise<PerformanceResponse> => {
     try {
-      console.log('Fetching portfolio performance from API...');
-      const response = await fetch(`${API_BASE_URL}/portfolio/performance`);
+      console.log('Fetching portfolio performance from API...'); // Requires auth
+      const response = await authenticatedFetch(`${API_BASE_URL}/portfolio/performance`);
       console.log('Portfolio performance response:', response);
 
       if (!response.ok) {
@@ -546,9 +603,10 @@ export const api = {
     }
   },
 
-  // Get portfolio active trades
-  getActiveTrades: async (): Promise<TradeResponse[]> => {
-    const response = await fetch(`${API_BASE_URL}/portfolio/active`);
+  // Get active trades (Note: Backend endpoint is /trades, not /portfolio/active)
+  getActiveTrades: async (): Promise<TradeResponse[]> => { // Requires auth
+    // Assuming active trades are retrieved from the main /trades endpoint, possibly with query params later
+    const response = await authenticatedFetch(`${API_BASE_URL}/trades`);
     if (!response.ok) {
       throw new Error('Failed to fetch active trades');
     }
@@ -558,8 +616,8 @@ export const api = {
   // Get portfolio total value
   getPortfolioValue: async (): Promise<{ total_value: number }> => {
     try {
-      console.log('Fetching portfolio value from API...');
-      const response = await fetchWithTimeout(`${API_BASE_URL}/portfolio/value`);
+      console.log('Fetching portfolio value from API...'); // Requires auth
+      const response = await authenticatedFetch(`${API_BASE_URL}/portfolio/value`);
       console.log('Portfolio value response:', response);
 
       if (!response.ok) {
@@ -625,8 +683,9 @@ export const api = {
   },
 
   // Get recent trades
-  getTrades: async (limit: number = 10): Promise<TradeResponse[]> => {
-    const response = await fetch(`${API_BASE_URL}/trade/history?limit=${limit}`);
+  getTrades: async (limit: number = 10): Promise<TradeResponse[]> => { // Requires auth
+    // Corrected path from /trade/history to /trades
+    const response = await authenticatedFetch(`${API_BASE_URL}/trades?limit=${limit}`);
     if (!response.ok) {
       throw new Error('Failed to fetch trades');
     }
@@ -634,13 +693,11 @@ export const api = {
   },
 
   // Execute a trade (buy or sell)
-  executeTrade: async (tradeRequest: TradeRequest): Promise<TradeResponse> => {
-    const endpoint = tradeRequest.side === 'buy' ? 'buy' : 'sell';
-    const response = await fetch(`${API_BASE_URL}/trade/${endpoint}`, {
+  executeTrade: async (tradeRequest: TradeRequest): Promise<TradeResponse> => { // Requires auth
+    // Corrected path from /trade/buy|sell to POST /trades
+    const response = await authenticatedFetch(`${API_BASE_URL}/trades`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      // Content-Type is added by default in authenticatedFetch/DEFAULT_FETCH_OPTIONS
       body: JSON.stringify(tradeRequest)
     });
 
@@ -652,33 +709,34 @@ export const api = {
   },
 
   // Get trade status by ID
-  getTradeStatus: async (tradeId: string): Promise<TradeResponse> => {
-    const response = await fetch(`${API_BASE_URL}/trade/status/${tradeId}`);
+  getTradeStatus: async (tradeId: string): Promise<TradeResponse> => { // Requires auth
+    // Corrected path from /trade/status/{id} to /trades/{id}
+    const response = await authenticatedFetch(`${API_BASE_URL}/trades/${tradeId}`);
     if (!response.ok) {
       throw new Error('Failed to fetch trade status');
     }
     return response.json();
   },
 
-  // Get detected new coins
-  getNewCoins: async (): Promise<any[]> => {
+  // Get detected new coins (Backend marked as potentially public)
+  getNewCoins: async (): Promise<unknown[]> => {
     try {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/newcoins`);
+      const response = await fetchWithTimeout(`${API_BASE_URL}/newcoins`); // Use non-authenticated fetch
       if (!response.ok) {
         // Try fallback to upcoming coins endpoint
-        return await api.getUpcomingCoins();
+        return await api.getUpcomingCoins() as unknown[]; // Ensure type compatibility
       }
       return response.json();
     } catch (error) {
       // Try fallback to upcoming coins endpoint
-      return await api.getUpcomingCoins();
+      return await api.getUpcomingCoins() as unknown[]; // Ensure type compatibility
     }
   },
 
-  // Get upcoming coins
-  getUpcomingCoins: async (): Promise<any> => {
+  // Get upcoming coins (Backend marked as potentially public)
+  getUpcomingCoins: async (): Promise<unknown> => {
     try {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/newcoins/upcoming`);
+      const response = await fetchWithTimeout(`${API_BASE_URL}/newcoins/upcoming`); // Use non-authenticated fetch
       if (!response.ok) {
         return { coins: [], count: 0, timestamp: new Date().toISOString() };
       }
@@ -689,10 +747,10 @@ export const api = {
     }
   },
 
-  // Get upcoming coins for today and tomorrow
-  getUpcomingCoinsForTodayAndTomorrow: async (): Promise<any> => {
-    try {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/newcoins/upcoming/today-and-tomorrow`);
+  // Get upcoming coins for today and tomorrow - Define a type if available, otherwise use unknown
+  getUpcomingCoinsForTodayAndTomorrow: async (): Promise<unknown> => {
+    try { // Requires auth
+      const response = await authenticatedFetch(`${API_BASE_URL}/newcoins/upcoming/today-and-tomorrow`);
       if (!response.ok) {
         return { coins: [], count: 0, timestamp: new Date().toISOString() };
       }
@@ -703,22 +761,22 @@ export const api = {
     }
   },
 
-  // Get top holdings
-  getTopHoldings: async (): Promise<any> => {
+  // Get top holdings - Use the MockHolding type defined earlier or a specific API type
+  getTopHoldings: async (): Promise<MockHolding[]> => {
     try {
       // First try to get real wallet data
       const wallet = await api.getWallet();
 
       if (wallet && wallet.balances) {
-        // Convert wallet balances to top holdings format
-        const holdings = Object.entries(wallet.balances)
-          .map(([symbol, balance]: [string, any]) => ({
+        // Convert wallet balances to top holdings format - Use WalletResponse type
+        const holdings: MockHolding[] = Object.entries(wallet.balances) // Explicitly type holdings
+          .map(([symbol, balance]: [string, WalletResponse['balances'][string]]) => ({ // Explicitly type map params
             symbol,
             name: getTokenName(symbol),
             value: (balance.total * (balance.price || 0)).toFixed(2),
             valueRaw: balance.total * (balance.price || 0),
             change: getRandomChange(),
-            isPositive: Math.random() > 0.3 // 70% chance of positive change
+            isPositive: Math.random() > 0.3,
           }))
           .sort((a, b) => b.valueRaw - a.valueRaw) // Sort by value (highest first)
           .slice(0, 5); // Take top 5
@@ -733,14 +791,12 @@ export const api = {
     }
   },
 
-  // Get new coins by specific date
-  getNewCoinsByDate: async (date: string): Promise<any> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/newcoins/by-date`, {
+  // Get new coins by specific date - Define a type if available, otherwise use unknown
+  getNewCoinsByDate: async (date: string): Promise<unknown> => {
+    try { // Requires auth
+      const response = await authenticatedFetch(`${API_BASE_URL}/newcoins/by-date`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        // Content-Type added by authenticatedFetch
         body: JSON.stringify({ date })
       });
 
@@ -755,14 +811,12 @@ export const api = {
     }
   },
 
-  // Get new coins by date range
-  getNewCoinsByDateRange: async (startDate: string, endDate: string): Promise<any> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/newcoins/by-date-range`, {
+  // Get new coins by date range - Define a type if available, otherwise use unknown
+  getNewCoinsByDateRange: async (startDate: string, endDate: string): Promise<unknown> => {
+    try { // Requires auth
+      const response = await authenticatedFetch(`${API_BASE_URL}/newcoins/by-date-range`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        // Content-Type added by authenticatedFetch
         body: JSON.stringify({ startDate, endDate })
       });
 
@@ -777,10 +831,10 @@ export const api = {
     }
   },
 
-  // Process new coins
-  processNewCoins: async (): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/newcoins/process`, {
-      method: 'POST'
+  // Process new coins - Define a type if available, otherwise use unknown
+  processNewCoins: async (): Promise<unknown> => { // Requires auth
+    const response = await authenticatedFetch(`${API_BASE_URL}/newcoins/process`, {
+      method: 'POST',
     });
     if (!response.ok) {
       throw new Error('Failed to process new coins');
@@ -789,8 +843,8 @@ export const api = {
   },
 
   // Get current config
-  getConfig: async (): Promise<ConfigResponse> => {
-    const response = await fetch(`${API_BASE_URL}/config`);
+  getConfig: async (): Promise<ConfigResponse> => { // Requires auth
+    const response = await authenticatedFetch(`${API_BASE_URL}/config`);
     if (!response.ok) {
       throw new Error('Failed to fetch config');
     }
@@ -798,12 +852,10 @@ export const api = {
   },
 
   // Update config
-  updateConfig: async (config: Partial<ConfigResponse>): Promise<ConfigResponse> => {
-    const response = await fetch(`${API_BASE_URL}/config`, {
+  updateConfig: async (config: Partial<ConfigResponse>): Promise<ConfigResponse> => { // Requires auth
+    const response = await authenticatedFetch(`${API_BASE_URL}/config`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      // Content-Type added by authenticatedFetch
       body: JSON.stringify(config)
     });
 
@@ -815,17 +867,17 @@ export const api = {
   },
 
   // Get default config
-  getDefaultConfig: async (): Promise<ConfigResponse> => {
-    const response = await fetch(`${API_BASE_URL}/config/defaults`);
+  getDefaultConfig: async (): Promise<ConfigResponse> => { // Public? Assuming yes for now.
+    const response = await fetchWithTimeout(`${API_BASE_URL}/config/defaults`);
     if (!response.ok) {
       throw new Error('Failed to fetch default config');
     }
     return response.json();
   },
 
-  // Get analytics data
-  getAnalytics: async (): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/analytics`);
+  // Get analytics data - Define a type if available, otherwise use unknown
+  getAnalytics: async (): Promise<unknown> => { // Requires auth
+    const response = await authenticatedFetch(`${API_BASE_URL}/analytics`);
     if (!response.ok) {
       throw new Error('Failed to fetch analytics');
     }
@@ -833,8 +885,8 @@ export const api = {
   },
 
   // Get win rate
-  getWinRate: async (): Promise<{ win_rate: number }> => {
-    const response = await fetch(`${API_BASE_URL}/analytics/winrate`);
+  getWinRate: async (): Promise<{ win_rate: number }> => { // Requires auth
+    const response = await authenticatedFetch(`${API_BASE_URL}/analytics/winrate`);
     if (!response.ok) {
       throw new Error('Failed to fetch win rate');
     }
@@ -842,9 +894,9 @@ export const api = {
   },
 
   // Get balance history
-  getBalanceHistory: async (): Promise<any[]> => {
-    try {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/analytics/balance-history`);
+  getBalanceHistory: async (): Promise<{ timestamp: string; balance: number }[]> => {
+    try { // Requires auth
+      const response = await authenticatedFetch(`${API_BASE_URL}/analytics/balance-history`);
 
       if (!response.ok) {
         return generateMockBalanceHistory(); // Return mock data as fallback
@@ -887,7 +939,7 @@ export enum WebSocketMessageType {
 export interface WebSocketMessage {
   type: WebSocketMessageType;
   timestamp: number;
-  payload: any;
+  payload: unknown; // Use unknown instead of any for better type safety
 }
 
 // Account update payload interface
@@ -923,14 +975,14 @@ export const createWebSocketClient = () => {
 
   let socket: WebSocket | null = null;
   let reconnectAttempts = 0;
-  let maxReconnectAttempts = 10;
-  let reconnectInterval = 1000; // Start with 1 second
+  const maxReconnectAttempts = 10; // Use const
+  const reconnectInterval = 1000; // Use const, start with 1 second
   let reconnectTimeoutId: number | null = null;
-  let listeners: { [key in WebSocketMessageType]?: ((data: any) => void)[] } = {};
+  let listeners: { [key in WebSocketMessageType]?: ((data: unknown) => void)[] } = {}; // Use unknown
   let isConnecting = false;
 
   // Add event listener for a specific message type
-  const addEventListener = (type: WebSocketMessageType, callback: (data: any) => void) => {
+  const addEventListener = (type: WebSocketMessageType, callback: (data: unknown) => void) => { // Use unknown
     if (!listeners[type]) {
       listeners[type] = [];
     }
@@ -938,7 +990,7 @@ export const createWebSocketClient = () => {
   };
 
   // Remove event listener
-  const removeEventListener = (type: WebSocketMessageType, callback: (data: any) => void) => {
+  const removeEventListener = (type: WebSocketMessageType, callback: (data: unknown) => void) => { // Use unknown
     if (listeners[type]) {
       listeners[type] = listeners[type]?.filter(cb => cb !== callback);
     }
@@ -1051,7 +1103,7 @@ export const createWebSocketClient = () => {
   };
 
   // Send message to WebSocket
-  const sendMessage = (message: any) => {
+  const sendMessage = (message: unknown) => { // Use unknown
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify(message));
     } else {

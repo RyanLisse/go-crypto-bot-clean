@@ -36,18 +36,18 @@ func (r *PositionRepository) GetByID(ctx context.Context, id string) (*models.Po
 }
 
 // List retrieves positions based on status
-func (r *PositionRepository) List(ctx context.Context, status models.PositionStatus) ([]*models.Position, error) {
+func (r *PositionRepository) List(ctx context.Context, status string) ([]*models.Position, error) {
 	var positions []*models.Position
 	query := r.db.WithContext(ctx)
-	
+
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
-	
+
 	if err := query.Find(&positions).Error; err != nil {
 		return nil, err
 	}
-	
+
 	return positions, nil
 }
 

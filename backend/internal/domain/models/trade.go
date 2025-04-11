@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 // TradeSide represents the side of a trade (buy/sell)
 type TradeSide string
@@ -10,18 +14,29 @@ const (
 	TradeSideSell TradeSide = "SELL"
 )
 
-// Trade represents a trade execution on the exchange
+// Trade represents a trade in the system
 type Trade struct {
-	ID          string    `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
-	TradeID     string    `gorm:"uniqueIndex;size:50" json:"trade_id"` // Exchange-generated trade ID
-	Symbol      string    `gorm:"index;not null;size:20" json:"symbol"`
-	Price       float64   `gorm:"not null" json:"price"`
-	Quantity    float64   `gorm:"not null" json:"quantity"`
-	Side        TradeSide `gorm:"type:varchar(4);not null" json:"side"`
-	Timestamp   time.Time `gorm:"index;not null" json:"timestamp"`
-	OrderID     string    `gorm:"index;size:50" json:"order_id,omitempty"`
-	PositionID  string    `gorm:"index" json:"position_id,omitempty"`
-	Commission  float64   `gorm:"default:0" json:"commission,omitempty"`
-	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	gorm.Model
+	ID        string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	Symbol    string    `gorm:"index;not null"`
+	Price     float64   `gorm:"type:decimal(20,8);not null"`
+	Amount    float64   `gorm:"type:decimal(20,8);not null"`
+	Side      string    `gorm:"type:varchar(4);not null"` // buy or sell
+	OrderID   string    `gorm:"type:uuid;index"`
+	TradeID   string    `gorm:"uniqueIndex;not null"` // Exchange trade ID
+	Exchange  string    `gorm:"type:varchar(20);not null"`
+	TradeTime time.Time `gorm:"index;not null"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+// CalculateValue returns the total value of the trade
+func (t *Trade) CalculateValue() float64 {
+	return t.Price * t.Amount
+}
+
+// IsValid checks if the trade has valid properties
+func (t *Trade) IsValid() bool {
+	return t.Symbol != "" && t.Price > 0 && t.Amount > 0
 }

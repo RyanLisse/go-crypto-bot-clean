@@ -53,6 +53,7 @@ func (m *MigrationManager) RunMigrations() error {
 		&models.Backtest{},
 		&models.BacktestTrade{},
 		&models.BacktestEquity{},
+		&models.Position{},
 	}
 
 	// Run migrations

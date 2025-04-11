@@ -143,7 +143,7 @@ func newNewCoinProcessCmd() *cobra.Command {
 
 // initNewCoinService initializes the new coin service
 // This is a placeholder function that would be implemented with actual service initialization
-func initNewCoinService(_ctx context.Context, _logger *zap.Logger) (NewCoinService, error) {
+func initNewCoinService(_ context.Context, _ *zap.Logger) (NewCoinService, error) {
 	// This would be replaced with actual service initialization
 	return &mockNewCoinService{}, nil
 }

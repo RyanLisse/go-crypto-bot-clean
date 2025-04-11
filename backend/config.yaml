@@ -1,8 +1,8 @@
 mexc:
-  apiKey: "mx0vglEo7wfYDwNNpY"
-  secretKey: "c0161c4438344cd29f6cc70b80dbc195"
-  baseURL: "https://api.mexc.com/api/v3"
-  wsURL: "wss://wbs.mexc.com/ws"
+  apiKey: ${MEXC_API_KEY}
+  secretKey: ${MEXC_SECRET_KEY}
+  baseURL: ${MEXC_BASE_URL}
+  wsURL: ${MEXC_WEBSOCKET_URL}
 
 connectionRateLimiter:
   requestsPerSecond: 10

@@ -65,7 +65,9 @@ type Dependencies struct {
 
 // NewDependencies creates a new Dependencies instance.
 func NewDependencies(cfg *config.Config) (*Dependencies, error) {
-	deps := &Dependencies{}
+	deps := &Dependencies{
+		Config: cfg,
+	}
 
 	// Initialize logger
 	logger, err := zap.NewProduction()

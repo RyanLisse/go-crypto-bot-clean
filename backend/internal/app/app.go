@@ -35,6 +35,7 @@ type BotApp struct {
 	tradeAnalyticsRepo repository.TradeAnalyticsRepository
 	balanceHistoryRepo repository.BalanceHistoryRepository
 	reportHandler      *handlers.ReportHandler
+	reportGenerator    *reporting.ReportGenerator
 }
 
 // NewBotApp creates a new BotApp
@@ -53,6 +54,15 @@ func (a *BotApp) Initialize(ctx context.Context) error {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	a.db = db
+
+	// Setup report generator
+	reportGenerator, err := a.setupReportGenerator(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to setup report generator: %w", err)
+	}
+
+	// Store report generator or use it as needed
+	a.reportGenerator = reportGenerator
 
 	// Initialize WebSocket hub
 	a.wsHub = websocket.NewHub()

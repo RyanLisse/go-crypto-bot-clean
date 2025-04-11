@@ -32,7 +32,7 @@ func (s *PositionService) GetPositionByID(ctx context.Context, id string) (*mode
 
 // ListPositions retrieves positions based on status
 func (s *PositionService) ListPositions(ctx context.Context, status models.PositionStatus) ([]*models.Position, error) {
-	return s.positionRepository.List(ctx, status)
+	return s.positionRepository.List(ctx, string(status))
 }
 
 // OpenPosition opens a new position

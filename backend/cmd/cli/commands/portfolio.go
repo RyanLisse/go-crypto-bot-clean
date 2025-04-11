@@ -197,7 +197,7 @@ func newPortfolioHistoryCmd() *cobra.Command {
 
 // initPortfolioService initializes the portfolio service
 // This is a placeholder function that would be implemented with actual service initialization
-func initPortfolioService(_ctx context.Context, _logger *zap.Logger) (PortfolioService, error) {
+func initPortfolioService(_ context.Context, _ *zap.Logger) (PortfolioService, error) {
 	// This would be replaced with actual service initialization
 	return &mockPortfolioService{}, nil
 }

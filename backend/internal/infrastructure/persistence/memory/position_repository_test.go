@@ -78,7 +78,7 @@ func TestPositionRepository_List(t *testing.T) {
 	assert.Len(t, allPositions, 3)
 
 	// Test filtering by status
-	openPositions, err := repo.List(ctx, models.PositionStatusOpen)
+	openPositions, err := repo.List(ctx, string(models.PositionStatusOpen))
 	assert.NoError(t, err)
 	assert.Len(t, openPositions, 2)
 }

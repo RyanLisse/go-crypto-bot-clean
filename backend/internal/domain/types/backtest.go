@@ -50,21 +50,36 @@ type BacktestTrade struct {
 
 // BacktestMetrics represents performance metrics from a backtest
 type BacktestMetrics struct {
-	TotalTrades        int     `json:"total_trades"`
-	WinningTrades      int     `json:"winning_trades"`
-	LosingTrades       int     `json:"losing_trades"`
-	WinRate            float64 `json:"win_rate"`
-	AverageWin         float64 `json:"average_win"`
-	AverageLoss        float64 `json:"average_loss"`
-	LargestWin         float64 `json:"largest_win"`
-	LargestLoss        float64 `json:"largest_loss"`
-	ProfitFactor       float64 `json:"profit_factor"`
-	SharpeRatio        float64 `json:"sharpe_ratio"`
-	MaxDrawdown        float64 `json:"max_drawdown"`
-	MaxDrawdownPercent float64 `json:"max_drawdown_percent"`
-	TotalPnL           float64 `json:"total_pnl"`
-	NetPnL             float64 `json:"net_pnl"`
-	ReturnPercent      float64 `json:"return_percent"`
+	TotalTrades   int     `json:"total_trades"`
+	WinningTrades int     `json:"winning_trades"`
+	LosingTrades  int     `json:"losing_trades"`
+	WinRate       float64 `json:"win_rate"`
+	AverageWin    float64 `json:"average_win"`
+	AverageLoss   float64 `json:"average_loss"`
+	LargestWin    float64 `json:"largest_win"`
+	LargestLoss   float64 `json:"largest_loss"`
+}
+type PerformanceMetrics struct {
+	TotalTrades        int
+	WinningTrades      int
+	LosingTrades       int
+	BreakEvenTrades    int
+	TotalReturn        float64
+	AnnualizedReturn   float64
+	AverageProfitTrade float64
+	AverageLossTrade   float64
+	ExpectedPayoff     float64
+	ProfitFactor       float64
+	SharpeRatio        float64
+	SortinoRatio       float64
+	CalmarRatio        float64
+	OmegaRatio         float64
+	InformationRatio   float64
+	MaxDrawdown        float64
+	MaxDrawdownPercent float64
+	LargestProfitTrade float64
+	LargestLossTrade   float64
+	AverageHoldingTime time.Duration
 }
 
 // BacktestStrategy is an interface that strategies must implement for backtesting

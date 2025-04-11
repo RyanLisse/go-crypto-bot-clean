@@ -2,6 +2,7 @@ package models
 
 import "time"
 
+// Position structure represents a trading position
 type Position struct {
 	ID               string            `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
 	Symbol           string            `gorm:"index;not null;size:20" json:"symbol"`
@@ -20,7 +21,7 @@ type Position struct {
 	UpdatedAt        time.Time         `gorm:"autoUpdateTime" json:"updated_at"`
 	PnL              float64           `gorm:"not null;default:0" json:"pnl"`
 	PnLPercentage    float64           `gorm:"not null;default:0" json:"pnl_percentage"`
-	Status           string            `gorm:"index;type:varchar(10);not null;default:'open'" json:"status"` // open, closed
+	Status           PositionStatus    `gorm:"index;type:varchar(10);not null;default:'open'" json:"status"` // open, closed
 	Orders           []Order           `gorm:"foreignKey:PositionID" json:"orders"`                          // Entry and scaling orders
 	EntryReason      string            `gorm:"type:varchar(100)" json:"entry_reason,omitempty"`
 	ExitReason       string            `gorm:"type:varchar(100)" json:"exit_reason,omitempty"`
@@ -31,4 +32,28 @@ type Position struct {
 	TakeProfitLevels []TakeProfitLevel `gorm:"foreignKey:PositionID" json:"take_profit_levels,omitempty"`
 	Tags             []string          `gorm:"-" json:"tags,omitempty"`
 	Notes            string            `gorm:"-" json:"notes,omitempty"`
+}
+
+// CalculateValue returns the current value of the position
+func (p *Position) CalculateValue() float64 {
+	return p.CurrentPrice * p.Quantity
+}
+
+// CalculateUnrealizedPnL calculates the unrealized profit/loss
+func (p *Position) CalculateUnrealizedPnL() float64 {
+	return (p.CurrentPrice - p.EntryPrice) * p.Quantity
+}
+
+// IsOpen checks if the position is open
+func (p *Position) IsOpen() bool {
+	return p.Status == PositionStatusOpen
+}
+
+// Close closes the position with the given price
+func (p *Position) Close(closePrice float64, closeTime time.Time) {
+	p.Status = PositionStatusClosed
+	p.CurrentPrice = closePrice
+	p.CloseTime = &closeTime
+	p.PnL = (closePrice - p.EntryPrice) * p.Quantity
+	p.PnLPercentage = ((closePrice - p.EntryPrice) / p.EntryPrice) * 100
 }

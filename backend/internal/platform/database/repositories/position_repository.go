@@ -61,7 +61,7 @@ func (r *positionRow) toModel() (*models.Position, error) {
 		UpdatedAt:     r.UpdatedAt,
 		PnL:           r.PnL,
 		PnLPercentage: r.PnLPercentage,
-		Status:        r.Status,
+		Status:        models.PositionStatus(r.Status),
 	}
 
 	// Set trailing stop if present
@@ -97,7 +97,7 @@ func fromModel(position *models.Position) (*positionRow, error) {
 		UpdatedAt:     position.UpdatedAt,
 		PnL:           position.PnL,
 		PnLPercentage: position.PnLPercentage,
-		Status:        position.Status,
+		Status:        string(position.Status),
 	}
 
 	// Set trailing stop if present

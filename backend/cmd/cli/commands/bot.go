@@ -198,7 +198,7 @@ func newBotStatusCmd() *cobra.Command {
 
 // initBotService initializes the bot service
 // This is a placeholder function that would be implemented with actual service initialization
-func initBotService(_ctx context.Context, _logger *zap.Logger) (BotService, error) {
+func initBotService(_ context.Context, _ *zap.Logger) (BotService, error) {
 	// This would be replaced with actual service initialization
 	return &mockBotService{}, nil
 }

@@ -1,6 +1,6 @@
 app:
   name: "Go Crypto Bot"
-  environment: "production"
+  environment: "development"
   log_level: "info"
   debug: false
   port: "8081"

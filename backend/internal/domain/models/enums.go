@@ -28,3 +28,11 @@ const (
 	OrderStatusRejected        OrderStatus = "REJECTED"
 	OrderStatusExpired         OrderStatus = "EXPIRED"
 )
+
+// PositionStatus represents the current status of a position
+type PositionStatus string
+
+const (
+	PositionStatusOpen   PositionStatus = "OPEN"
+	PositionStatusClosed PositionStatus = "CLOSED"
+)

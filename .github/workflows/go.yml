@@ -1,0 +1,87 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Bun
+      run: |
+        curl -fsSL https://bun.sh/install | bash
+        export BUN_INSTALL="$HOME/.bun"
+        export PATH="$BUN_INSTALL/bin:$PATH"
+
+    - name: Backend - Install dependencies
+      run: |
+        cd backend
+        go mod download
+
+    - name: Backend - Run tests with coverage
+      run: |
+        cd backend
+        go test -coverprofile=coverage.out ./...
+      continue-on-error: false
+
+    - name: Upload Go coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-coverage
+        path: backend/coverage.out
+
+    - name: Frontend - Install dependencies
+      run: |
+        cd frontend
+        bun install
+
+    - name: Frontend - Run tests with coverage
+      run: |
+        cd frontend
+        bun run test:coverage
+
+    - name: Upload Frontend coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-coverage
+        path: frontend/coverage
+
+    - name: Lint Backend
+      run: |
+        cd backend
+        golangci-lint run || true
+
+    - name: Lint Frontend
+      run: |
+        cd frontend
+        bun run lint || true

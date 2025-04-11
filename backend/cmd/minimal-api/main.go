@@ -215,12 +215,17 @@ func main() {
 	router.Use(chimiddleware.RealIP)
 	router.Use(chimiddleware.Logger)
 	router.Use(chimiddleware.Recoverer)
+	router.Use(chimiddleware.AllowContentType("application/json"))
+	router.Use(chimiddleware.SetHeader("Content-Type", "application/json"))
+	router.Use(chimiddleware.Timeout(60 * time.Second))
 
 	// Initialize health check
 	healthCheck := health.NewHealthCheck("0.1.0", logger)
 
 	// Add system component to health check
 	healthCheck.AddComponent("system", health.StatusUp, "System is running")
+
+	// MEXC client initialization removed as cfg.Mexc is not defined in MinimalConfig
 
 	// Add database component to health check if enabled
 	if cfg.Database.Enabled && sqliteManager != nil {

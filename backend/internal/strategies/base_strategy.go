@@ -123,7 +123,7 @@ func (s *BaseStrategy) extractVolume(data interface{}) float64 {
 	case *models.Ticker:
 		return v.Volume
 	case *models.Trade:
-		return v.Quantity
+		return v.Amount
 	case map[string]interface{}:
 		if vol, ok := v["volume"].(float64); ok {
 			return vol

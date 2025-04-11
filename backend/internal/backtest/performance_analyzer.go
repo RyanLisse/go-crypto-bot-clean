@@ -5,8 +5,6 @@ import (
 	"math/rand"
 	"sort"
 	"time"
-
-	"go-crypto-bot-clean/backend/internal/domain/types"
 )
 
 // PerformanceStats contains detailed performance statistics
@@ -29,25 +27,25 @@ type PerformanceStats struct {
 // PerformanceAnalyzer defines the interface for analyzing backtest performance
 type PerformanceAnalyzer interface {
 	// CalculateMetrics calculates performance metrics from backtest results
-	CalculateMetrics(result *BacktestResult) (*types.PerformanceMetrics, error)
+	CalculateMetrics(result *BacktestResult) (*PerformanceMetrics, error)
 
 	// GenerateReport generates a detailed performance report
-	GenerateReport(result *BacktestResult, metrics *types.PerformanceMetrics) (*BacktestReport, error)
+	GenerateReport(result *BacktestResult, metrics *PerformanceMetrics) (*BacktestReport, error)
 
 	// GenerateEquityCurve generates an equity curve from backtest results
-	GenerateEquityCurve(result *BacktestResult) ([]*types.EquityPoint, error)
+	GenerateEquityCurve(result *BacktestResult) ([]*EquityPoint, error)
 
 	// GenerateDrawdownCurve generates a drawdown curve from backtest results
-	GenerateDrawdownCurve(result *BacktestResult) ([]*types.DrawdownPoint, error)
+	GenerateDrawdownCurve(result *BacktestResult) ([]*DrawdownPoint, error)
 }
 
 // BacktestReport contains a detailed report of backtest performance
 type BacktestReport struct {
-	Metrics               *types.PerformanceMetrics
+	Metrics               *PerformanceMetrics
 	MonthlyReturns        map[string]float64
 	TradeStats            *TradeStats
-	EquityCurve           []*types.EquityPoint
-	DrawdownCurve         []*types.DrawdownPoint
+	EquityCurve           []*EquityPoint
+	DrawdownCurve         []*DrawdownPoint
 	MonteCarloSimulations [][]float64
 }
 
@@ -104,8 +102,8 @@ func NewPerformanceAnalyzer() *DefaultPerformanceAnalyzer {
 }
 
 // CalculateMetrics calculates performance metrics from backtest results
-func (a *DefaultPerformanceAnalyzer) CalculateMetrics(result *BacktestResult) (*types.PerformanceMetrics, error) {
-	metrics := &types.PerformanceMetrics{}
+func (a *DefaultPerformanceAnalyzer) CalculateMetrics(result *BacktestResult) (*PerformanceMetrics, error) {
+	metrics := &PerformanceMetrics{}
 
 	// Calculate total return
 	metrics.TotalReturn = (result.FinalCapital - result.InitialCapital) / result.InitialCapital * 100
@@ -326,7 +324,7 @@ func (a *DefaultPerformanceAnalyzer) GenerateReport(result *BacktestResult, metr
 }
 
 // calculateTradeStats calculates detailed statistics about trades
-func (a *DefaultPerformanceAnalyzer) calculateTradeStats(result *BacktestResult, metrics *PerformanceMetrics) *TradeStats {
+func (a *DefaultPerformanceAnalyzer) calculateTradeStats(_ *BacktestResult, metrics *PerformanceMetrics) *TradeStats {
 	stats := &TradeStats{
 		WinningTrades:      metrics.WinningTrades,
 		LosingTrades:       metrics.LosingTrades,

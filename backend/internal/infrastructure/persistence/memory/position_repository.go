@@ -49,13 +49,13 @@ func (r *PositionRepository) GetByID(ctx context.Context, id string) (*models.Po
 }
 
 // List retrieves positions based on status
-func (r *PositionRepository) List(ctx context.Context, status models.PositionStatus) ([]*models.Position, error) {
+func (r *PositionRepository) List(ctx context.Context, status string) ([]*models.Position, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	var result []*models.Position
 	for _, position := range r.positions {
-		if status == "" || position.Status == status {
+		if status == "" || string(position.Status) == status {
 			result = append(result, position)
 		}
 	}

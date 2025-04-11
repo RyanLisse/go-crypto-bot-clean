@@ -19,7 +19,7 @@ type OrderRepository interface {
 type PositionRepository interface {
 	Create(ctx context.Context, position *models.Position) error
 	GetByID(ctx context.Context, id string) (*models.Position, error)
-	List(ctx context.Context, status models.PositionStatus) ([]*models.Position, error)
+	List(ctx context.Context, status string) ([]*models.Position, error)
 	Update(ctx context.Context, position *models.Position) error
 	Delete(ctx context.Context, id string) error
 	GetOpenPositionBySymbol(ctx context.Context, symbol string) (*models.Position, error)

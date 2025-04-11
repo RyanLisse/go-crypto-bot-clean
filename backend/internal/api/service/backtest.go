@@ -34,44 +34,53 @@ type BacktestRequest struct {
 
 // BacktestResult represents the result of a backtest
 type BacktestResult struct {
-	ID                 string    `json:"id"`
-	Strategy           string    `json:"strategy"`
-	Symbol             string    `json:"symbol"`
-	Timeframe          string    `json:"timeframe"`
-	StartDate          time.Time `json:"startDate"`
-	EndDate            time.Time `json:"endDate"`
-	InitialCapital     float64   `json:"initialCapital"`
-	FinalCapital       float64   `json:"finalCapital"`
-	TotalReturn        float64   `json:"totalReturn"`
-	AnnualizedReturn   float64   `json:"annualizedReturn"`
-	MaxDrawdown        float64   `json:"maxDrawdown"`
-	SharpeRatio        float64   `json:"sharpeRatio"`
-	WinRate            float64   `json:"winRate"`
-	ProfitFactor       float64   `json:"profitFactor"`
-	TotalTrades        int       `json:"totalTrades"`
-	WinningTrades      int       `json:"winningTrades"`
-	LosingTrades       int       `json:"losingTrades"`
-	AverageProfitTrade float64   `json:"averageProfitTrade"`
-	AverageLossTrade   float64   `json:"averageLossTrade"`
-	MaxConsecutiveWins int       `json:"maxConsecutiveWins"`
-	MaxConsecutiveLoss int       `json:"maxConsecutiveLoss"`
-	EquityCurve        []struct {
-		Timestamp time.Time `json:"timestamp"`
-		Equity    float64   `json:"equity"`
-	} `json:"equityCurve"`
-	DrawdownCurve []struct {
-		Timestamp time.Time `json:"timestamp"`
-		Drawdown  float64   `json:"drawdown"`
-	} `json:"drawdownCurve"`
-	Trades []struct {
-		ID        string    `json:"id"`
-		Timestamp time.Time `json:"timestamp"`
-		Side      string    `json:"side"`
-		Price     float64   `json:"price"`
-		Quantity  float64   `json:"quantity"`
-		Profit    float64   `json:"profit"`
-	} `json:"trades"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID                 string          `json:"id"`
+	Strategy           string          `json:"strategy"`
+	Symbol             string          `json:"symbol"`
+	Timeframe          string          `json:"timeframe"`
+	StartDate          time.Time       `json:"startDate"`
+	EndDate            time.Time       `json:"endDate"`
+	InitialCapital     float64         `json:"initialCapital"`
+	FinalCapital       float64         `json:"finalCapital"`
+	TotalReturn        float64         `json:"totalReturn"`
+	AnnualizedReturn   float64         `json:"annualizedReturn"`
+	MaxDrawdown        float64         `json:"maxDrawdown"`
+	SharpeRatio        float64         `json:"sharpeRatio"`
+	WinRate            float64         `json:"winRate"`
+	ProfitFactor       float64         `json:"profitFactor"`
+	TotalTrades        int             `json:"totalTrades"`
+	WinningTrades      int             `json:"winningTrades"`
+	LosingTrades       int             `json:"losingTrades"`
+	AverageProfitTrade float64         `json:"averageProfitTrade"`
+	AverageLossTrade   float64         `json:"averageLossTrade"`
+	MaxConsecutiveWins int             `json:"maxConsecutiveWins"`
+	MaxConsecutiveLoss int             `json:"maxConsecutiveLoss"`
+	EquityCurve        []EquityPoint   `json:"equityCurve"`
+	DrawdownCurve      []DrawdownPoint `json:"drawdownCurve"`
+	Trades             []BacktestTrade `json:"trades"`
+	CreatedAt          time.Time       `json:"createdAt"`
+}
+
+// EquityPoint represents a point on the equity curve
+type EquityPoint struct {
+	Timestamp time.Time `json:"timestamp"`
+	Equity    float64   `json:"equity"`
+}
+
+// DrawdownPoint represents a point on the drawdown curve
+type DrawdownPoint struct {
+	Timestamp time.Time `json:"timestamp"`
+	Drawdown  float64   `json:"drawdown"`
+}
+
+// BacktestTrade represents a trade executed during a backtest
+type BacktestTrade struct {
+	ID        string    `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Side      string    `json:"side"`
+	Price     float64   `json:"price"`
+	Quantity  float64   `json:"quantity"`
+	Profit    float64   `json:"profit"`
 }
 
 // RunBacktest runs a backtest with the given configuration
@@ -107,28 +116,15 @@ func (s *BacktestService) RunBacktest(ctx context.Context, req *BacktestRequest)
 		AverageLossTrade:   -1.2,
 		MaxConsecutiveWins: 5,
 		MaxConsecutiveLoss: 2,
-		EquityCurve: []struct {
-			Timestamp time.Time `json:"timestamp"`
-			Equity    float64   `json:"equity"`
-		}{
+		EquityCurve: []EquityPoint{
 			{Timestamp: req.StartDate, Equity: req.InitialCapital},
 			{Timestamp: req.EndDate, Equity: req.InitialCapital * 1.15},
 		},
-		DrawdownCurve: []struct {
-			Timestamp time.Time `json:"timestamp"`
-			Drawdown  float64   `json:"drawdown"`
-		}{
+		DrawdownCurve: []DrawdownPoint{
 			{Timestamp: req.StartDate, Drawdown: 0},
 			{Timestamp: req.EndDate, Drawdown: 0},
 		},
-		Trades: []struct {
-			ID        string    `json:"id"`
-			Timestamp time.Time `json:"timestamp"`
-			Side      string    `json:"side"`
-			Price     float64   `json:"price"`
-			Quantity  float64   `json:"quantity"`
-			Profit    float64   `json:"profit"`
-		}{
+		Trades: []BacktestTrade{
 			{
 				ID:        "trade-1",
 				Timestamp: req.StartDate.Add(24 * time.Hour),
