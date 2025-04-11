@@ -237,10 +237,7 @@ func main() {
 		healthCheck.AddComponent("sync", health.StatusUp, "Database synchronization is active")
 	}
 
-	// Add backup component to health check if enabled
-	if backupManager != nil && sqliteManager != nil {
-		healthCheck.AddComponent("backup", health.StatusUp, "Database backup system is active")
-	}
+	// Backup component will be added to health check after initialization
 
 	// Add authentication component to health check if enabled
 	if cfg.Auth.Enabled && clerkAuth != nil {
@@ -326,6 +323,9 @@ func main() {
 		if err != nil {
 			logger.Error("Failed to initialize backup manager", zap.Error(err))
 		} else {
+			// Add backup component to health check
+			healthCheck.AddComponent("backup", health.StatusUp, "Database backup system is active")
+
 			// Add backup endpoint
 			router.Post("/backup", func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
