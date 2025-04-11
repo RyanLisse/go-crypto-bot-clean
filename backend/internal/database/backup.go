@@ -140,8 +140,10 @@ func (m *BackupManager) BackupDatabases(ctx context.Context) error {
 // backupSQLite backs up the SQLite database
 func (m *BackupManager) backupSQLite(ctx context.Context, timestamp string) error {
 	// Get the SQLite database path
+	var seq int
+	var name string
 	var dbPath string
-	err := m.sqliteDB.Raw("PRAGMA database_list").Row().Scan(nil, nil, &dbPath)
+	err := m.sqliteDB.Raw("PRAGMA database_list").Row().Scan(&seq, &name, &dbPath)
 	if err != nil {
 		return fmt.Errorf("failed to get SQLite database path: %w", err)
 	}
