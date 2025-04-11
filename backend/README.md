@@ -102,6 +102,14 @@ npm install
 yarn install
 ```
 
+#### Running Only the Backend in Docker
+If you only want to run the backend service (and avoid frontend build errors), use:
+
+```bash
+docker-compose up backend
+```
+
+This will build and start only the backend service. The frontend is optional and not required for backend-only development. If you want to run both backend and frontend, ensure the frontend dependencies (including package-lock.json) are present in the frontend directory.
 ### Running with Docker
 ```bash
 # Create a .env file from the example

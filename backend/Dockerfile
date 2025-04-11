@@ -15,9 +15,9 @@ RUN go mod download
 # Copy the source code
 COPY . .
 
-# Build the minimal API with CGO enabled for SQLite support
+# Build the full backend API with CGO enabled for SQLite support
 # Use build flags to reduce binary size
-RUN CGO_ENABLED=1 go build -ldflags="-s -w" -o minimal-api ./cmd/minimal-api
+RUN CGO_ENABLED=1 go build -ldflags="-s -w" -o backend-api .
 
 # Create a minimal runtime image
 FROM alpine:latest
@@ -38,14 +38,14 @@ RUN mkdir -p /app/data/logs /app/configs && \
     chown -R appuser:appgroup /app
 
 # Copy the binary from the builder stage
-COPY --from=builder --chown=appuser:appgroup /app/minimal-api /app/minimal-api
+COPY --from=builder --chown=appuser:appgroup /app/backend-api /app/backend-api
 
 # Copy configuration files
 COPY --from=builder --chown=appuser:appgroup /app/configs /app/configs
 
 # Set environment variables
 ENV CONFIG_PATH=/app/configs
-ENV CONFIG_FILE=config.minimal.yaml
+ENV CONFIG_FILE=config.yaml
 ENV LOG_PATH=/app/data/logs
 
 # Expose port
@@ -58,5 +58,5 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 
-# Run the minimal API
-CMD ["/app/minimal-api"]
+# Run the full backend API
+CMD ["/app/backend-api"]

@@ -1,7 +1,7 @@
 app:
   name: "Go Crypto Bot"
   environment: "development"
-  log_level: "info"
+  logLevel: "info"
   debug: false
   port: "8081"
 
@@ -34,3 +34,9 @@ auth:
   cookie_name: "auth_token"
   clerk_secret_key: ""
   clerk_domain: ""
+
+mexc:
+  apiKey: "mx0vglsgdd7flAhfqq"
+  secretKey: "0351d73e5a444d5ea5de2d527bd2a07a"
+  baseURL: "https://api.mexc.com/api/v3"
+  wsURL: "wss://wbs.mexc.com/ws"

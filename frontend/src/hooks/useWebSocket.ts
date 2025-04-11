@@ -1,105 +1,55 @@
 import { useState, useEffect, useCallback } from 'react';
-import websocketClient, { WebSocketConnectionState, WebSocketEventHandlers } from '@/lib/websocket';
 
-/**
- * Hook for using the WebSocket client
- * @param eventHandlers WebSocket event handlers
- * @returns WebSocket client and connection state
- */
-export function useWebSocket(eventHandlers: WebSocketEventHandlers = {}) {
-  const [connectionState, setConnectionState] = useState<WebSocketConnectionState>(
-    websocketClient.getConnectionState()
-  );
-  const [lastMessage, setLastMessage] = useState<any>(null);
+interface WebSocketConfig {
+  url: string;
+  onMessage: (message: string) => void;
+  onOpen?: () => void;
+  onClose?: () => void;
+  onError?: (error: Event) => void;
+}
 
-  // Connect to WebSocket
-  const connect = useCallback(() => {
-    websocketClient.connect();
-  }, []);
+interface WebSocketHookResult {
+  isConnected: boolean;
+  sendMessage: (message: string) => void;
+}
 
-  // Disconnect from WebSocket
-  const disconnect = useCallback(() => {
-    websocketClient.disconnect();
-  }, []);
+export const useWebSocket = (config: WebSocketConfig): WebSocketHookResult => {
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
 
-  // Send a message to the WebSocket server
-  const sendMessage = useCallback((message: any) => {
-    websocketClient.send(message);
-  }, []);
-
-  // Subscribe to a ticker
-  const subscribeTicker = useCallback((symbols: string[]) => {
-    websocketClient.subscribeTicker(symbols);
-  }, []);
-
-  // Update connection state when it changes
   useEffect(() => {
-    const handleOpen = () => {
-      setConnectionState(WebSocketConnectionState.OPEN);
-      if (eventHandlers.onOpen) {
-        eventHandlers.onOpen();
-      }
+    const ws = new WebSocket(config.url);
+
+    ws.onopen = () => {
+      setIsConnected(true);
+      config.onOpen?.();
     };
 
-    const handleClose = (event: CloseEvent) => {
-      setConnectionState(WebSocketConnectionState.CLOSED);
-      if (eventHandlers.onClose) {
-        eventHandlers.onClose(event);
-      }
+    ws.onclose = () => {
+      setIsConnected(false);
+      config.onClose?.();
     };
 
-    const handleError = (event: Event) => {
-      if (eventHandlers.onError) {
-        eventHandlers.onError(event);
-      }
+    ws.onmessage = (event) => {
+      config.onMessage(event.data);
     };
 
-    const handleMessage = (data: any) => {
-      setLastMessage(data);
-      if (eventHandlers.onMessage) {
-        eventHandlers.onMessage(data);
-      }
+    ws.onerror = (error) => {
+      config.onError?.(error);
     };
 
-    // Set event handlers
-    websocketClient.setEventHandlers({
-      onOpen: handleOpen,
-      onClose: handleClose,
-      onError: handleError,
-      onMessage: handleMessage,
-      onMarketData: eventHandlers.onMarketData,
-      onTradeNotification: eventHandlers.onTradeNotification,
-      onNewCoinAlert: eventHandlers.onNewCoinAlert,
-      onSubscriptionSuccess: eventHandlers.onSubscriptionSuccess,
-    });
+    setSocket(ws);
 
-    // Connect to WebSocket on mount
-    connect();
-
-    // Disconnect from WebSocket on unmount
     return () => {
-      disconnect();
+      ws.close();
     };
-  }, [
-    connect,
-    disconnect,
-    eventHandlers.onOpen,
-    eventHandlers.onClose,
-    eventHandlers.onError,
-    eventHandlers.onMessage,
-    eventHandlers.onMarketData,
-    eventHandlers.onTradeNotification,
-    eventHandlers.onNewCoinAlert,
-    eventHandlers.onSubscriptionSuccess,
-  ]);
+  }, [config.url]);
 
-  return {
-    isConnected: connectionState === WebSocketConnectionState.OPEN,
-    connectionState,
-    lastMessage,
-    sendMessage,
-    subscribeTicker,
-    connect,
-    disconnect
-  };
+  const sendMessage = useCallback((message: string) => {
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(message);
+    }
+  }, [socket]);
+
+  return { isConnected, sendMessage };
 };

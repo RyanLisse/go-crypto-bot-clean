@@ -83,6 +83,38 @@ func (m *MockPortfolioService) GetTradePerformance(ctx context.Context, timeRang
 	}, nil
 }
 
+// GetPositions returns mock positions
+func (m *MockPortfolioService) GetPositions(ctx context.Context) ([]models.Position, error) {
+	return []models.Position{
+		{
+			Symbol:        "BTCUSDT",
+			Quantity:      0.1,
+			EntryPrice:    75000.0,
+			CurrentPrice:  79000.0,
+			PnL:           400.0,
+			PnLPercentage: 5.33,
+			OpenTime:      time.Now().Add(-24 * time.Hour),
+			Status:        models.PositionStatusOpen,
+			Side:          models.OrderSideBuy,
+			StopLoss:      70000.0,
+			TakeProfit:    85000.0,
+		},
+		{
+			Symbol:        "ETHUSDT",
+			Quantity:      1.0,
+			EntryPrice:    3500.0,
+			CurrentPrice:  3800.0,
+			PnL:           300.0,
+			PnLPercentage: 8.57,
+			OpenTime:      time.Now().Add(-48 * time.Hour),
+			Status:        models.PositionStatusOpen,
+			Side:          models.OrderSideBuy,
+			StopLoss:      3200.0,
+			TakeProfit:    4000.0,
+		},
+	}, nil
+}
+
 // GetAccountBalance returns a mock account balance
 func (m *MockAccountService) GetAccountBalance(ctx context.Context) (models.Balance, error) {
 	return models.Balance{

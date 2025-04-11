@@ -19,10 +19,10 @@ ai_providers:
     api_key: "" # Set via environment variable GOOGLE_API_KEY
 
 mexc:
-  api_key: "" # Set via environment variable MEXC_API_KEY
-  secret_key: "" # Set via environment variable MEXC_SECRET_KEY
-  base_url: "https://api.mexc.com/api/v3" # Can be overridden with MEXC_BASE_URL
-  websocket_url: "wss://wbs.mexc.com/ws" # Can be overridden with MEXC_WEBSOCKET_URL
+  api_key: "mx0vglsgdd7flAhfqq"
+  secret_key: "0351d73e5a444d5ea5de2d527bd2a07a"
+  base_url: "https://api.mexc.com/api/v3"
+  websocket_url: "wss://wbs.mexc.com/ws"
 
 websocket:
   reconnect_delay: 5s
@@ -38,7 +38,7 @@ subscription_rate_limiter:
   burst_capacity: 20
 
 trading:
-  default_symbol: "BTCUSDT"
+  default_symbol: "SOLUSDT"
   default_order_type: "MARKET"
   default_quantity: 0.001
 

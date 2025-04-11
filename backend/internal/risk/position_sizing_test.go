@@ -24,10 +24,16 @@ func TestPositionSize(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:     "Zero account balance",
-			args:     args{accountBalance: 0, riskPercentage: 0.01, marketVolatility: 50},
-			wantSize: 0,
-			wantErr:  true,
+			name:     "Small account balance",
+			args:     args{accountBalance: 100, riskPercentage: 0.01, marketVolatility: 50},
+			wantSize: 0.02,
+			wantErr:  false,
+		},
+		{
+			name:     "Small risk percentage",
+			args:     args{accountBalance: 10000, riskPercentage: 0.001, marketVolatility: 50},
+			wantSize: 0.2,
+			wantErr:  false,
 		},
 		{
 			name:     "Negative account balance",
@@ -69,6 +75,46 @@ func TestPositionSize(t *testing.T) {
 			name:     "Very small values",
 			args:     args{accountBalance: 1e-6, riskPercentage: 1e-3, marketVolatility: 1e-6},
 			wantSize: 1e-9,
+			wantErr:  false,
+		},
+		{
+			name: "typical case - 1% risk",
+			args: args{
+				accountBalance:   10000,
+				riskPercentage:   0.01,
+				marketVolatility: 100,
+			},
+			wantSize: 1,
+			wantErr:  false,
+		},
+		{
+			name: "typical case - 2% risk",
+			args: args{
+				accountBalance:   10000,
+				riskPercentage:   0.02,
+				marketVolatility: 100,
+			},
+			wantSize: 2,
+			wantErr:  false,
+		},
+		{
+			name: "very small volatility",
+			args: args{
+				accountBalance:   10000,
+				riskPercentage:   0.01,
+				marketVolatility: 0.0001,
+			},
+			wantSize: 1000000,
+			wantErr:  false,
+		},
+		{
+			name: "very small risk percentage",
+			args: args{
+				accountBalance:   10000,
+				riskPercentage:   0.0001,
+				marketVolatility: 100,
+			},
+			wantSize: 0.01,
 			wantErr:  false,
 		},
 	}

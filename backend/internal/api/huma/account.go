@@ -2,7 +2,10 @@ package huma
 
 import (
 	"context"
+	"net/http"
 	"time"
+
+	"github.com/danielgtaylor/huma/v2"
 	// "encoding/json" // No longer needed directly
 	// "net/http" // No longer needed directly
 )
@@ -61,4 +64,37 @@ func ValidateKeysHandler(ctx context.Context, input *ValidateKeysInput) (*Valida
 	resp.Body.Valid = true
 	resp.Body.Message = "API keys are valid (mock)"
 	return resp, nil
+}
+
+// RegisterAccountEndpoints registers all account-related endpoints with Huma
+func RegisterAccountEndpoints(api huma.API, basePath string) {
+	// GET /account/details
+	huma.Register(api, huma.Operation{
+		OperationID: "get-account-details",
+		Method:      http.MethodGet,
+		Path:        basePath + "/account/details",
+		Summary:     "Get account details",
+		Description: "Returns the account details including wallet balances",
+		Tags:        []string{"Account"},
+	}, AccountDetailsHandler)
+
+	// GET /account/wallet
+	huma.Register(api, huma.Operation{
+		OperationID: "get-wallet",
+		Method:      http.MethodGet,
+		Path:        basePath + "/account/wallet",
+		Summary:     "Get wallet details",
+		Description: "Returns the wallet details including balances",
+		Tags:        []string{"Account"},
+	}, AccountDetailsHandler) // Reuse the same handler for now
+
+	// POST /account/validate-keys
+	huma.Register(api, huma.Operation{
+		OperationID: "validate-account-keys",
+		Method:      http.MethodPost,
+		Path:        basePath + "/account/validate-keys",
+		Summary:     "Validate account API keys",
+		Description: "Validates the provided API keys",
+		Tags:        []string{"Account"},
+	}, ValidateKeysHandler)
 }

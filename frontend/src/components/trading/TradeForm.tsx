@@ -8,7 +8,7 @@ interface TradeFormProps {
 }
 
 const TradeForm: React.FC<TradeFormProps> = ({ className }) => {
-  const [selectedSymbol, setSelectedSymbol] = useState('BTC');
+  const [selectedSymbol, setSelectedSymbol] = useState('SOL');
   const [orderType, setOrderType] = useState<'buy' | 'sell'>('buy');
   const [orderAmount, setOrderAmount] = useState('');
   const [orderPrice, setOrderPrice] = useState('');
@@ -60,7 +60,7 @@ const TradeForm: React.FC<TradeFormProps> = ({ className }) => {
       <div className="brutal-card-header mb-4">Market</div>
 
       <div className="flex space-x-2 overflow-x-auto pb-2">
-        {['BTC', 'ETH', 'SOL', 'DOGE', 'BNB', 'XRP', 'ADA', 'DOT'].map((symbol) => (
+        {['SOL', 'BTC', 'ETH', 'DOGE', 'BNB', 'XRP', 'ADA', 'DOT'].map((symbol) => (
           <button
             key={symbol}
             className={cn(

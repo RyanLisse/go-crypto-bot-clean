@@ -3,6 +3,8 @@ package account
 import (
 	"context"
 	"time"
+
+	"go-crypto-bot-clean/backend/internal/domain/models" // Added import
 )
 
 // SimpleAccountService is a simple implementation of the AccountService interface
@@ -14,9 +16,9 @@ func NewSimpleAccountService() *SimpleAccountService {
 }
 
 // GetAccountBalance returns the current account balance
-func (s *SimpleAccountService) GetAccountBalance(ctx context.Context) (Balance, error) {
+func (s *SimpleAccountService) GetAccountBalance(ctx context.Context) (models.Balance, error) {
 	// Create a mock balance with some sample data
-	balance := Balance{
+	balance := models.Balance{
 		Fiat: 1000.0,
 		Available: map[string]float64{
 			"BTC":  0.01,
@@ -29,10 +31,10 @@ func (s *SimpleAccountService) GetAccountBalance(ctx context.Context) (Balance, 
 }
 
 // GetWallet returns the current wallet
-func (s *SimpleAccountService) GetWallet(ctx context.Context) (*Wallet, error) {
+func (s *SimpleAccountService) GetWallet(ctx context.Context) (*models.Wallet, error) {
 	// Create a mock wallet with some sample data
-	wallet := &Wallet{
-		Balances: map[string]*AssetBalance{
+	wallet := &models.Wallet{
+		Balances: map[string]*models.AssetBalance{
 			"BTC": {
 				Asset:  "BTC",
 				Free:   0.01,
@@ -64,15 +66,18 @@ func (s *SimpleAccountService) ValidateAPIKeys(ctx context.Context) (bool, error
 }
 
 // GetBalanceSummary returns a summary of the account balance
-func (s *SimpleAccountService) GetBalanceSummary(ctx context.Context, days int) (*BalanceSummary, error) {
+func (s *SimpleAccountService) GetBalanceSummary(ctx context.Context, days int) (*models.BalanceSummary, error) {
 	// Create a mock balance summary with some sample data
-	summary := &BalanceSummary{
+	summary := &models.BalanceSummary{
+		ID:               "",
 		CurrentBalance:   1000.0,
 		Deposits:         500.0,
 		Withdrawals:      100.0,
 		NetChange:        400.0,
 		TransactionCount: 10,
 		Period:           days,
+		GeneratedAt:      time.Now(),
+		WalletID:         "",
 	}
 
 	return summary, nil
@@ -84,39 +89,39 @@ func (s *SimpleAccountService) SyncWithExchange(ctx context.Context) error {
 }
 
 // SubscribeToBalanceUpdates subscribes to balance updates
-func (s *SimpleAccountService) SubscribeToBalanceUpdates(ctx context.Context, callback func(*Wallet)) error {
+func (s *SimpleAccountService) SubscribeToBalanceUpdates(ctx context.Context, callback func(*models.Wallet)) error {
 	// In a real implementation, this would subscribe to WebSocket updates
 	// For now, we'll just return nil
 	return nil
 }
 
 // GetTransactionHistory returns the transaction history
-func (s *SimpleAccountService) GetTransactionHistory(ctx context.Context, startTime, endTime time.Time) ([]*Transaction, error) {
+func (s *SimpleAccountService) GetTransactionHistory(ctx context.Context, startTime, endTime time.Time) ([]*models.Transaction, error) {
 	// Create some mock transactions
-	transactions := []*Transaction{
+	transactions := []*models.Transaction{
 		{
-			ID:        1,
+			ID:        "1",
 			Amount:    100.0,
 			Balance:   1000.0,
 			Reason:    "deposit",
 			Timestamp: time.Now().Add(-24 * time.Hour),
 		},
 		{
-			ID:        2,
+			ID:        "2",
 			Amount:    -50.0,
 			Balance:   950.0,
 			Reason:    "withdrawal",
 			Timestamp: time.Now().Add(-12 * time.Hour),
 		},
 		{
-			ID:        3,
+			ID:        "3",
 			Amount:    100.0,
 			Balance:   1050.0,
 			Reason:    "deposit",
 			Timestamp: time.Now().Add(-6 * time.Hour),
 		},
 		{
-			ID:        4,
+			ID:        "4",
 			Amount:    -50.0,
 			Balance:   1000.0,
 			Reason:    "withdrawal",
@@ -128,14 +133,18 @@ func (s *SimpleAccountService) GetTransactionHistory(ctx context.Context, startT
 }
 
 // AnalyzeTransactions analyzes transactions
-func (s *SimpleAccountService) AnalyzeTransactions(ctx context.Context, startTime, endTime time.Time) (*TransactionAnalysis, error) {
-	return &TransactionAnalysis{
-		TotalDeposits:    200.0,
-		TotalWithdrawals: 100.0,
-		NetChange:        100.0,
-		TransactionCount: 4,
-		StartTime:        startTime,
-		EndTime:          endTime,
+func (s *SimpleAccountService) AnalyzeTransactions(ctx context.Context, startTime, endTime time.Time) (*models.TransactionAnalysis, error) { // Changed return type
+	return &models.TransactionAnalysis{ // Changed return type and fields
+		// Using placeholder values consistent with previous mock data
+		TotalCount:  4,
+		BuyCount:    2,     // Placeholder
+		SellCount:   2,     // Placeholder
+		TotalVolume: 300.0, // Placeholder (e.g., 200 deposit - 100 withdrawal)
+		BuyVolume:   200.0, // Placeholder
+		SellVolume:  100.0, // Placeholder
+		StartTime:   startTime,
+		EndTime:     endTime,
+		// ID, CreatedAt, UpdatedAt, WalletID will be zero/default
 	}, nil
 }
 
@@ -150,39 +159,24 @@ func (s *SimpleAccountService) GetPortfolioValue(ctx context.Context) (float64, 
 }
 
 // GetPositionRisk returns the position risk
-func (s *SimpleAccountService) GetPositionRisk(ctx context.Context, symbol string) (*PositionRisk, error) {
-	return &PositionRisk{
-		Symbol:           symbol,
-		PositionAmount:   1.0,
-		EntryPrice:       50000.0,
-		MarkPrice:        51000.0,
-		UnrealizedProfit: 1000.0,
-		LiquidationPrice: 45000.0,
-		Leverage:         1.0,
-		MaxNotionalValue: 100000.0,
-		MarginType:       "isolated",
-		PositionSide:     "BOTH",
-		UpdateTime:       time.Now().Unix(),
+func (s *SimpleAccountService) GetPositionRisk(ctx context.Context, symbol string) (models.PositionRisk, error) {
+	return models.PositionRisk{
+		Symbol:      symbol,
+		ExposureUSD: 0.0,
+		RiskLevel:   "LOW",
 	}, nil
 }
 
 // GetAllPositionRisks returns all position risks
-func (s *SimpleAccountService) GetAllPositionRisks(ctx context.Context) ([]*PositionRisk, error) {
-	return []*PositionRisk{
-		{
-			Symbol:           "BTC/USDT",
-			PositionAmount:   1.0,
-			EntryPrice:       50000.0,
-			MarkPrice:        51000.0,
-			UnrealizedProfit: 1000.0,
-			LiquidationPrice: 45000.0,
-			Leverage:         1.0,
-			MaxNotionalValue: 100000.0,
-			MarginType:       "isolated",
-			PositionSide:     "BOTH",
-			UpdateTime:       time.Now().Unix(),
+func (s *SimpleAccountService) GetAllPositionRisks(ctx context.Context) (map[string]models.PositionRisk, error) {
+	risks := map[string]models.PositionRisk{
+		"BTC/USDT": {
+			Symbol:      "BTC/USDT",
+			ExposureUSD: 0.0,
+			RiskLevel:   "LOW",
 		},
-	}, nil
+	}
+	return risks, nil
 }
 
 // UpdateBalance updates the balance

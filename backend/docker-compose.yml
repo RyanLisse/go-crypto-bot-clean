@@ -8,7 +8,7 @@ services:
     container_name: crypto-bot-backend
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8080:8081"
     volumes:
       - backend_data:/app/data
       - ./configs:/app/configs:ro
@@ -24,7 +24,7 @@ services:
       - TURSO_SYNC_INTERVAL_SECONDS=${TURSO_SYNC_INTERVAL_SECONDS:-300}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_LEVEL=info
       - DB_PATH=/app/data/minimal.db
       - CONFIG_PATH=/app/configs
       - CONFIG_FILE=config.minimal.yaml
@@ -33,7 +33,7 @@ services:
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - CLERK_DOMAIN=${CLERK_DOMAIN}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
       interval: 30s
       timeout: 10s
       retries: 3

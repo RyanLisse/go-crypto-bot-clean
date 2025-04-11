@@ -36,16 +36,9 @@ const TradingPairSelector: FC<TradingPairSelectorProps> = ({
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('tradingFavorites');
-      return saved ? JSON.parse(saved) : [];
-    } catch (error) {
-      console.error('Error loading favorites:', error);
-      return [];
-    }
-  });
+  const [favorites, setFavorites] = useState<string[]>(['SOL/USDT']);
   const [activeMarket, setActiveMarket] = useState('ALL');
+  const [selectedPair, setSelectedPair] = useState('SOL/USDT');
 
   const handleMessage = useCallback((data: string) => {
     try {
@@ -63,16 +56,17 @@ const TradingPairSelector: FC<TradingPairSelectorProps> = ({
   }, []);
 
   const { isConnected, sendMessage } = useWebSocket({
+    url: import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8080/ws', // Added URL
     onMessage: handleMessage
   });
 
   useEffect(() => {
     if (isConnected) {
       setIsLoading(true);
-      sendMessage({
+      sendMessage(JSON.stringify({ // Stringify the message object
         type: 'subscribe',
         channel: 'markets'
-      });
+      }));
     } else {
       setError('Not connected to market data');
     }

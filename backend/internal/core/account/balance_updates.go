@@ -22,6 +22,8 @@ func (s *accountService) SubscribeToBalanceUpdates(ctx context.Context, callback
 }
 
 // handleBalanceUpdate processes balance updates from the balance service
+// This method is called by the balance service when a wallet update is received
+// It's currently not directly called but is used as a callback handler
 func (s *accountService) handleBalanceUpdate(wallet *models.Wallet) {
 	// Update cache
 	s.mutex.Lock()
@@ -34,6 +36,11 @@ func (s *accountService) handleBalanceUpdate(wallet *models.Wallet) {
 }
 
 // notifyBalanceSubscribers sends updates to all registered callbacks
+// This method is called by handleBalanceUpdate to notify all subscribers of wallet changes
+// It's part of the internal notification mechanism for balance updates
+// NOTE: This function may be flagged as unused by static analysis tools because it's only
+// called from handleBalanceUpdate which itself might be called through event-driven mechanisms.
+// Do not remove this function as it's essential for the balance update notification system.
 func (s *accountService) notifyBalanceSubscribers(wallet *models.Wallet) {
 	s.subMutex.RLock()
 	subscribers := make([]func(*models.Wallet), len(s.balanceSubscribers))

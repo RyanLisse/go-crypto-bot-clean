@@ -69,7 +69,7 @@ func (a *BotApp) Initialize(ctx context.Context) error {
 	go a.wsHub.Run()
 
 	// Initialize dependencies
-	deps, err := api.NewDependencies(a.config)
+	deps, err := api.NewDependencies(a.config, a.logger)
 	if err != nil {
 		return fmt.Errorf("failed to initialize dependencies: %w", err)
 	}

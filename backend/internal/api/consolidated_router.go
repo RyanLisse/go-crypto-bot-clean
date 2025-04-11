@@ -31,16 +31,13 @@ func SetupConsolidatedRouter(deps *Dependencies) http.Handler {
 	}
 
 	// Setup Huma for OpenAPI documentation if services are available
-	if deps.BacktestService != nil && deps.StrategyService != nil &&
+	if deps.StrategyService != nil &&
 		deps.AuthService != nil && deps.UserService != nil {
 		humaConfig := huma.DefaultConfig()
 		// Create a service provider with the available services
 		serviceProvider := &service.Provider{}
 
 		// Set the services if available
-		if deps.BacktestService != nil {
-			serviceProvider.BacktestService = deps.BacktestService
-		}
 		if deps.StrategyService != nil {
 			serviceProvider.StrategyService = deps.StrategyService
 		}
@@ -49,10 +46,10 @@ func SetupConsolidatedRouter(deps *Dependencies) http.Handler {
 			serviceProvider.AuthService = service.NewAuthService(deps.AuthService, deps.UserRepository)
 		} else {
 			if deps.AuthService == nil {
-				deps.logger.Warn("deps.AuthService is nil, cannot initialize service.AuthService for Huma")
+				deps.logger.Warn("AuthService is nil", zap.String("context", "cannot initialize service.AuthService for Huma"))
 			}
 			if deps.UserRepository == nil {
-				deps.logger.Warn("deps.UserRepository is nil, cannot initialize service.AuthService for Huma")
+				deps.logger.Warn("UserRepository is nil", zap.String("context", "cannot initialize service.AuthService for Huma"))
 			}
 		}
 

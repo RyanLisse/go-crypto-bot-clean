@@ -142,7 +142,7 @@ func TestPositionManager_EnterPosition(t *testing.T) {
 	assert.Equal(t, "BTCUSDT", position.Symbol)
 	assert.Equal(t, 1.0, position.Quantity)
 	assert.Equal(t, 50000.0, position.EntryPrice)
-	assert.Equal(t, "OPEN", position.Status)
+	assert.Equal(t, models.PositionStatusOpen, position.Status)
 	assert.Len(t, position.Orders, 1)
 
 	// Verify expectations

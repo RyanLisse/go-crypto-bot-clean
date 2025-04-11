@@ -98,19 +98,7 @@ type Config struct {
 
 // LoadConfig loads the configuration from a YAML file and environment variables
 func LoadConfig(path string) (*Config, error) {
-	// Set configuration file type
-	viper.SetConfigType("yaml")
-
-	// Set configuration file path
-	viper.SetConfigFile(path)
-
-	// Read configuration
-	if err := viper.ReadInConfig(); err != nil {
-		fmt.Printf("Warning: error reading config file: %v\n", err)
-		// Continue even if config file is not found, we'll use environment variables
-	}
-
-	// Set up environment variable bindings
+	// Set up environment variable bindings first
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("")
 
@@ -133,6 +121,19 @@ func LoadConfig(path string) (*Config, error) {
 
 	// Add Clerk environment variable binding
 	viper.BindEnv("auth.clerk_secret_key", "CLERK_SECRET_KEY")
+	viper.BindEnv("auth.clerk_domain", "CLERK_DOMAIN")
+
+	// Set configuration file type
+	viper.SetConfigType("yaml")
+
+	// Set configuration file path
+	viper.SetConfigFile(path)
+
+	// Read configuration
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Printf("Warning: error reading config file: %v\n", err)
+		// Continue even if config file is not found, we'll use environment variables
+	}
 
 	// Unmarshal configuration
 	var config Config

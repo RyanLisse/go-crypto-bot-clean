@@ -12,6 +12,8 @@ import (
 
 	"go-crypto-bot-clean/backend/internal/api"
 	"go-crypto-bot-clean/backend/internal/config"
+
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -66,8 +68,15 @@ func main() {
 }
 
 func serveAPI(cfg *config.Config, port string) {
+	// Initialize logger
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	defer logger.Sync()
+
 	// Initialize dependencies
-	deps, err := api.NewDependencies(cfg)
+	deps, err := api.NewDependencies(cfg, logger)
 	if err != nil {
 		log.Fatalf("Failed to initialize dependencies: %v", err)
 	}
