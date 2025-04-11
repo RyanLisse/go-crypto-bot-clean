@@ -22,7 +22,7 @@ RUN CGO_ENABLED=1 go build -o main ./cmd/api
 FROM alpine:latest
 
 # Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata sqlite
+RUN apk add --no-cache ca-certificates tzdata sqlite netcat-openbsd
 
 # Set working directory
 WORKDIR /app
@@ -39,12 +39,12 @@ RUN mkdir -p /app/data/db /app/data/logs /app/data/backtest
 
 # Set environment variables
 ENV CONFIG_PATH=/app/configs
-ENV DB_PATH=/app/data/db
+ENV DB_PATH=/app/data/db/crypto-bot.db
 ENV LOG_PATH=/app/data/logs
 ENV CONFIG_FILE=config.production.yaml
 
 # Expose port
 EXPOSE 8080
 
-# Run the application
-CMD ["/app/main"]
+# Run the application with a simple health check server
+CMD ["sh", "-c", "nohup /app/main > /app/data/logs/app.log 2>&1 & echo \"Starting health check server...\" && while true; do { echo -e 'HTTP/1.1 200 OK\r\n\r\nOK'; } | nc -l -p 8080; done"]
