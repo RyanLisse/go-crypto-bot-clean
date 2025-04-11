@@ -1,0 +1,50 @@
+name: Deploy Backend to Railway
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/railway-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy Backend to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          cd backend
+          railway up --detach
+
+      - name: Verify Deployment
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Waiting for deployment to complete..."
+          sleep 30
+
+          # Get the deployment URL
+          cd backend
+          BACKEND_URL=$(railway service url)
+          echo "Backend URL: $BACKEND_URL"
+
+          # Check backend health
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" $BACKEND_URL/health || echo "failed")
+
+          if [ "$HEALTH_STATUS" = "200" ]; then
+            echo "Backend deployment successful!"
+          else
+            echo "Backend health check failed with status: $HEALTH_STATUS"
+            exit 1
+          fi

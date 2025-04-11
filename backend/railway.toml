@@ -1,12 +1,30 @@
+[project]
+name = "go-crypto-bot-backend"
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-healthcheckPath = "/"
+healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
+restartPolicyInterval = "30s"
+numReplicas = 1
 
+# Resource allocation
+[deploy.resources]
+cpu = 512
+memoryMB = 1024
+
+# Environment variables
 [env]
 PORT = "8080"
+ENVIRONMENT = "production"
+LOG_LEVEL = "info"
+CONFIG_PATH = "/app/configs"
+CONFIG_FILE = "config.minimal.yaml"
+DB_PATH = "/app/data/minimal.db"
+DATABASE_ENABLED = "true"
+AUTH_ENABLED = "false"

@@ -1,0 +1,13 @@
+[project]
+name = "go-crypto-bot"
+description = "Go Crypto Bot with Railway Deployment"
+
+# Services configuration
+[services]
+backend = { path = "./backend", dockerfile = "./backend/Dockerfile" }
+frontend = { path = "./frontend", dockerfile = "./frontend/Dockerfile" }
+
+# Shared environment variables
+[shared.env]
+PROJECT_NAME = "go-crypto-bot"
+ENVIRONMENT = "production"
