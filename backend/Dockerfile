@@ -1,20 +1,34 @@
-FROM alpine:latest
-
-# Install necessary packages
-RUN apk add --no-cache netcat-openbsd
+FROM golang:1.24-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Create a simple health check script
-RUN echo '#!/bin/sh' > health.sh && \
-    echo 'while true; do' >> health.sh && \
-    echo '  echo -e "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nOK" | nc -l -p 8080' >> health.sh && \
-    echo 'done' >> health.sh && \
-    chmod +x health.sh
+# Copy go.mod and go.sum files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy the minimal API code
+COPY cmd/minimal-api/main.go ./cmd/minimal-api/main.go
+
+# Build the minimal API
+RUN go build -o minimal-api ./cmd/minimal-api
+
+# Create a minimal runtime image
+FROM alpine:latest
+
+# Install necessary packages
+RUN apk add --no-cache ca-certificates tzdata
+
+# Set working directory
+WORKDIR /app
+
+# Copy the binary from the builder stage
+COPY --from=builder /app/minimal-api /app/minimal-api
 
 # Expose port
 EXPOSE 8080
 
-# Run the health check script
-CMD ["/app/health.sh"]
+# Run the minimal API
+CMD ["/app/minimal-api"]
