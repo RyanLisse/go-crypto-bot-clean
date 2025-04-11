@@ -126,6 +126,12 @@ func main() {
 	config := huma.DefaultConfig()
 	huma.SetupHuma(router, config, serviceProvider)
 
+	// Add health check endpoint
+	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
 	// Start server
 	port := getEnv("PORT", "8080")
 	log.Printf("Starting server on :%s...", port)
