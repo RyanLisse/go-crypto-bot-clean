@@ -1,7 +1,10 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.24.2-alpine AS builder
 
 # Set working directory
 WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache git gcc musl-dev sqlite-dev
 
 # Copy go.mod and go.sum files
 COPY go.mod go.sum ./
@@ -12,14 +15,14 @@ RUN go mod download
 # Copy the source code
 COPY . .
 
-# Build the minimal API
-RUN go build -o minimal-api ./cmd/minimal-api
+# Build the minimal API with CGO enabled for SQLite support
+RUN CGO_ENABLED=1 go build -o minimal-api ./cmd/minimal-api
 
 # Create a minimal runtime image
 FROM alpine:latest
 
-# Install necessary packages
-RUN apk add --no-cache ca-certificates tzdata
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata sqlite
 
 # Set working directory
 WORKDIR /app
