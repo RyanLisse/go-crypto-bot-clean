@@ -3,10 +3,17 @@ app:
   environment: "production"
   log_level: "info"
   debug: false
-  port: "8080"
+  port: "8081"
 
 logging:
   file_path: "/app/data/logs"
   max_size: 10
   max_backups: 3
   max_age: 30
+
+database:
+  enabled: true
+  path: "/app/data/minimal.db"
+  max_open_conns: 10
+  max_idle_conns: 5
+  conn_max_lifetime_seconds: 300
