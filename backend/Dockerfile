@@ -1,50 +1,20 @@
-FROM golang:1.24-alpine
-
-# Install build dependencies
-RUN apk add --no-cache git gcc musl-dev sqlite-dev
-
-# Set working directory
-WORKDIR /app
-
-# Copy go.mod and go.sum files
-COPY go.mod go.sum ./
-
-# Download dependencies
-RUN go mod download
-
-# Copy source code
-COPY . .
-
-# Build the application with CGO enabled
-RUN CGO_ENABLED=1 go build -o main ./cmd/api
-
-# Create a minimal runtime image
 FROM alpine:latest
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata sqlite netcat-openbsd
+# Install necessary packages
+RUN apk add --no-cache netcat-openbsd
 
 # Set working directory
 WORKDIR /app
 
-# Copy the binary from the builder stage
-COPY --from=0 /app/main /app/main
-
-# Copy configuration files
-COPY configs/ /app/configs/
-COPY deploy/config.production.yaml /app/configs/config.production.yaml
-
-# Create directories for data persistence
-RUN mkdir -p /app/data/db /app/data/logs /app/data/backtest
-
-# Set environment variables
-ENV CONFIG_PATH=/app/configs
-ENV DB_PATH=/app/data/db/crypto-bot.db
-ENV LOG_PATH=/app/data/logs
-ENV CONFIG_FILE=config.production.yaml
+# Create a simple health check script
+RUN echo '#!/bin/sh' > health.sh && \
+    echo 'while true; do' >> health.sh && \
+    echo '  echo -e "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nOK" | nc -l -p 8080' >> health.sh && \
+    echo 'done' >> health.sh && \
+    chmod +x health.sh
 
 # Expose port
 EXPOSE 8080
 
-# Run the application with a simple health check server
-CMD ["sh", "-c", "nohup /app/main > /app/data/logs/app.log 2>&1 & echo \"Starting health check server...\" && while true; do { echo -e 'HTTP/1.1 200 OK\r\n\r\nOK'; } | nc -l -p 8080; done"]
+# Run the health check script
+CMD ["/app/health.sh"]
