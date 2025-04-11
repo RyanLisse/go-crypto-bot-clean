@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -90,28 +91,29 @@ func main() {
 	var sqliteManager *database.SQLiteManager
 	var tursoManager *database.TursoManager
 	var syncManager *database.SyncManager
+	var backupManager *database.BackupManager
 	var repo *repositories.MinimalRepository
-	
+
 	// Force database enablement for testing
 	cfg.Database.Enabled = true
-	
+
 	// Set default values if not provided
 	if cfg.Database.Path == "" {
 		cfg.Database.Path = "./data/minimal.db"
 	}
-	
+
 	if cfg.Database.MaxOpenConns <= 0 {
 		cfg.Database.MaxOpenConns = 10
 	}
-	
+
 	if cfg.Database.MaxIdleConns <= 0 {
 		cfg.Database.MaxIdleConns = 5
 	}
-	
+
 	if cfg.Database.ConnMaxLifetimeSeconds <= 0 {
 		cfg.Database.ConnMaxLifetimeSeconds = 300
 	}
-	
+
 	// Initialize SQLite database
 	if cfg.Database.Enabled {
 		// Create database manager
@@ -195,7 +197,7 @@ func main() {
 			}
 		}
 
-		logger.Info("Database initialized successfully", 
+		logger.Info("Database initialized successfully",
 			zap.String("path", cfg.Database.Path),
 			zap.Bool("debug", cfg.App.Debug),
 			zap.Bool("tursoEnabled", cfg.Database.Turso.Enabled),
@@ -232,6 +234,11 @@ func main() {
 	// Add sync component to health check if enabled
 	if cfg.Database.Turso.SyncEnabled && syncManager != nil {
 		healthCheck.AddComponent("sync", health.StatusUp, "Database synchronization is active")
+	}
+
+	// Add backup component to health check if enabled
+	if backupManager != nil {
+		healthCheck.AddComponent("backup", health.StatusUp, "Database backup system is active")
 	}
 
 	// Add authentication component to health check if enabled
@@ -281,7 +288,7 @@ func main() {
 				},
 			},
 			"auth": map[string]any{
-				"enabled":      cfg.Auth.Enabled,
+				"enabled":     cfg.Auth.Enabled,
 				"clerkDomain": cfg.Auth.ClerkDomain,
 			},
 		}
@@ -298,35 +305,67 @@ func main() {
 		})
 	}
 
+	// Initialize backup manager
+	backupManager, err = database.NewBackupManager(database.BackupConfig{
+		Enabled:          true,
+		BackupDir:        "./data/backups",
+		BackupInterval:   24 * time.Hour,
+		MaxBackups:       7,
+		RetentionDays:    30,
+		CompressBackups:  true,
+		IncludeTimestamp: true,
+	}, sqliteManager.DB(), tursoManager.DB(), logger)
+	if err != nil {
+		logger.Error("Failed to initialize backup manager", zap.Error(err))
+	} else {
+		// Add backup endpoint
+		router.Post("/backup", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+
+			err := backupManager.BackupDatabases(r.Context())
+			if err != nil {
+				logger.Error("Backup failed", zap.Error(err))
+				http.Error(w, fmt.Sprintf("Backup failed: %v", err), http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{
+				"status":  "success",
+				"message": "Backup completed successfully",
+			})
+		})
+	}
+
 	// Add database endpoints if enabled
 	if cfg.Database.Enabled && repo != nil {
 		// Add system info endpoint
 		router.Get("/system", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			
+
 			info, err := repo.GetSystemInfo()
 			if err != nil {
 				logger.Error("Failed to get system info", zap.Error(err))
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			
+
 			if info == nil {
 				http.Error(w, "System info not found", http.StatusNotFound)
 				return
 			}
-			
+
 			// Update uptime
 			info.Uptime = int64(time.Since(info.StartTime).Seconds())
-			
+
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(info)
 		})
-		
+
 		// Add health checks endpoint
 		router.Get("/health/history", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			
+
 			limit := 10 // Default limit
 			checks, err := repo.GetHealthChecks(limit)
 			if err != nil {
@@ -334,11 +373,11 @@ func main() {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			
+
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(checks)
 		})
-		
+
 		// Add log entry endpoint
 		router.Post("/logs", func(w http.ResponseWriter, r *http.Request) {
 			var entry models.LogEntry
@@ -346,35 +385,35 @@ func main() {
 				http.Error(w, "Invalid request body", http.StatusBadRequest)
 				return
 			}
-			
+
 			// Set ID and timestamp
 			entry.ID = uuid.New()
 			entry.Timestamp = time.Now()
-			
+
 			if err := repo.SaveLogEntry(&entry); err != nil {
 				logger.Error("Failed to save log entry", zap.Error(err))
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			
+
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(entry)
 		})
-		
+
 		// Add logs endpoint
 		router.Get("/logs", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			
+
 			limit := 10 // Default limit
 			level := r.URL.Query().Get("level")
-			
+
 			entries, err := repo.GetLogEntries(limit, level)
 			if err != nil {
 				logger.Error("Failed to get log entries", zap.Error(err))
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			
+
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(entries)
 		})
@@ -389,7 +428,7 @@ func main() {
 		// Add protected endpoints
 		protected.Get("/me", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			
+
 			// Get user from context
 			token, err := clerkAuth.GetUserFromContext(r.Context())
 			if err != nil {
@@ -397,7 +436,7 @@ func main() {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
-			
+
 			// Get user ID
 			userID, err := clerkAuth.GetUserID(token)
 			if err != nil {
@@ -405,7 +444,7 @@ func main() {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
-			
+
 			// Get user profile
 			user, err := clerkAuth.GetUserProfile(r.Context(), userID)
 			if err != nil {
@@ -413,11 +452,11 @@ func main() {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			
+
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(user)
 		})
-		
+
 		// Mount protected router
 		router.Mount("/api", protected)
 	}
