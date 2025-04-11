@@ -13,7 +13,16 @@ logging:
 
 database:
   enabled: true
-  path: "/app/data/minimal.db"
+  path: "./data/minimal.db"
   max_open_conns: 10
   max_idle_conns: 5
   conn_max_lifetime_seconds: 300
+  turso:
+    enabled: false
+    url: ""
+    auth_token: ""
+    sync_enabled: false
+    sync_interval_seconds: 60
+    batch_size: 100
+    max_retries: 3
+    retry_delay_seconds: 5
