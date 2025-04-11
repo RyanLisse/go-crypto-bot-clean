@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -237,7 +238,7 @@ func main() {
 	}
 
 	// Add backup component to health check if enabled
-	if backupManager != nil {
+	if backupManager != nil && sqliteManager != nil {
 		healthCheck.AddComponent("backup", health.StatusUp, "Database backup system is active")
 	}
 
@@ -305,36 +306,46 @@ func main() {
 		})
 	}
 
-	// Initialize backup manager
-	backupManager, err = database.NewBackupManager(database.BackupConfig{
-		Enabled:          true,
-		BackupDir:        "./data/backups",
-		BackupInterval:   24 * time.Hour,
-		MaxBackups:       7,
-		RetentionDays:    30,
-		CompressBackups:  true,
-		IncludeTimestamp: true,
-	}, sqliteManager.DB(), tursoManager.DB(), logger)
-	if err != nil {
-		logger.Error("Failed to initialize backup manager", zap.Error(err))
-	} else {
-		// Add backup endpoint
-		router.Post("/backup", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
+	// Initialize backup manager if SQLite is enabled
+	if sqliteManager != nil {
+		// Prepare Turso DB (might be nil if Turso is disabled)
+		var tursoDB *sql.DB
+		if tursoManager != nil {
+			tursoDB = tursoManager.DB()
+		}
 
-			err := backupManager.BackupDatabases(r.Context())
-			if err != nil {
-				logger.Error("Backup failed", zap.Error(err))
-				http.Error(w, fmt.Sprintf("Backup failed: %v", err), http.StatusInternalServerError)
-				return
-			}
+		backupManager, err = database.NewBackupManager(database.BackupConfig{
+			Enabled:          true,
+			BackupDir:        "./data/backups",
+			BackupInterval:   24 * time.Hour,
+			MaxBackups:       7,
+			RetentionDays:    30,
+			CompressBackups:  true,
+			IncludeTimestamp: true,
+		}, sqliteManager.DB(), tursoDB, logger)
+		if err != nil {
+			logger.Error("Failed to initialize backup manager", zap.Error(err))
+		} else {
+			// Add backup endpoint
+			router.Post("/backup", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
 
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]string{
-				"status":  "success",
-				"message": "Backup completed successfully",
+				err := backupManager.BackupDatabases(r.Context())
+				if err != nil {
+					logger.Error("Backup failed", zap.Error(err))
+					http.Error(w, fmt.Sprintf("Backup failed: %v", err), http.StatusInternalServerError)
+					return
+				}
+
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(map[string]string{
+					"status":  "success",
+					"message": "Backup completed successfully",
+				})
 			})
-		})
+		}
+	} else {
+		logger.Warn("Backup manager not initialized: SQLite database is not available")
 	}
 
 	// Add database endpoints if enabled
