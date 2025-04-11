@@ -20,21 +20,14 @@ type TradeResponse struct {
 
 // FromModel converts a domain Trade model to a TradeResponse
 func TradeResponseFromModel(trade *models.Trade) *TradeResponse {
-	var side string
-	if trade.IsBuyer {
-		side = "buy"
-	} else {
-		side = "sell"
-	}
-
 	return &TradeResponse{
 		ID:        trade.ID,
 		OrderID:   trade.OrderID,
 		Symbol:    trade.Symbol,
-		Side:      side,
-		Quantity:  trade.Quantity,
+		Side:      trade.Side,
+		Quantity:  trade.Amount, // Use Amount instead of Quantity
 		Price:     trade.Price,
-		Fee:       trade.Fee,
+		Fee:       0, // Fee is not in the model, set to 0
 		TradeTime: trade.TradeTime,
 	}
 }

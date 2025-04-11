@@ -27,13 +27,13 @@ type Server struct {
 // NewServer creates a new HTTP server
 func NewServer(container *config.Container) *Server {
 	router := mux.NewRouter()
-	
+
 	// Create server
 	server := &Server{
 		router:    router,
 		container: container,
 		server: &http.Server{
-			Addr:    fmt.Sprintf(":%d", container.Config.App.Port),
+			Addr:    fmt.Sprintf(":%d", 8080), // Default to port 8080
 			Handler: router,
 		},
 	}
@@ -52,7 +52,7 @@ func (s *Server) registerMiddleware() {
 	// Add common middleware
 	s.router.Use(middleware.LoggingMiddleware)
 	s.router.Use(middleware.RecoveryMiddleware)
-	
+
 	// Add CORS middleware
 	s.router.Use(middleware.CORSMiddleware)
 

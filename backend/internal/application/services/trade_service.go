@@ -38,16 +38,19 @@ func (s *TradeService) GetTradesByOrderID(ctx context.Context, orderID string) (
 }
 
 // RecordTrade records a new trade
-func (s *TradeService) RecordTrade(ctx context.Context, orderID, symbol string, isBuyer bool, quantity, price, fee float64) (*models.Trade, error) {
+func (s *TradeService) RecordTrade(ctx context.Context, orderID, symbol string, side string, amount, price float64) (*models.Trade, error) {
 	trade := &models.Trade{
 		ID:        uuid.New().String(),
 		OrderID:   orderID,
 		Symbol:    symbol,
-		IsBuyer:   isBuyer,
-		Quantity:  quantity,
+		Side:      side,
+		Amount:    amount,
 		Price:     price,
-		Fee:       fee,
+		Exchange:  "internal",
+		TradeID:   uuid.New().String(), // Generate a unique trade ID
 		TradeTime: time.Now(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	if err := s.tradeRepository.Store(ctx, trade); err != nil {

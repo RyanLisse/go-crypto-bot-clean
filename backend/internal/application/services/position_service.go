@@ -36,7 +36,7 @@ func (s *PositionService) ListPositions(ctx context.Context, status models.Posit
 }
 
 // OpenPosition opens a new position
-func (s *PositionService) OpenPosition(ctx context.Context, symbol string, side models.PositionSide, quantity float64, price float64) (*models.Position, error) {
+func (s *PositionService) OpenPosition(ctx context.Context, symbol string, side models.OrderSide, quantity float64, price float64) (*models.Position, error) {
 	// Check if there's already an open position for this symbol
 	existingPosition, err := s.positionRepository.GetOpenPositionBySymbol(ctx, symbol)
 	if err == nil && existingPosition != nil {
@@ -44,14 +44,18 @@ func (s *PositionService) OpenPosition(ctx context.Context, symbol string, side 
 	}
 
 	position := &models.Position{
-		ID:         uuid.New().String(),
-		Symbol:     symbol,
-		Side:       side,
-		Quantity:   quantity,
-		EntryPrice: price,
-		Status:     models.PositionStatusOpen,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		ID:           uuid.New().String(),
+		Symbol:       symbol,
+		Side:         side,
+		Quantity:     quantity,
+		EntryPrice:   price,
+		Status:       models.PositionStatusOpen,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		OpenTime:     time.Now(),
+		CurrentPrice: price,
+		StopLoss:     0, // Set default values
+		TakeProfit:   0, // Set default values
 	}
 
 	if err := s.positionRepository.Create(ctx, position); err != nil {
@@ -76,8 +80,8 @@ func (s *PositionService) ClosePosition(ctx context.Context, id string) (*models
 	// and update the position with the actual exit price from the order execution
 
 	// For now, we'll just update the position status
-	position.Status = models.PositionStatusClosed
-	position.ExitPrice = 0 // This would be set to the actual exit price
+	closeTime := time.Now()
+	position.Close(position.CurrentPrice, closeTime) // Use the Close method
 	position.UpdatedAt = time.Now()
 
 	if err := s.positionRepository.Update(ctx, position); err != nil {
