@@ -3,12 +3,12 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 
 	"go-crypto-bot-clean/backend/internal/config"
+	"go-crypto-bot-clean/backend/internal/health"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -17,15 +17,50 @@ import (
 )
 
 func main() {
-	// Load configuration
-	cfg, err := config.LoadMinimalConfig()
+	// Initialize logger
+	loggerConfig := zap.NewProductionConfig()
+	loggerConfig.EncoderConfig.TimeKey = "timestamp"
+	loggerConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	logger, err := loggerConfig.Build()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	defer logger.Sync()
+
+	// Determine environment
+	env := os.Getenv("ENVIRONMENT")
+	if env == "" {
+		env = "development"
 	}
 
-	// Initialize logger
-	logger := initLogger(cfg)
-	defer logger.Sync()
+	var environment config.Environment
+	switch env {
+	case "production":
+		environment = config.EnvironmentProduction
+	case "staging":
+		environment = config.EnvironmentStaging
+	default:
+		environment = config.EnvironmentDevelopment
+	}
+
+	// Initialize configuration manager
+	configManager := config.NewManager(logger, environment)
+
+	// Load minimal configuration
+	cfg, err := configManager.LoadMinimalConfig()
+	if err != nil {
+		logger.Fatal("Failed to load configuration", zap.Error(err))
+	}
+
+	// Enable configuration reloading
+	if err := configManager.EnableReload(); err != nil {
+		logger.Warn("Failed to enable configuration reloading", zap.Error(err))
+	} else {
+		logger.Info("Configuration reloading enabled")
+	}
+
+	// Configure logger based on config
+	configureLogger(logger, cfg)
 
 	// Create router
 	router := chi.NewRouter()
@@ -36,12 +71,15 @@ func main() {
 	router.Use(chimiddleware.RequestID)
 	router.Use(chimiddleware.RealIP)
 
-	// Add health check endpoint
-	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+	// Initialize health check
+	healthCheck := health.NewHealthCheck("0.1.0", logger)
+
+	// Add system component to health check
+	healthCheck.AddComponent("system", health.StatusUp, "System is running")
+
+	// Add health check endpoints
+	router.Get("/health", healthCheck.SimpleHandler())
+	router.Get("/health/detailed", healthCheck.Handler())
 
 	// Add version endpoint
 	router.Get("/version", func(w http.ResponseWriter, r *http.Request) {
@@ -63,13 +101,13 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 
 		// Create a safe version of the config (without sensitive data)
-		safeConfig := map[string]interface{}{
-			"app": map[string]interface{}{
+		safeConfig := map[string]any{
+			"app": map[string]any{
 				"name":        cfg.App.Name,
 				"environment": cfg.App.Environment,
 				"debug":       cfg.App.Debug,
 			},
-			"logging": map[string]interface{}{
+			"logging": map[string]any{
 				"filePath":   cfg.Logging.FilePath,
 				"maxSize":    cfg.Logging.MaxSize,
 				"maxBackups": cfg.Logging.MaxBackups,
@@ -93,9 +131,9 @@ func main() {
 	}
 }
 
-// initLogger initializes the zap logger based on configuration
-func initLogger(cfg *config.MinimalConfig) *zap.Logger {
-	// Determine log level from config
+// configureLogger configures the logger based on configuration
+func configureLogger(logger *zap.Logger, cfg *config.MinimalConfig) {
+	// Set log level from configuration
 	var level zapcore.Level
 	switch cfg.App.LogLevel {
 	case "debug":
@@ -110,35 +148,10 @@ func initLogger(cfg *config.MinimalConfig) *zap.Logger {
 		level = zapcore.InfoLevel
 	}
 
-	// Create logger config
-	config := zap.Config{
-		Level:       zap.NewAtomicLevelAt(level),
-		Development: cfg.App.Environment == "development",
-		Encoding:    "json",
-		EncoderConfig: zapcore.EncoderConfig{
-			TimeKey:        "ts",
-			LevelKey:       "level",
-			NameKey:        "logger",
-			CallerKey:      "caller",
-			FunctionKey:    zapcore.OmitKey,
-			MessageKey:     "msg",
-			StacktraceKey:  "stacktrace",
-			LineEnding:     zapcore.DefaultLineEnding,
-			EncodeLevel:    zapcore.LowercaseLevelEncoder,
-			EncodeTime:     zapcore.ISO8601TimeEncoder,
-			EncodeDuration: zapcore.SecondsDurationEncoder,
-			EncodeCaller:   zapcore.ShortCallerEncoder,
-		},
-		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
-	}
-
-	// Create logger
-	logger, err := config.Build()
-	if err != nil {
-		fmt.Printf("Failed to create logger: %v\n", err)
-		os.Exit(1)
-	}
-
-	return logger
+	// Log the current configuration
+	logger.Info("Logger configured",
+		zap.String("level", level.String()),
+		zap.String("environment", cfg.App.Environment),
+		zap.Bool("debug", cfg.App.Debug),
+	)
 }
