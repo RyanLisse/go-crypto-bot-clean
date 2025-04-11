@@ -16,6 +16,8 @@
   - Added environment support, validation, and hot reloading capabilities
   - Set up structured logging with Zap
   - Created Docker containerization with Alpine Linux
+  - Optimized Docker images with multi-stage builds, security improvements, and non-root users
+  - Added health checks and improved Docker Compose configuration
   - Configured Railway deployment with proper settings
 - All components are working correctly in production
 - Application is accessible at https://piquant-desire-production.up.railway.app
