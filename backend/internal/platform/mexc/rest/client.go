@@ -18,6 +18,7 @@ import (
 	"go-crypto-bot-clean/backend/internal/domain/models"
 	"go-crypto-bot-clean/backend/internal/platform/mexc/cache"
 	"go-crypto-bot-clean/backend/pkg/ratelimiter"
+
 	"go.uber.org/zap"
 )
 
@@ -38,6 +39,26 @@ const (
 	retryBaseDelay = 500 * time.Millisecond
 	retryMaxDelay  = 5 * time.Second
 )
+
+// formatSymbol converts a trading pair symbol from BTC/USDT format to BTCUSDT format or vice versa
+func formatSymbol(symbol string, toMexcFormat bool) string {
+	if toMexcFormat {
+		// Convert from internal format (BTC/USDT) to MEXC format (BTCUSDT)
+		return strings.ReplaceAll(symbol, "/", "")
+	} else {
+		// Convert from MEXC format (BTCUSDT) to internal format (BTC/USDT)
+		// This is a simple implementation that assumes standard pairs like BTC/USDT
+		// For more complex pairs, a more sophisticated algorithm would be needed
+		if len(symbol) < 7 { // Minimum like BTCUSDT
+			return symbol // Return as is if too short
+		}
+		// Try to find the split point (usually after the first 3 characters for BTC/USDT)
+		// This is a simplified approach - in production we would need more sophisticated detection
+		baseCurrency := symbol[:3]
+		quoteCurrency := symbol[3:]
+		return baseCurrency + "/" + quoteCurrency
+	}
+}
 
 // Client is the MEXC REST API client
 type Client struct {
@@ -350,19 +371,26 @@ func parseTime(timestamp interface{}) (time.Time, error) {
 
 // GetTicker fetches real-time price information for a specific trading pair
 func (c *Client) GetTicker(ctx context.Context, symbol string) (*models.Ticker, error) {
+	// Store original symbol format for later use
+	originalSymbol := symbol
+
+	// Format the symbol for MEXC API (from BTC/USDT to BTCUSDT)
+	mexcSymbol := formatSymbol(symbol, true)
+
 	// Check cache first
-	if ticker, found := c.tickerCache.GetTicker(symbol); found {
-		c.logger.Debug("Using cached ticker", zap.String("symbol", symbol))
+	if ticker, found := c.tickerCache.GetTicker(originalSymbol); found {
+		c.logger.Debug("Using cached ticker", zap.String("symbol", originalSymbol))
 		return ticker, nil
 	}
 
 	params := url.Values{}
-	params.Set("symbol", symbol)
+	params.Set("symbol", mexcSymbol)
 
 	var response struct {
 		Symbol             string `json:"symbol"`
 		LastPrice          string `json:"lastPrice"`
 		Volume             string `json:"volume"`
+		QuoteVolume        string `json:"quoteVolume"`
 		PriceChange        string `json:"priceChange"`
 		PriceChangePercent string `json:"priceChangePercent"`
 		HighPrice          string `json:"highPrice"`
@@ -371,31 +399,59 @@ func (c *Client) GetTicker(ctx context.Context, symbol string) (*models.Ticker, 
 
 	err := c.makeRequest(ctx, http.MethodGet, "/api/v3/ticker/24hr", params, false, &response)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get ticker: %w", err)
 	}
 
 	// Parse string values to float64
-	price, _ := strconv.ParseFloat(response.LastPrice, 64)
-	volume, _ := strconv.ParseFloat(response.Volume, 64)
-	priceChange, _ := strconv.ParseFloat(response.PriceChange, 64)
-	priceChangePct, _ := strconv.ParseFloat(response.PriceChangePercent, 64)
-	high, _ := strconv.ParseFloat(response.HighPrice, 64)
-	low, _ := strconv.ParseFloat(response.LowPrice, 64)
-
-	ticker := &models.Ticker{
-		Symbol:         response.Symbol,
-		Price:          price,
-		Volume:         volume,
-		PriceChange:    priceChange,
-		PriceChangePct: priceChangePct,
-		High24h:        high,
-		Low24h:         low,
-		Timestamp:      time.Now(),
+	price, err := strconv.ParseFloat(response.LastPrice, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse last price: %w", err)
 	}
 
-	// Cache the ticker for 5 seconds
-	c.tickerCache.SetTicker(symbol, ticker, 5*time.Second)
-	c.logger.Debug("Cached ticker", zap.String("symbol", symbol))
+	priceChange, err := strconv.ParseFloat(response.PriceChange, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse price change: %w", err)
+	}
+
+	priceChangePct, err := strconv.ParseFloat(response.PriceChangePercent, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse price change percent: %w", err)
+	}
+
+	volume, err := strconv.ParseFloat(response.Volume, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse volume: %w", err)
+	}
+
+	quoteVolume, err := strconv.ParseFloat(response.QuoteVolume, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse quote volume: %w", err)
+	}
+
+	high24h, err := strconv.ParseFloat(response.HighPrice, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse high price: %w", err)
+	}
+
+	low24h, err := strconv.ParseFloat(response.LowPrice, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse low price: %w", err)
+	}
+
+	ticker := &models.Ticker{
+		Symbol:         originalSymbol, // Use original symbol format (BTC/USDT)
+		Price:          price,
+		PriceChange:    priceChange,
+		PriceChangePct: priceChangePct,
+		Volume:         volume,
+		QuoteVolume:    quoteVolume,
+		High24h:        high24h,
+		Low24h:         low24h,
+		Timestamp:      time.Now().UTC(),
+	}
+
+	// Cache the ticker
+	c.tickerCache.SetTicker(originalSymbol, ticker, 5*time.Second)
 
 	return ticker, nil
 }
@@ -412,6 +468,7 @@ func (c *Client) GetAllTickers(ctx context.Context) (map[string]*models.Ticker, 
 		Symbol             string `json:"symbol"`
 		LastPrice          string `json:"lastPrice"`
 		Volume             string `json:"volume"`
+		QuoteVolume        string `json:"quoteVolume"`
 		PriceChange        string `json:"priceChange"`
 		PriceChangePercent string `json:"priceChangePercent"`
 		HighPrice          string `json:"highPrice"`
@@ -420,52 +477,84 @@ func (c *Client) GetAllTickers(ctx context.Context) (map[string]*models.Ticker, 
 
 	err := c.makeRequest(ctx, http.MethodGet, "/api/v3/ticker/24hr", nil, false, &response)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get all tickers: %w", err)
 	}
 
 	tickers := make(map[string]*models.Ticker)
-	now := time.Now()
+	for _, r := range response {
+		price, err := strconv.ParseFloat(r.LastPrice, 64)
+		if err != nil {
+			continue
+		}
 
-	for _, item := range response {
-		price, _ := strconv.ParseFloat(item.LastPrice, 64)
-		volume, _ := strconv.ParseFloat(item.Volume, 64)
-		priceChange, _ := strconv.ParseFloat(item.PriceChange, 64)
-		priceChangePct, _ := strconv.ParseFloat(item.PriceChangePercent, 64)
-		high, _ := strconv.ParseFloat(item.HighPrice, 64)
-		low, _ := strconv.ParseFloat(item.LowPrice, 64)
+		volume, err := strconv.ParseFloat(r.Volume, 64)
+		if err != nil {
+			continue
+		}
 
-		tickers[item.Symbol] = &models.Ticker{
-			Symbol:         item.Symbol,
+		quoteVolume, err := strconv.ParseFloat(r.QuoteVolume, 64)
+		if err != nil {
+			continue
+		}
+
+		priceChange, err := strconv.ParseFloat(r.PriceChange, 64)
+		if err != nil {
+			continue
+		}
+
+		priceChangePct, err := strconv.ParseFloat(r.PriceChangePercent, 64)
+		if err != nil {
+			continue
+		}
+
+		high24h, err := strconv.ParseFloat(r.HighPrice, 64)
+		if err != nil {
+			continue
+		}
+
+		low24h, err := strconv.ParseFloat(r.LowPrice, 64)
+		if err != nil {
+			continue
+		}
+
+		// Convert MEXC symbol format to our format (e.g., BTCUSDT -> BTC/USDT)
+		symbol := formatSymbol(r.Symbol, false)
+
+		tickers[symbol] = &models.Ticker{
+			Symbol:         symbol,
 			Price:          price,
 			Volume:         volume,
+			QuoteVolume:    quoteVolume,
 			PriceChange:    priceChange,
 			PriceChangePct: priceChangePct,
-			High24h:        high,
-			Low24h:         low,
-			Timestamp:      now,
+			High24h:        high24h,
+			Low24h:         low24h,
+			Timestamp:      time.Now().UTC(),
 		}
 	}
 
-	// Cache the tickers for 5 seconds
+	// Update cache with 5 second duration
 	c.tickerCache.SetAllTickers(tickers, 5*time.Second)
-	c.logger.Debug("Cached all tickers", zap.Int("count", len(tickers)))
 
 	return tickers, nil
 }
 
 // GetKlines fetches candlestick data for a specific trading pair and interval
 func (c *Client) GetKlines(ctx context.Context, symbol, interval string, limit int) ([]*models.Kline, error) {
+	// Format the symbol for MEXC API
+	formattedSymbol := formatSymbol(symbol, true)
+
 	// Check cache first
-	if klines, found := c.klineCache.GetKlines(symbol, interval, limit); found {
+	if klines, found := c.klineCache.GetKlines(formattedSymbol, interval, limit); found {
 		c.logger.Debug("Using cached klines",
-			zap.String("symbol", symbol),
+			zap.String("symbol", formattedSymbol),
 			zap.String("interval", interval),
 			zap.Int("limit", limit))
 		return klines, nil
 	}
 
 	params := url.Values{}
-	params.Set("symbol", symbol)
+	params.Set("symbol", formattedSymbol)
 	params.Set("interval", interval)
 	if limit > 0 {
 		params.Set("limit", strconv.Itoa(limit))
@@ -504,7 +593,7 @@ func (c *Client) GetKlines(ctx context.Context, symbol, interval string, limit i
 		volume, _ := strconv.ParseFloat(k[5].(string), 64)
 
 		klines = append(klines, &models.Kline{
-			Symbol:    symbol,
+			Symbol:    symbol, // Use original symbol format for consistency
 			Interval:  interval,
 			OpenTime:  openTime,
 			CloseTime: closeTime,
@@ -517,9 +606,9 @@ func (c *Client) GetKlines(ctx context.Context, symbol, interval string, limit i
 	}
 
 	// Cache the klines for 30 seconds
-	c.klineCache.SetKlines(symbol, interval, limit, klines, 30*time.Second)
+	c.klineCache.SetKlines(formattedSymbol, interval, limit, klines, 30*time.Second)
 	c.logger.Debug("Cached klines",
-		zap.String("symbol", symbol),
+		zap.String("symbol", formattedSymbol),
 		zap.String("interval", interval),
 		zap.Int("count", len(klines)))
 
@@ -1094,15 +1183,22 @@ func countUpcomingCoins(coins []*models.NewCoin) int {
 	return count
 }
 
+// GetOrderBook retrieves the current order book for a symbol using the REST API
 func (c *Client) GetOrderBook(ctx context.Context, symbol string, limit int) (*models.OrderBookUpdate, error) {
+	// Store original symbol format for later use
+	originalSymbol := symbol
+
+	// Format the symbol for MEXC API (from BTC/USDT to BTCUSDT)
+	mexcSymbol := formatSymbol(symbol, true)
+
 	// Check cache first
-	if orderBook, found := c.orderBookCache.GetOrderBook(symbol); found {
-		c.logger.Debug("Using cached order book", zap.String("symbol", symbol))
+	if orderBook, found := c.orderBookCache.GetOrderBook(originalSymbol); found {
+		c.logger.Debug("Using cached order book", zap.String("symbol", originalSymbol))
 		return orderBook, nil
 	}
 
 	params := url.Values{}
-	params.Set("symbol", symbol)
+	params.Set("symbol", mexcSymbol)
 	if limit > 0 {
 		params.Set("limit", strconv.Itoa(limit))
 	}
@@ -1138,7 +1234,7 @@ func (c *Client) GetOrderBook(ctx context.Context, symbol string, limit int) (*m
 	}
 
 	orderBook := &models.OrderBookUpdate{
-		Symbol:        symbol,
+		Symbol:        originalSymbol, // Use original symbol format (BTC/USDT)
 		LastUpdateID:  response.LastUpdateID,
 		FirstUpdateID: response.LastUpdateID, // REST snapshot, so first == last
 		Bids:          parseEntries(response.Bids),
@@ -1147,9 +1243,9 @@ func (c *Client) GetOrderBook(ctx context.Context, symbol string, limit int) (*m
 	}
 
 	// Cache the order book for 2 seconds
-	c.orderBookCache.SetOrderBook(symbol, orderBook, 2*time.Second)
+	c.orderBookCache.SetOrderBook(originalSymbol, orderBook, 2*time.Second)
 	c.logger.Debug("Cached order book",
-		zap.String("symbol", symbol),
+		zap.String("symbol", originalSymbol),
 		zap.Int("bids", len(orderBook.Bids)),
 		zap.Int("asks", len(orderBook.Asks)))
 

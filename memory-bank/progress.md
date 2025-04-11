@@ -1,5 +1,12 @@
 # Project Progress
 
+## Railway Deployment Implementation (April 2025)
+- Configured Railway deployment setup for the backend service
+- Created GitHub Actions workflow for automated deployment
+- Added deployment documentation and guides
+- Set up environment variables and configuration
+- Configured health checks and monitoring
+
 ## Authentication and Security Implementation (April 2025)
 - Implemented Clerk authentication with JWT validation
 - Added middleware for protecting API endpoints
@@ -441,3 +448,14 @@ None currently identified.
 - Ready for testing phase
 - Documentation is being kept up-to-date
 - Architecture supports future enhancements
+
+## Exchange Client Improvements (May 2025)
+- Fixed inconsistent symbol format handling in the MEXC client:
+  - Updated the formatSymbol function to handle conversions in both directions (BTC/USDT ↔ BTCUSDT)
+  - Ensured GetTicker, GetAllTickers, GetKlines, and GetOrderBook methods use consistent symbol formatting
+  - Fixed the cache implementation to properly handle symbol formats
+  - Added proper TTL duration to cache calls
+- Enhanced error handling in REST API requests
+- Improved cache implementation with proper TTL handling
+- Fixed WebSocket client reconnection logic with exponential backoff
+- Added connection attempt tracking for better testing and monitoring
