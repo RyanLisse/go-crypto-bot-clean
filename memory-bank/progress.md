@@ -1,5 +1,37 @@
 # Project Progress
 
+## Railway Deployment Implementation (April 2025)
+- Implemented incremental deployment approach for the Go backend to Railway
+- Successfully completed Phase 1 of the deployment:
+  - Created and deployed a minimal API with health check endpoint
+  - Added comprehensive health check system with detailed reporting
+  - Implemented configuration management with Viper
+  - Added environment support, validation, and hot reloading capabilities
+  - Set up structured logging with Zap
+  - Created Docker containerization with Alpine Linux
+  - Configured Railway deployment with proper settings
+- All components are working correctly in production
+- Application is accessible at https://piquant-desire-production.up.railway.app
+- Preparing for Phase 2: Database Integration with SQLite and Turso
+
+## Hexagonal Architecture Implementation (June 2025)
+- Reorganized backend codebase to follow hexagonal architecture principles
+- Created clear separation between domain, application, infrastructure, and API layers
+- Successfully implemented Domain Layer with core business models and interfaces
+- Implemented Application Layer with service implementations and use cases
+- Completed Infrastructure Layer with adapter implementations:
+  - Fixed issues in `MarketDataStorage` implementation to correctly use models.Candle fields
+  - Fixed the `MemoryStorage` implementation to use OpenTime instead of Timestamp for candles
+  - Implemented `TradeRepository` with the missing `DeleteOlderThan` method
+  - Updated all tests to ensure compatibility with interface definitions
+  - Fixed model field references throughout the codebase
+- In Progress: Configuring API/UI Layer and setting up dependency injection
+  - Working on ensuring API layer depends only on application layer
+  - Setting up proper dependency injection to wire up ports to adapters
+  - Updating build configuration for the new architecture
+- All tests are now passing for the refactored components
+- Successfully integrated new architecture with existing codebase
+
 ## AI Trading Assistant Implementation (April 2025)
 - Implemented GORM models for AI conversation storage with proper database integration
 - Created Drizzle schema for frontend chat persistence using Turso database
