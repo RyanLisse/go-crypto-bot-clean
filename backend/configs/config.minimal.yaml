@@ -1,0 +1,12 @@
+app:
+  name: "Go Crypto Bot"
+  environment: "production"
+  log_level: "info"
+  debug: false
+  port: "8080"
+
+logging:
+  file_path: "/app/data/logs"
+  max_size: 10
+  max_backups: 3
+  max_age: 30
