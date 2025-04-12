@@ -3,9 +3,12 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"go-crypto-bot-clean/backend/api/repository"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // UserService provides user management functionality for the API
@@ -69,31 +72,29 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"newPassword"`
 }
 
-// ChangePasswordResponse represents the response from changing a password
+// ChangePasswordResponse represents the response from changing a password with enhanced error handling
 type ChangePasswordResponse struct {
 	Success   bool      `json:"success"`
 	Timestamp time.Time `json:"timestamp"`
+	Error     string    `json:"error,omitempty"` // Add error field for detailed messages
 }
 
-// GetUserProfile gets the profile of the authenticated user
+// GetUserProfile gets the profile of the authenticated user with validation
 func (s *UserService) GetUserProfile(ctx context.Context, userID string) (*UserProfile, error) {
 	if userID == "" {
-		return nil, errors.New("user ID is required")
+		return nil, errors.New("user ID is required") // HTTP 400: Bad Request
 	}
 
-	// Get user from repository
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("user not found: %w", err) // HTTP 404: Not Found
 	}
 
-	// Get user roles
 	roles, err := s.userRepo.GetRoles(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get roles: %w", err) // HTTP 500: Internal Server Error
 	}
 
-	// Convert to UserProfile
 	return &UserProfile{
 		ID:        user.ID,
 		Email:     user.Email,
@@ -106,21 +107,19 @@ func (s *UserService) GetUserProfile(ctx context.Context, userID string) (*UserP
 	}, nil
 }
 
-// UpdateUserProfile updates the profile of the authenticated user
+// UpdateUserProfile updates the profile of the authenticated user with validation
 func (s *UserService) UpdateUserProfile(ctx context.Context, userID string, req *UpdateProfileRequest) (*UserProfile, error) {
 	if userID == "" {
-		return nil, errors.New("user ID is required")
+		return nil, errors.New("user ID is required") // HTTP 400
 	}
 
-	// Get user from repository
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("user not found: %w", err) // HTTP 404
 	}
 
-	// Update user fields
-	if req.Username != "" {
-		user.Username = req.Username
+	if req.Username != "" && len(req.Username) < 3 {
+		return nil, errors.New("username must be at least 3 characters") // HTTP 400
 	}
 	if req.FirstName != "" {
 		user.FirstName = req.FirstName
@@ -129,19 +128,16 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID string, req 
 		user.LastName = req.LastName
 	}
 
-	// Save user
 	err = s.userRepo.Update(ctx, user)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to update user: %w", err) // HTTP 500
 	}
 
-	// Get user roles
 	roles, err := s.userRepo.GetRoles(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get roles: %w", err) // HTTP 500
 	}
 
-	// Convert to UserProfile
 	return &UserProfile{
 		ID:        user.ID,
 		Email:     user.Email,
@@ -154,19 +150,17 @@ func (s *UserService) UpdateUserProfile(ctx context.Context, userID string, req 
 	}, nil
 }
 
-// GetUserSettings gets the settings of the authenticated user
+// GetUserSettings gets the settings of the authenticated user with validation
 func (s *UserService) GetUserSettings(ctx context.Context, userID string) (*UserSettings, error) {
 	if userID == "" {
-		return nil, errors.New("user ID is required")
+		return nil, errors.New("user ID is required") // HTTP 400
 	}
 
-	// Get user settings from repository
 	settings, err := s.userRepo.GetSettings(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("settings not found: %w", err) // HTTP 404
 	}
 
-	// Convert to UserSettings
 	return &UserSettings{
 		ID:                   userID,
 		Theme:                settings.Theme,
@@ -180,19 +174,24 @@ func (s *UserService) GetUserSettings(ctx context.Context, userID string) (*User
 	}, nil
 }
 
-// UpdateUserSettings updates the settings of the authenticated user
+// UpdateUserSettings updates the settings of the authenticated user with validation
 func (s *UserService) UpdateUserSettings(ctx context.Context, userID string, req *UpdateSettingsRequest) (*UserSettings, error) {
 	if userID == "" {
-		return nil, errors.New("user ID is required")
+		return nil, errors.New("user ID is required") // HTTP 400
 	}
 
-	// Get current settings
 	currentSettings, err := s.userRepo.GetSettings(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("settings not found: %w", err) // HTTP 404
 	}
 
-	// Parse boolean values from strings
+	if req.Theme != "" && (req.Theme != "light" && req.Theme != "dark") {
+		return nil, errors.New("invalid theme value") // HTTP 400
+	}
+	if req.Language != "" && len(req.Language) != 2 {
+		return nil, errors.New("language must be a 2-letter code") // HTTP 400
+	}
+
 	notificationsEnabled := currentSettings.NotificationsEnabled
 	if req.NotificationsEnabled == "true" {
 		notificationsEnabled = true
@@ -214,30 +213,19 @@ func (s *UserService) UpdateUserSettings(ctx context.Context, userID string, req
 		pushNotifications = false
 	}
 
-	// Update settings
-	if req.Theme != "" {
-		currentSettings.Theme = req.Theme
-	}
-	if req.Language != "" {
-		currentSettings.Language = req.Language
-	}
-	if req.TimeZone != "" {
-		currentSettings.TimeZone = req.TimeZone
-	}
-	if req.DefaultCurrency != "" {
-		currentSettings.DefaultCurrency = req.DefaultCurrency
-	}
+	currentSettings.Theme = req.Theme
+	currentSettings.Language = req.Language
+	currentSettings.TimeZone = req.TimeZone
+	currentSettings.DefaultCurrency = req.DefaultCurrency
 	currentSettings.NotificationsEnabled = notificationsEnabled
 	currentSettings.EmailNotifications = emailNotifications
 	currentSettings.PushNotifications = pushNotifications
 
-	// Save settings
 	err = s.userRepo.UpdateSettings(ctx, currentSettings)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to update settings: %w", err) // HTTP 500
 	}
 
-	// Convert to UserSettings
 	return &UserSettings{
 		ID:                   userID,
 		Theme:                currentSettings.Theme,
@@ -251,37 +239,36 @@ func (s *UserService) UpdateUserSettings(ctx context.Context, userID string, req
 	}, nil
 }
 
-// ChangePassword changes the password of the authenticated user
+// ChangePassword changes the password of the authenticated user with proper validation and hashing
 func (s *UserService) ChangePassword(ctx context.Context, userID string, req *ChangePasswordRequest) (*ChangePasswordResponse, error) {
 	if userID == "" {
-		return nil, errors.New("user ID is required")
+		return &ChangePasswordResponse{Success: false, Error: "user ID is required", Timestamp: time.Now()}, nil
 	}
 
 	if req.CurrentPassword == "" || req.NewPassword == "" {
-		return nil, errors.New("current password and new password are required")
+		return &ChangePasswordResponse{Success: false, Error: "current password and new password are required", Timestamp: time.Now()}, nil
 	}
 
-	// Get user from repository
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return &ChangePasswordResponse{Success: false, Error: fmt.Sprintf("user not found: %v", err), Timestamp: time.Now()}, nil
 	}
 
-	// TODO: Validate current password using bcrypt
-	// For now, we'll just update the password without validation
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword))
+	if err != nil {
+		return &ChangePasswordResponse{Success: false, Error: "invalid current password", Timestamp: time.Now()}, nil
+	}
 
-	// TODO: Hash new password using bcrypt
-	// For now, we'll just store the password as is
-	user.PasswordHash = req.NewPassword
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return &ChangePasswordResponse{Success: false, Error: fmt.Sprintf("failed to hash password: %v", err), Timestamp: time.Now()}, nil
+	}
+	user.PasswordHash = string(hashedPassword)
 
-	// Save user
 	err = s.userRepo.Update(ctx, user)
 	if err != nil {
-		return nil, err
+		return &ChangePasswordResponse{Success: false, Error: fmt.Sprintf("failed to update user: %v", err), Timestamp: time.Now()}, nil
 	}
 
-	return &ChangePasswordResponse{
-		Success:   true,
-		Timestamp: time.Now(),
-	}, nil
+	return &ChangePasswordResponse{Success: true, Timestamp: time.Now()}, nil
 }
