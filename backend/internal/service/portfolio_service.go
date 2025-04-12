@@ -70,9 +70,10 @@ func (s *portfolioService) CalculatePortfolioValue(ctx context.Context, userID s
 		return 0, err
 	}
 
+	mockAccountService := &MockAccountService{} // Use the mock for now
 	totalValue := 0.0
 	for _, pos := range positions {
-		currentPrice, err := s.accountService.GetCurrentPrice(ctx, pos.Symbol)
+		currentPrice, err := mockAccountService.GetCurrentPrice(ctx, pos.Symbol)
 		if err != nil {
 			s.logger.Error("Failed to get current price", zap.Error(err))
 			continue
