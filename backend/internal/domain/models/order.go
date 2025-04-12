@@ -6,7 +6,7 @@ import "time"
 
 // Order represents a trading order
 type Order struct {
-	ID        string      `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
+	ID        string      `gorm:"primaryKey" json:"id"`
 	OrderID   string      `gorm:"uniqueIndex;size:50" json:"order_id"` // Exchange-generated order ID
 	ClientID  string      `gorm:"index;size:50" json:"client_id"`      // Client-generated order ID
 	Symbol    string      `gorm:"index;not null;size:20" json:"symbol"`

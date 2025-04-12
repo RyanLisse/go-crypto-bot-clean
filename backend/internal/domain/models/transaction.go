@@ -6,23 +6,23 @@ import (
 
 // Transaction represents a financial transaction
 type Transaction struct {
-	ID          string    `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
-	Amount      float64   `gorm:"not null" json:"amount"`
-	Balance     float64   `gorm:"not null" json:"balance"`
-	Reason      string    `gorm:"not null;size:255" json:"reason"`
-	Timestamp   time.Time `gorm:"index;not null" json:"timestamp"`
-	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updated_at"`
-	
+	ID        string    `gorm:"primaryKey" json:"id"`
+	Amount    float64   `gorm:"not null" json:"amount"`
+	Balance   float64   `gorm:"not null" json:"balance"`
+	Reason    string    `gorm:"not null;size:255" json:"reason"`
+	Timestamp time.Time `gorm:"index;not null" json:"timestamp"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+
 	// Foreign key relationships
-	PositionID  string    `gorm:"index" json:"position_id,omitempty"`
-	OrderID     string    `gorm:"index" json:"order_id,omitempty"`
-	WalletID    string    `gorm:"index;not null" json:"wallet_id"`
+	PositionID string `gorm:"index" json:"position_id,omitempty"`
+	OrderID    string `gorm:"index" json:"order_id,omitempty"`
+	WalletID   string `gorm:"index;not null" json:"wallet_id"`
 }
 
 // BalanceSummary provides an overview of wallet activity
 type BalanceSummary struct {
-	ID               string    `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
+	ID               string    `gorm:"primaryKey" json:"id"`
 	CurrentBalance   float64   `gorm:"not null" json:"current_balance"`
 	Deposits         float64   `gorm:"not null" json:"deposits"`
 	Withdrawals      float64   `gorm:"not null" json:"withdrawals"`
@@ -32,14 +32,14 @@ type BalanceSummary struct {
 	GeneratedAt      time.Time `gorm:"not null" json:"generated_at"`
 	CreatedAt        time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt        time.Time `gorm:"autoUpdateTime" json:"updated_at"`
-	
+
 	// Foreign key relationship
-	WalletID         string    `gorm:"index;not null" json:"wallet_id"`
+	WalletID string `gorm:"index;not null" json:"wallet_id"`
 }
 
 // TransactionAnalysis provides analysis of transaction history
 type TransactionAnalysis struct {
-	ID          string    `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
+	ID          string    `gorm:"primaryKey" json:"id"`
 	StartTime   time.Time `gorm:"not null" json:"start_time"`
 	EndTime     time.Time `gorm:"not null" json:"end_time"`
 	TotalCount  int       `gorm:"not null" json:"total_count"`
@@ -50,7 +50,7 @@ type TransactionAnalysis struct {
 	SellVolume  float64   `gorm:"not null" json:"sell_volume"`
 	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updated_at"`
-	
+
 	// Foreign key relationship
-	WalletID    string    `gorm:"index;not null" json:"wallet_id"`
+	WalletID string `gorm:"index;not null" json:"wallet_id"`
 }

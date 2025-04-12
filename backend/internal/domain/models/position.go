@@ -4,7 +4,7 @@ import "time"
 
 // Position structure represents a trading position
 type Position struct {
-	ID               string            `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
+	ID               string            `gorm:"primaryKey" json:"id"`
 	Symbol           string            `gorm:"index;not null;size:20" json:"symbol"`
 	Side             OrderSide         `gorm:"type:varchar(4);not null" json:"side"` // BUY or SELL
 	Quantity         float64           `gorm:"not null" json:"quantity"`

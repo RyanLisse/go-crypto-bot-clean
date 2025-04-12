@@ -126,6 +126,7 @@ func RunMigrations(db *gorm.DB, logger *zap.Logger) error {
 		&models.Position{},
 		&models.Order{},
 		&models.Transaction{},
+		// Skip Trade model for now due to SQLite compatibility issues
 		// Add other models as needed:
 		// &models.PurchaseDecision{},
 		// &models.LogEvent{},
