@@ -1,0 +1,6 @@
+# Nixpacks configuration for Railway deployment
+NIXPACKS_PKGS="go_1_24 gcc sqlite git curl ca-certificates tzdata"
+NIXPACKS_GO_CGO_ENABLED=1
+NIXPACKS_GO_BUILD_FLAGS="-ldflags=\"-s -w\""
+NIXPACKS_GO_BUILD_COMMAND="cd backend && go build -o ../backend-api ."
+NIXPACKS_START_COMMAND="./backend-api"

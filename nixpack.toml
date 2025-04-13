@@ -1,0 +1,46 @@
+# Nixpack configuration for go-crypto-bot-clean
+
+[phases.setup]
+nixPkgs = ["go_1_24", "gcc", "sqlite", "git", "curl", "ca-certificates", "tzdata"]
+
+[phases.install]
+cmds = [
+  "cd backend",
+  "go mod download"
+]
+
+[phases.build]
+cmds = [
+  "cd backend",
+  "mkdir -p /app/data/logs /app/configs",
+  "cp -r configs/* /app/configs/ || echo 'No configs to copy'",
+  "CGO_ENABLED=1 go build -ldflags=\"-s -w\" -o ../backend-api ."
+]
+
+[start]
+cmd = "./backend-api"
+watchPatterns = ["./backend-api"]
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+# Environment variables
+[variables]
+PORT = "8080"
+ENVIRONMENT = "production"
+LOG_LEVEL = "info"
+CONFIG_PATH = "/app/configs"
+CONFIG_FILE = "config.yaml"
+DB_PATH = "/app/data/minimal.db"
+DATABASE_ENABLED = "true"
+AUTH_ENABLED = "false"
+
+# TursoDB Configuration
+TURSO_ENABLED = "true"
+TURSO_SYNC_ENABLED = "true"
+TURSO_SYNC_INTERVAL_SECONDS = "300"
+
+# MEXC Configuration
+MEXC_BASE_URL = "https://api.mexc.com/api/v3"
+MEXC_WEBSOCKET_URL = "wss://wbs.mexc.com/ws"
