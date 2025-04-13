@@ -72,6 +72,11 @@ This document outlines the requirements for an automated cryptocurrency trading 
     *   **Why:** Essential for understanding if the bot is running correctly and for basic operational control.
     *   **How:** A `StatusUsecase` interacts with status providers for different components (e.g., WebSocket connection, NewCoin watcher) and provides a consolidated status report, potentially via an API endpoint handled by `internal/adapter/delivery/http`.
 
+13. **Database (Turso/libSQL):**
+    *   **What:** Utilize Turso DB (libSQL) via the GORM SQLite driver for data persistence. Support for vector embeddings and similarity search using Turso's capabilities.
+    *   **Why:** Provides a serverless/edge-compatible SQLite experience with potential extensions like vector search for AI features.
+    *   **How:** Use `gorm.io/driver/sqlite` configured with the Turso connection string. Specific build flags may be needed to link against libSQL with vector support (`internal/adapter/persistence/gorm/db.go`). Vector indexing defined in schema (`internal/adapter/persistence/gorm/schema/embeddings.go`) and queried in the repository (`internal/adapter/persistence/gorm/repo/embeddings_repository.go`).
+
 **# User Experience**
 
 *   **User Personas:**
@@ -79,7 +84,7 @@ This document outlines the requirements for an automated cryptocurrency trading 
     *   *AI-Assisted Trader:* Interacts with the AI for market analysis, insights, and potentially trade idea generation. Values the confirmation flow for AI trades.
     *   *Operator/Developer:* Monitors system health, configures settings (API keys, risk parameters, strategy configs), reviews logs and audit trails. Needs robust status reporting and control.
 *   **Key User Flows:**
-    *   *Initial Setup:* Configure API keys, database connection, risk parameters, select/configure strategies (including AutoBuy settings).
+    *   *Initial Setup:* Configure API keys, database connection (Turso URL/token), risk parameters, select/configure strategies (including AutoBuy settings).
     *   *Monitoring:* View dashboard (portfolio value, P&L, open positions, system status), check logs, review trade history/analytics.
     *   *Strategy Execution (Automated):* Bot fetches data, strategy generates signal, risk checks pass, trade usecase executes order, position is updated, notifications sent.
     *   *New Coin AutoBuy:* Bot detects new tradable coin, AutoBuy service/listener triggers, validates criteria, checks risk, executes buy, creates position, sends notification.
@@ -140,7 +145,7 @@ This document outlines the requirements for an automated cryptocurrency trading 
     │   │   │       ├── repo/
     │   │   │       │   ├── order_repo.go
     │   │   │       │   └── ...
-    │   │   │       └── db.go        # GORM connection setup
+    │   │   │       └── db.go        # GORM connection setup (SQLite/Turso)
     │   │   ├── gateway/             # External service interactions
     │   │   │   ├── mexc/            # Adapter for MEXC platform code
     │   │   │   │   └── client.go    # Implements domain/port/MexcAPI
@@ -167,134 +172,125 @@ This document outlines the requirements for an automated cryptocurrency trading 
     │       └── ratelimiter.go
     ├── go.mod
     ├── go.sum
-    └── migrations/                # Database migration files
+    └── migrations/                # Database migration files (SQL for SQLite/libSQL)
         └── ...
     ```
 
 *   **Layering:** Follows Clean Architecture principles:
-    *   **Domain:** Core business entities (`model`) and interfaces (`port`) defining contracts for repositories and external gateways. Independent of frameworks.
-    *   **Usecase:** Application-specific business logic, orchestrating domain entities and ports. Handles feature implementation.
-    *   **Adapter:** Implements interfaces defined in the domain port layer.
-        *   *Delivery:* HTTP API (using `gin` or standard library) exposing use cases. CLI interface (optional).
-        *   *Persistence:* GORM implementation (`adapter/persistence/gorm`) interacting with a database (e.g., PostgreSQL, SQLite/Turso).
-        *   *Gateway:* Adapters for external services:
-            *   `adapter/gateway/mexc`: Implements `port.MexcAPI` using `platform/mexc` REST/WebSocket clients.
-            *   `adapter/gateway/ai`: Implements `port.AIService` and `port.EmbeddingsService` using specific providers (Gemini, OpenAI) located in `platform/ai`.
-            *   `adapter/gateway/notification`: Implements `port.NotificationService` using specific libs (e.g., Telegram bot API).
-        *   *Cache:* Memory or Redis implementation of caching interfaces.
-    *   **Platform:** Low-level, framework-agnostic code. Contains the MEXC REST/WebSocket clients, logger setup, database helpers (if any), configuration loading utilities.
-*   **System Components:** See Layering above. Key components include: MEXC clients, Database ORM (GORM), AI Client (Gemini), Strategy Implementations, Use Case Services, HTTP Router/Handlers, Repositories, Gateways.
-*   **Data Models:** Primarily defined in `internal/domain/model`. Database schemas defined in `internal/adapter/persistence/gorm/schema` (or similar). Potential DTOs (Data Transfer Objects) used in the delivery layer (`adapter/delivery/http`) to decouple API contracts from domain models.
-*   **APIs and Integrations:**
-    *   **Internal API:** RESTful API exposed by `adapter/delivery/http` for UI or external control.
-    *   **External APIs:**
-        *   MEXC REST API (Account, Market Data, Orders).
-        *   MEXC WebSocket API (Real-time Tickers, Account Updates, Order Book).
-        *   Gemini API (Generative Models, Embeddings).
-        *   (Potentially) OpenAI API (Embeddings fallback).
-        *   (Potentially) Notification provider APIs (Telegram, Slack, etc.).
-*   **Infrastructure Requirements:**
-    *   **Compute:** Server (VM, Container instance - e.g., Docker) capable of running the Go application 24/7.
-    *   **Database:** Relational database compatible with GORM (PostgreSQL recommended for production, SQLite/Turso potentially suitable depending on scale and vector search needs).
-    *   **Caching:** Optional (Redis recommended for scalability, in-memory possible for simpler setups).
-    *   **Networking:** Stable internet connection with low latency to MEXC servers. Firewall rules allowing outbound connections to MEXC/AI APIs and inbound connections to the bot's API/UI port.
+    *   **Domain:** Core business entities (`model`) and interfaces (`port`). Framework-agnostic.
+    *   **Usecase:** Application logic, orchestrating domain ports.
+    *   **Adapter:** Implements domain ports. Connects use cases to infrastructure.
+        *   *Delivery:* HTTP API (e.g., Gin).
+        *   *Persistence:* GORM implementation targeting SQLite/libSQL (`adapter/persistence/gorm`).
+        *   *Gateway:* Adapters for MEXC (`adapter/gateway/mexc`), AI (`adapter/gateway/ai`), Notifications.
+        *   *Cache:* In-memory or external cache implementation.
+    *   **Platform:** Low-level code: MEXC clients, logger setup, specific platform utilities.
+*   **System Components:** MEXC clients (REST/WS), GORM (ORM), Gemini Client, Go standard library, Gin (HTTP), Zerolog/Zap (Logging), Viper (Config).
+*   **Data Models:** Domain models in `internal/domain/model`. GORM schemas in `internal/adapter/persistence/gorm/schema`.
+*   **APIs and Integrations:** Internal REST API, External MEXC API (REST/WS), External Gemini API.
+*   **Database:** Turso DB (libSQL), accessed via GORM's SQLite driver. Requires attention to build flags if using libSQL extensions (like vector search).
+*   **Infrastructure Requirements:** Compute instance (Container/VM), Turso DB account/instance, Stable internet connectivity.
 
 **# Development Roadmap**
 
-*(Phased approach, focusing on logical dependencies, not timelines)*
+*(TDD & Vertical Slicing, Prioritized by Frontend Needs)*
 
-**Phase 1: Foundation & Core Connectivity**
+**Slice 0: Project Setup & Foundation**
+*   *Goal:* Setup structure, tooling, logging, config, basic Turso DB connection.
+*   *Tasks:* Create directories, implement config loading (`viper`/`godotenv`), logger setup (`zerolog`/`zap`), basic GORM setup for SQLite/Turso (`adapter/persistence/gorm/db.go`), basic `go.mod`.
+*   *TDD:* Test DB connection, config loading.
 
-*   **Scope:** Basic project structure setup (as defined above), configuration loading, logging implementation, MEXC REST client integration (`platform` & `adapter`), basic `AccountUsecase` (GetWallet/Balance via REST), basic `MarketDataUsecase` (GetTicker via REST), initial GORM setup and `WalletRepository` implementation, basic HTTP API endpoints for status and balance check.
-*   **Goal:** Establish connection to MEXC, fetch basic account and market data, prove core setup works. Provide basic visibility via API.
+**Slice 1: Display Account Balance**
+*   *Goal:* Frontend can show USDT balance.
+*   *Path:* API -> Handler -> Usecase -> Gateway(MexcAPI) -> Platform(MEXC REST).
+*   *TDD:* Acceptance test -> Handler -> Usecase -> Gateway tests (mocking platform REST client).
 
-**Phase 2: Manual Trading & Position Basics**
+**Slice 2: Display Market Ticker**
+*   *Goal:* Frontend shows price for one symbol.
+*   *Path:* API -> Handler -> Usecase -> Gateway(MexcAPI) -> Platform(MEXC REST).
+*   *TDD:* Similar flow to Slice 1.
 
-*   **Scope:** Implement `TradeUsecase` for placing manual Buy/Sell orders (market/limit) via API, `OrderRepository` implementation, `PositionUsecase` to create/track basic positions based on *filled* orders, update `PositionRepository`, enhance HTTP API for manual order placement and viewing open positions/order history.
-*   **Goal:** Enable manual control of trading through the bot's API, establish core position tracking.
+**Slice 3: Display Open Positions**
+*   *Goal:* Frontend endpoint for positions (initially empty).
+*   *Path:* API -> Handler -> Usecase -> Repository(Position) -> Persistence(GORM). Needs `PriceService` for P&L.
+*   *TDD:* Implement layers. Requires seeding test DB for later tests.
 
-**Phase 3: Core Automation Loop (Strategy & Risk)**
+**Slice 4: Manual Buy Order**
+*   *Goal:* User can place market buy via API. Positions appear.
+*   *Path:* API -> Handler -> Usecase(Trade) -> Usecase(Risk) -> Gateway(MexcAPI) -> Persistence(OrderRepo) -> Usecase(Position) -> Persistence(PositionRepo).
+*   *TDD:* Test each layer. Crucial integration point.
 
-*   **Scope:** MEXC WebSocket integration (`platform` & `adapter`) for real-time tickers, basic `Strategy` interface and `StrategyFactory`, implement one simple strategy (e.g., MA Crossover), `StrategyUsecase` to feed data and receive signals, integrate `TradeUsecase` to execute signals, implement basic `RiskUsecase` (position sizing % risk), integrate risk checks into `TradeUsecase`, implement basic SL/TP monitoring within `PositionUsecase` (triggering sells via `TradeUsecase`).
-*   **Goal:** Achieve the first end-to-end automated trading cycle based on a simple strategy with basic risk management.
+**Slice 5: Manual Sell/Close Position**
+*   *Goal:* User can close positions via API.
+*   *Path:* API -> Handler -> Usecase(Position) -> Usecase(Trade) -> Gateway(MexcAPI) -> Persistence(OrderRepo/PositionRepo).
+*   *TDD:* Test the close workflow.
 
-**Phase 4: New Coin Functionality**
+**Slice 6: System Status Endpoint**
+*   *Goal:* Frontend shows basic system health.
+*   *Path:* API -> Handler -> Usecase(Status) -> Checks components.
+*   *TDD:* Test layers.
 
-*   **Scope:** Implement `NewCoinUsecase` using `MexcAPI` (`GetNewCoins` / Calendar) and `NewCoinRepository`, **develop a reliable event-driven mechanism or service** to trigger buys precisely when coins become tradable, implement the `NewCoinStrategy` logic (or integrate into the autobuy service), ensure specific AutoBuy config (size, SL/TP) is used in `TradeUsecase` calls, implement `NotificationService` port and a basic adapter (e.g., console/log) to report autobuy attempts/successes/failures.
-*   **Goal:** Reliably detect and automatically purchase newly listed coins according to specified criteria and risk controls.
+**Slice 7: New Coin AutoBuy (Core Flow)**
+*   *Goal:* Detect and attempt to buy new tradable coins.
+*   *Path:* Usecase(NewCoin) -> **Event/Listener Service** -> Config -> Usecase(Account) -> Usecase(Risk) -> Usecase(Trade) -> Gateway(Notification).
+*   *TDD:* Focus on testing the event trigger and the autobuy service logic with mocked dependencies.
 
-**Phase 5: Advanced Risk & Strategy**
+**Slice 8: Basic AI Chat Response**
+*   *Goal:* User can chat via API.
+*   *Path:* API -> Handler -> Usecase(AI) -> Gateway(AIService) -> Platform(Gemini).
+*   *TDD:* Test layers, mocking Gemini API at the gateway level.
 
-*   **Scope:** Implement advanced risk controls (`internal/domain/risk/controls`) for drawdown, daily loss, exposure, integrate them fully into `RiskUsecase` and `TradeUsecase` checks, implement `BalanceHistoryRepository` and tracking, implement advanced strategy features (e.g., adaptive parameters, regime detection), enhance `PositionUsecase` with scaling logic.
-*   **Goal:** Improve trading robustness and adaptivity with sophisticated risk management and strategy features.
-
-**Phase 6: AI Integration**
-
-*   **Scope:** Implement `AIService` and `EmbeddingsService` ports, implement Gemini gateway adapter (`adapter/gateway/ai/gemini`), implement `AIUsecase`, integrate AI response generation, insight generation (requires Portfolio/Trade data access), function calling framework, implement AI Risk Guardrails and Confirmation Flow, integrate `ConversationMemoryRepository`, implement `SimilarityService` and integrate indexing/searching.
-*   **Goal:** Add AI capabilities for user assistance, analysis, and potentially controlled trade execution.
-
-**Phase 7: Analytics, UI & Polish**
-
-*   **Scope:** Implement `AnalyticsUsecase` and repository integrations, develop Backtesting capabilities, build out comprehensive HTTP API endpoints for all features, develop a user interface (if planned), enhance security (input/output validation), implement caching strategies (`adapter/cache`), add more notification channels, refine logging and monitoring.
-*   **Goal:** Provide performance insights, improve usability, and prepare for production deployment.
+**Subsequent Slices:** Display Trade History, Implement WS Tickers, Implement Strategies, AI Insights, AI Trade Confirmation, Analytics, Notifications, Backtesting, UI Polish.
 
 **# Logical Dependency Chain**
 
-1.  **Core Setup (Phase 1):** Config, Logging, DB Connection, Basic MEXC REST connection, Get Balance API. *Provides basic visibility and proves connectivity.*
-2.  **Manual Control (Phase 2):** Requires Phase 1. Adds Trade Execution API, Order/Position persistence and basic tracking API. *Allows user-driven trading via the bot.*
-3.  **Basic Automation (Phase 3):** Requires Phase 2. Adds WebSocket, Strategy Framework, Signal Execution, Basic Risk (Sizing, SL/TP). *First automated trades.*
-4.  **New Coin AutoBuy (Phase 4):** Requires Phase 3 (for execution/risk) + New Coin Detection logic. **Crucially needs the reliable trigger mechanism linking detection to execution.** *Adds a key specialized feature.*
-5.  **Advanced Capabilities (Phase 5):** Requires Phase 3. Builds upon basic automation with sophisticated risk controls and strategy logic. *Improves robustness.*
-6.  **AI Integration (Phase 6):** Requires Phase 1, 2, 3 (for context data, function execution). Can be developed somewhat in parallel but needs core data. *Adds intelligence layer.*
-7.  **User Facing & Polish (Phase 7):** Requires most previous phases. Focuses on analytics, usability, backtesting, and production readiness. *Makes the bot usable and evaluable.*
-
-*Getting to a visible front-end showing balance/status depends on completing Phase 1 APIs.*
-*Getting the first automated trade signal executed depends on completing Phase 3.*
-*Reliable Autobuy is dependent on getting the trigger mechanism in Phase 4 right.*
+1.  **Core Setup (Slice 0):** Foundation.
+2.  **Basic Read APIs (Slice 1, 2, 6):** Requires Slice 0. Provides basic visibility.
+3.  **Position Read API (Slice 3):** Requires Slice 0. Infrastructure for showing state.
+4.  **Manual Write APIs (Slice 4, 5):** Requires Slice 1, 3. Enables core trading actions.
+5.  **Basic Automation (Slice 7 - Autobuy Core):** Requires Slice 4, Risk Logic (can start basic). Links detection to action.
+6.  **AI Chat (Slice 8):** Requires Slice 0. Independent interaction path initially.
+7.  **Advanced Features:** Build upon previous slices (Advanced Risk/Strategy, AI Insights/Confirmations, Analytics).
 
 **# Risks and Mitigations**
 
 *   **Technical Risks:**
-    *   *MEXC API Changes/Rate Limits/Errors:* Adapter pattern isolates exchange logic; Implement robust error handling, retries, and adhere to rate limits using `pkg/ratelimiter`. Monitor API documentation. Use WebSockets where possible to reduce REST calls.
-    *   *WebSocket Stability:* Implement reliable auto-reconnect logic with exponential backoff (`platform/mexc/websocket`). Use ping/pong checks to detect dead connections quickly. Ensure state (subscriptions) is restored on reconnect.
-    *   *Data Consistency:* Use database transactions where appropriate (e.g., updating position and balance). Handle potential race conditions with locking (e.g., `sync.Mutex`). Design state management carefully.
-    *   *AI API Reliability/Cost:* Implement fallbacks (if using multiple providers), caching for repeatable requests (e.g., embeddings), monitor usage costs.
+    *   *MEXC API Changes/Rate Limits/Errors:* Mitigated by Adapter pattern, rate limiting (`pkg/ratelimiter`), robust error handling, monitoring docs.
+    *   *WebSocket Stability:* Mitigated by robust auto-reconnect logic, ping/pong checks in `platform/mexc/websocket`.
+    *   *Data Consistency:* Mitigated by careful state management, potential use of DB transactions.
+    *   *AI API Reliability/Cost:* Mitigated by fallbacks, caching, monitoring usage.
+    *   *Turso/libSQL Build/Vector Search:* May require specific CGO build flags for extensions. **Mitigation:** Test build process early. Abstract vector search in repository if possible.
 *   **Scope Risks:**
-    *   *Autobuy Complexity:* The link between detecting a tradable coin and executing the buy *reliably* and *quickly* is complex. **Mitigation:** Prioritize building the event/trigger mechanism robustly in Phase 4. Start with simpler criteria and potentially manual confirmation before full automation.
-    *   *MVP Definition:* Defining a truly minimal but valuable MVP. **Mitigation:** Focus Phase 1/2 on proving core connectivity and manual trading control via API, providing immediate value/utility. Defer complex strategies/AI initially.
+    *   *Autobuy Complexity:* Reliable, fast triggering is key. **Mitigation:** Prioritize robust event mechanism in Slice 7. Start simple.
+    *   *MVP Definition:* **Mitigation:** Focus Slices 1-5 on core connectivity, manual control, and position display for initial value.
 *   **Resource Constraints:**
-    *   *Development Time/Expertise:* Requires Go, API integration, potentially database tuning, AI prompting, and trading domain knowledge. **Mitigation:** Phased development allows focusing resources. Clear architecture helps onboarding. Prioritize core features over complex AI initially.
+    *   *Development Time/Expertise:* **Mitigation:** Phased TDD/Vertical Slicing allows focus. Clean Architecture aids collaboration.
 *   **Market & Financial Risks:**
-    *   *Bot Losing Money:* Strategies may underperform. Bugs can cause financial loss. **Mitigation:** Implement comprehensive Risk Management (Phase 3 & 5) as non-negotiable. Thorough backtesting (Phase 7). Start with paper trading or very small capital. Require user confirmations for significant actions initially.
-    *   *Security Risks:* API key leakage, malicious input via AI. **Mitigation:** Secure storage for API keys (env vars, secrets manager). Implement input/output sanitization and validation (`internal/domain/ai/service/security.go`). Use confirmation flows for AI-driven trades. Conduct security reviews.
+    *   *Bot Losing Money:* **Mitigation:** Non-negotiable Risk Management. Backtesting. Start small/paper trading. User confirmations.
+    *   *Security Risks:* **Mitigation:** Secure API key handling. Input/Output validation (`internal/domain/ai/service/security.go`). Confirmation flows.
 
 **# Appendix**
 
-Certainly! Here’s the completed Product Requirements Document (PRD) for the Go-based Crypto Trading Bot focused on MEXC integration, now including the appropriate links and placeholders for pending items:
+📘 **API & Service Documentation**
 
-⸻
+*   **MEXC API Documentation:**
+    *   Official Docs: [https://mexcdev.github.io/apidocs/spot_v3_en/](https://mexcdev.github.io/apidocs/spot_v3_en/)
+    *   Postman Collection: [https://github.com/mexcapi/MEXC-V3-Postman](https://github.com/mexcapi/MEXC-V3-Postman)
+*   **Gemini API Documentation:**
+    *   Google AI Go SDK: [https://pkg.go.dev/github.com/google/generative-ai-go/genai](https://pkg.go.dev/github.com/google/generative-ai-go/genai)
+    *   Gemini API Docs: [https://ai.google.dev/docs/gemini_api_overview](https://ai.google.dev/docs/gemini_api_overview)
+*   **Turso DB / libSQL Documentation:**
+    *   Turso Docs: [https://docs.turso.tech/](https://docs.turso.tech/)
+    *   libSQL Go Driver (`go-sqlite3` with extensions): Check Turso docs for specific build instructions if using vector search or other extensions. Standard `go-sqlite3`: [https://github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
+*   **GORM Documentation:**
+    *   GORM Docs: [https://gorm.io/docs/](https://gorm.io/docs/)
+    *   SQLite Driver: [https://gorm.io/docs/connecting_to_the_database.html#SQLite](https://gorm.io/docs/connecting_to_the_database.html#SQLite)
 
-Product Requirements Document: Go Crypto Trading Bot (MEXC Focused)
+🗂️ **Additional Resources**
 
-⸻
-
-📘 API Documentation
-	•	MEXC API Documentation: Comprehensive guides for MEXC’s Spot and Futures APIs, including SDKs in multiple languages and Postman collections.
-	•	MEXC API Documentation
-	•	MEXC Postman API Documentation
-	•	Gemini API Documentation: Detailed information on Gemini’s REST API, including public and private endpoints, sandbox environment, and SDKs.
-	•	Gemini REST API Reference
-	•	Gemini API on Google AI
-
-⸻
-
-🗂️ Additional Resources
-	•	Database Schema Diagrams: To be created.
-	•	Specific Algorithm Details for Core Strategies: To be added.
-	•	UI Mockups/Wireframes: If applicable, these will be developed to visualize the user interface and user experience.
-
-⸻
-
+*   Database Schema Diagrams: *(To be created)*
+*   Specific Algorithm Details for Core Strategies: *(To be added as strategies are implemented)*
+*   UI Mockups/Wireframes: *(If applicable)*
 
 `</PRD>`
 

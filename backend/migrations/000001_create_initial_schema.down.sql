@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS positions;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS balance_histories;
+DROP TABLE IF EXISTS balances;
+DROP TABLE IF EXISTS wallets;
+DROP TABLE IF EXISTS orderbook_entries;
+DROP TABLE IF EXISTS orderbooks;
+DROP TABLE IF EXISTS candles;
+DROP TABLE IF EXISTS tickers;
+DROP TABLE IF EXISTS symbols;

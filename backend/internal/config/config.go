@@ -24,13 +24,26 @@ type Config struct {
 	} `mapstructure:"server"`
 	Database struct {
 		Driver   string `mapstructure:"driver"`
+		Path     string `mapstructure:"path"`
 		Host     string `mapstructure:"host"`
 		Port     int    `mapstructure:"port"`
 		User     string `mapstructure:"user"`
 		Password string `mapstructure:"password"`
 		Name     string `mapstructure:"name"`
 		SSLMode  string `mapstructure:"ssl_mode"`
+		Turso    struct {
+			Enabled   bool   `mapstructure:"enabled"`
+			URL       string `mapstructure:"url"`
+			AuthToken string `mapstructure:"auth_token"`
+		} `mapstructure:"turso"`
 	} `mapstructure:"database"`
+	Market struct {
+		Cache struct {
+			TickerTTL    int `mapstructure:"ticker_ttl"`
+			CandleTTL    int `mapstructure:"candle_ttl"`
+			OrderbookTTL int `mapstructure:"orderbook_ttl"`
+		} `mapstructure:"cache"`
+	} `mapstructure:"market"`
 	MEXC struct {
 		APIKey     string `mapstructure:"api_key"`
 		APISecret  string `mapstructure:"api_secret"`
@@ -43,9 +56,16 @@ type Config struct {
 		} `mapstructure:"rate_limit"`
 	} `mapstructure:"mexc"`
 	AI struct {
-		Provider string `mapstructure:"provider"`
-		APIKey   string `mapstructure:"api_key"`
-		Model    string `mapstructure:"model"`
+		Provider     string  `mapstructure:"provider"`
+		APIKey       string  `mapstructure:"api_key"`
+		Model        string  `mapstructure:"model"`
+		GeminiAPIKey string  `mapstructure:"gemini_api_key"`
+		GeminiModel  string  `mapstructure:"gemini_model"`
+		SystemPrompt string  `mapstructure:"system_prompt"`
+		Temperature  float32 `mapstructure:"temperature"`
+		TopP         float32 `mapstructure:"top_p"`
+		TopK         int32   `mapstructure:"top_k"`
+		MaxTokens    int32   `mapstructure:"max_tokens"`
 	} `mapstructure:"ai"`
 }
 
@@ -104,11 +124,18 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("log_level", "info")
 
 	// Database defaults
-	v.SetDefault("database.driver", "postgres")
+	v.SetDefault("database.driver", "sqlite")
+	v.SetDefault("database.path", "./data/crypto_bot.db")
 	v.SetDefault("database.host", "localhost")
 	v.SetDefault("database.port", 5432)
 	v.SetDefault("database.name", "crypto_bot")
 	v.SetDefault("database.ssl_mode", "disable")
+	v.SetDefault("database.turso.enabled", false)
+
+	// Market defaults
+	v.SetDefault("market.cache.ticker_ttl", 300)   // 5 minutes in seconds
+	v.SetDefault("market.cache.candle_ttl", 900)   // 15 minutes in seconds
+	v.SetDefault("market.cache.orderbook_ttl", 30) // 30 seconds
 
 	// MEXC defaults
 	v.SetDefault("mexc.base_url", "https://api.mexc.com")
@@ -120,6 +147,12 @@ func setDefaults(v *viper.Viper) {
 	// AI defaults
 	v.SetDefault("ai.provider", "gemini")
 	v.SetDefault("ai.model", "gemini-pro")
+	v.SetDefault("ai.gemini_model", "gemini-1.5-flash")
+	v.SetDefault("ai.system_prompt", "You are a crypto trading assistant. You help users understand their portfolio, market trends, and provide trading advice. Keep responses concise and focused on crypto trading.")
+	v.SetDefault("ai.temperature", 0.7)
+	v.SetDefault("ai.top_p", 0.95)
+	v.SetDefault("ai.top_k", 40)
+	v.SetDefault("ai.max_tokens", 1024)
 }
 
 // validateConfig validates the configuration
