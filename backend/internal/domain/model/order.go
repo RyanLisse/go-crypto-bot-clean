@@ -13,6 +13,9 @@ type OrderType string
 // OrderStatus represents the status of an order
 type OrderStatus string
 
+// TimeInForce represents how long an order will remain active
+type TimeInForce string
+
 // Order side constants
 const (
 	OrderSideBuy  OrderSide = "BUY"
@@ -34,14 +37,23 @@ const (
 	OrderStatusRejected        OrderStatus = "REJECTED"
 )
 
+// TimeInForce constants
+const (
+	TimeInForceGTC TimeInForce = "GTC" // Good Till Cancel
+	TimeInForceIOC TimeInForce = "IOC" // Immediate Or Cancel
+	TimeInForceFOK TimeInForce = "FOK" // Fill Or Kill
+)
+
 // Order represents a trading order
 type Order struct {
 	ID            string      `json:"id"`
+	OrderID       string      `json:"order_id"` // Exchange-specific order ID
 	ClientOrderID string      `json:"clientOrderId"`
 	Symbol        string      `json:"symbol"`
 	Side          OrderSide   `json:"side"`
 	Type          OrderType   `json:"type"`
 	Status        OrderStatus `json:"status"`
+	TimeInForce   TimeInForce `json:"timeInForce,omitempty"`
 	Price         float64     `json:"price"`
 	Quantity      float64     `json:"quantity"`
 	ExecutedQty   float64     `json:"executedQty"`
