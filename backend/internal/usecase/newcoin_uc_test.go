@@ -1,4 +1,4 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
@@ -10,7 +10,8 @@ import (
 
 	"github.com/neo/crypto-bot/internal/domain/event"
 	"github.com/neo/crypto-bot/internal/domain/model" // Import port package
-	"github.com/neo/crypto-bot/internal/usecase"      // Import the package being tested
+	"github.com/neo/crypto-bot/internal/usecase"
+	// "github.com/neo/crypto-bot/internal/usecase"      // Import the package being tested
 	// Import mocks package - assuming it exists or will be created
 	// "github.com/neo/crypto-bot/internal/mocks"
 )
