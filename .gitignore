@@ -94,3 +94,12 @@ result-*
 .envrc
 .idx/
 *.nix~
+
+# Homebrew
+/opt/homebrew/
+/usr/local/Homebrew/
+/usr/local/Cellar/
+/usr/local/bin/brew
+/usr/local/opt/
+/usr/local/var/homebrew/
+.brew/

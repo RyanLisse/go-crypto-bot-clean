@@ -7,13 +7,16 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/neo/crypto-bot/internal/platform/mexc/apikeystore"
 	"github.com/neo/crypto-bot/pkg/ratelimiter"
+	"github.com/neo/crypto-bot/pkg/retry"
 )
 
 const (
@@ -28,16 +31,54 @@ const (
 
 	// Default values
 	DefaultTimeout = 10 * time.Second
+	DefaultKeyID   = "default"
+
+	// Error types
+	ErrInvalidResponse    = "invalid_response"
+	ErrRateLimit          = "rate_limit"
+	ErrAuth               = "authentication"
+	ErrNetwork            = "network"
+	ErrServer             = "server"
+	ErrInvalidRequest     = "invalid_request"
+	ErrInsufficientFunds  = "insufficient_funds"
+	ErrOrderNotFound      = "order_not_found"
+	ErrSymbolNotFound     = "symbol_not_found"
+	ErrInvalidOrderStatus = "invalid_order_status"
+	ErrUnknown            = "unknown"
 )
+
+// APIError represents an error from the MEXC API
+type APIError struct {
+	Code       int    `json:"code"`
+	Message    string `json:"msg"`
+	ErrorType  string
+	StatusCode int
+}
+
+func (e *APIError) Error() string {
+	return fmt.Sprintf("MEXC API error: %d - %s (type: %s, HTTP status: %d)",
+		e.Code, e.Message, e.ErrorType, e.StatusCode)
+}
+
+// IsRetryable determines if an API error is retryable
+func (e *APIError) IsRetryable() bool {
+	switch e.ErrorType {
+	case ErrRateLimit, ErrNetwork, ErrServer:
+		return true
+	default:
+		return false
+	}
+}
 
 // Client implements the MEXC REST API client
 type Client struct {
 	httpClient         *http.Client
 	baseURL            string
-	apiKey             string
-	secretKey          string
+	keyID              string
+	keyStore           apikeystore.KeyStore
 	publicRateLimiter  *ratelimiter.TokenBucket
 	privateRateLimiter *ratelimiter.TokenBucket
+	retryOptions       *retry.RetryOptions
 }
 
 // ClientOption defines a functional option for configuring the Client
@@ -57,18 +98,55 @@ func WithHTTPClient(httpClient *http.Client) ClientOption {
 	}
 }
 
-// NewClient creates a new MEXC REST client
+// WithKeyID sets the key ID to use from the key store
+func WithKeyID(keyID string) ClientOption {
+	return func(c *Client) {
+		c.keyID = keyID
+	}
+}
+
+// WithRetryOptions sets custom retry options
+func WithRetryOptions(opts *retry.RetryOptions) ClientOption {
+	return func(c *Client) {
+		c.retryOptions = opts
+	}
+}
+
+// NewClient creates a new MEXC REST client with direct API key
 func NewClient(apiKey, secretKey string, options ...ClientOption) *Client {
+	// Create a memory key store with the provided credentials
+	keyStore := apikeystore.NewMemoryKeyStore()
+	keyStore.SetAPIKey(DefaultKeyID, &apikeystore.APIKeyCredentials{
+		APIKey:    apiKey,
+		SecretKey: secretKey,
+	})
+
+	return NewClientWithKeyStore(keyStore, DefaultKeyID, options...)
+}
+
+// NewClientWithKeyStore creates a new client with the provided key store
+func NewClientWithKeyStore(keyStore apikeystore.KeyStore, keyID string, options ...ClientOption) *Client {
 	client := &Client{
 		httpClient: &http.Client{
 			Timeout: DefaultTimeout,
 		},
-		baseURL:   SpotBaseURL,
-		apiKey:    apiKey,
-		secretKey: secretKey,
+		baseURL:  SpotBaseURL,
+		keyID:    keyID,
+		keyStore: keyStore,
 		// Initialize rate limiters (tokens per second)
 		publicRateLimiter:  ratelimiter.NewTokenBucket(SpotPublicRequestsPerMinute/60.0, 50),
 		privateRateLimiter: ratelimiter.NewTokenBucket(SpotPrivateRequestsPerMinute/60.0, 25),
+		// Use default retry options
+		retryOptions: retry.DefaultRetryOptions(),
+	}
+
+	// Override retry options to handle API errors
+	client.retryOptions.RetryIf = func(err error) bool {
+		var apiErr *APIError
+		if errors.As(err, &apiErr) {
+			return apiErr.IsRetryable()
+		}
+		return retry.IsRetryable(err)
 	}
 
 	// Apply options
@@ -79,8 +157,40 @@ func NewClient(apiKey, secretKey string, options ...ClientOption) *Client {
 	return client
 }
 
-// callPublicAPI makes a request to a public API endpoint
+// getCredentials retrieves API credentials from the key store
+func (c *Client) getCredentials() (*apikeystore.APIKeyCredentials, error) {
+	creds, err := c.keyStore.GetAPIKey(c.keyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API credentials: %w", err)
+	}
+	return creds, nil
+}
+
+// callPublicAPI makes a request to a public API endpoint with retries
 func (c *Client) callPublicAPI(ctx context.Context, method, path string, params map[string]string) ([]byte, error) {
+	var result []byte
+	err := retry.Do(ctx, func() error {
+		respBody, err := c.doPublicAPICall(ctx, method, path, params)
+		if err != nil {
+			// Determine if error is retryable
+			var apiErr *APIError
+			if errors.As(err, &apiErr) && apiErr.IsRetryable() {
+				return retry.NewRetryableError(err)
+			}
+			return err
+		}
+		result = respBody
+		return nil
+	}, c.retryOptions)
+
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// doPublicAPICall makes a single request to a public API endpoint
+func (c *Client) doPublicAPICall(ctx context.Context, method, path string, params map[string]string) ([]byte, error) {
 	// Apply rate limiting
 	c.publicRateLimiter.Wait()
 
@@ -103,28 +213,70 @@ func (c *Client) callPublicAPI(ctx context.Context, method, path string, params 
 	// Execute request
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
+		return nil, &APIError{
+			Message:    fmt.Sprintf("failed to execute request: %v", err),
+			ErrorType:  ErrNetwork,
+			StatusCode: 0,
+		}
 	}
 	defer resp.Body.Close()
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, &APIError{
+			Message:    fmt.Sprintf("failed to read response body: %v", err),
+			ErrorType:  ErrNetwork,
+			StatusCode: resp.StatusCode,
+		}
 	}
 
 	// Check for error response
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API error: %s, status code: %d", string(body), resp.StatusCode)
+		apiErr := parseAPIError(body, resp.StatusCode)
+		return nil, apiErr
 	}
 
 	return body, nil
 }
 
-// callPrivateAPI makes a request to a private API endpoint requiring authentication
+// callPrivateAPI makes a request to a private API endpoint requiring authentication with retries
 func (c *Client) callPrivateAPI(ctx context.Context, method, path string, params map[string]string, body interface{}) ([]byte, error) {
+	var result []byte
+	err := retry.Do(ctx, func() error {
+		respBody, err := c.doPrivateAPICall(ctx, method, path, params, body)
+		if err != nil {
+			// Determine if error is retryable
+			var apiErr *APIError
+			if errors.As(err, &apiErr) && apiErr.IsRetryable() {
+				return retry.NewRetryableError(err)
+			}
+			return err
+		}
+		result = respBody
+		return nil
+	}, c.retryOptions)
+
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// doPrivateAPICall makes a single request to a private API endpoint requiring authentication
+func (c *Client) doPrivateAPICall(ctx context.Context, method, path string, params map[string]string, body interface{}) ([]byte, error) {
 	// Apply rate limiting
 	c.privateRateLimiter.Wait()
+
+	// Get API credentials
+	creds, err := c.getCredentials()
+	if err != nil {
+		return nil, &APIError{
+			Message:    fmt.Sprintf("failed to get API credentials: %v", err),
+			ErrorType:  ErrAuth,
+			StatusCode: 0,
+		}
+	}
 
 	// Add timestamp parameter for signature
 	if params == nil {
@@ -139,18 +291,25 @@ func (c *Client) callPrivateAPI(ctx context.Context, method, path string, params
 
 	// Handle request body for POST/PUT methods
 	var jsonBody []byte
-	var err error
 	if body != nil && (method == http.MethodPost || method == http.MethodPut) {
 		jsonBody, err = json.Marshal(body)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request body: %w", err)
+			return nil, &APIError{
+				Message:    fmt.Sprintf("failed to marshal request body: %v", err),
+				ErrorType:  ErrInvalidRequest,
+				StatusCode: 0,
+			}
 		}
 		reqBody = bytes.NewReader(jsonBody)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, &APIError{
+			Message:    fmt.Sprintf("failed to create request: %v", err),
+			ErrorType:  ErrInvalidRequest,
+			StatusCode: 0,
+		}
 	}
 
 	// Add query parameters and calculate signature
@@ -164,7 +323,7 @@ func (c *Client) callPrivateAPI(ctx context.Context, method, path string, params
 	queryString = q.Encode()
 
 	// Calculate HMAC SHA256 signature
-	h := hmac.New(sha256.New, []byte(c.secretKey))
+	h := hmac.New(sha256.New, []byte(creds.SecretKey))
 	h.Write([]byte(queryString))
 	signature := hex.EncodeToString(h.Sum(nil))
 
@@ -173,7 +332,7 @@ func (c *Client) callPrivateAPI(ctx context.Context, method, path string, params
 	req.URL.RawQuery = q.Encode()
 
 	// Set headers
-	req.Header.Set("X-MBX-APIKEY", c.apiKey)
+	req.Header.Set("X-MBX-APIKEY", creds.APIKey)
 	if reqBody != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -181,20 +340,78 @@ func (c *Client) callPrivateAPI(ctx context.Context, method, path string, params
 	// Execute request
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
+		return nil, &APIError{
+			Message:    fmt.Sprintf("failed to execute request: %v", err),
+			ErrorType:  ErrNetwork,
+			StatusCode: 0,
+		}
 	}
 	defer resp.Body.Close()
 
 	// Read response body
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, &APIError{
+			Message:    fmt.Sprintf("failed to read response body: %v", err),
+			ErrorType:  ErrNetwork,
+			StatusCode: resp.StatusCode,
+		}
 	}
 
 	// Check for error response
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API error: %s, status code: %d", string(respBody), resp.StatusCode)
+		apiErr := parseAPIError(respBody, resp.StatusCode)
+		return nil, apiErr
 	}
 
 	return respBody, nil
+}
+
+// parseAPIError parses an API error response
+func parseAPIError(body []byte, statusCode int) *APIError {
+	var errResp struct {
+		Code    int    `json:"code"`
+		Message string `json:"msg"`
+	}
+
+	if err := json.Unmarshal(body, &errResp); err != nil {
+		// Couldn't parse the error response
+		return &APIError{
+			Message:    fmt.Sprintf("HTTP error %d: %s", statusCode, string(body)),
+			ErrorType:  ErrUnknown,
+			StatusCode: statusCode,
+		}
+	}
+
+	// Determine error type based on code and status
+	errorType := ErrUnknown
+	switch {
+	case statusCode == 429:
+		errorType = ErrRateLimit
+	case statusCode == 401 || statusCode == 403:
+		errorType = ErrAuth
+	case statusCode >= 500:
+		errorType = ErrServer
+	case statusCode >= 400 && statusCode < 500:
+		// Map common error codes
+		switch errResp.Code {
+		case -1121, -1122:
+			errorType = ErrInvalidRequest
+		case -2010, -2011:
+			errorType = ErrInsufficientFunds
+		case -2013:
+			errorType = ErrOrderNotFound
+		case -1100, -1101, -1102, -1103:
+			errorType = ErrInvalidRequest
+		case -1104, -1105, -1106:
+			errorType = ErrInvalidRequest
+		}
+	}
+
+	return &APIError{
+		Code:       errResp.Code,
+		Message:    errResp.Message,
+		ErrorType:  errorType,
+		StatusCode: statusCode,
+	}
 }
