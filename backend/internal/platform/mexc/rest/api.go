@@ -71,19 +71,19 @@ type (
 
 	// OrderResponse represents the response for placing an order
 	OrderResponse struct {
-		Symbol              string `json:"symbol"`
-		OrderID             int64  `json:"orderId"`
-		OrderListID         int64  `json:"orderListId"`
-		ClientOrderID       string `json:"clientOrderId"`
-		TransactTime        int64  `json:"transactTime"`
-		Price               string `json:"price"`
-		OrigQty             string `json:"origQty"`
-		ExecutedQty         string `json:"executedQty"`
-		CummulativeQuoteQty string `json:"cummulativeQuoteQty"`
-		Status              string `json:"status"`
-		TimeInForce         string `json:"timeInForce"`
-		Type                string `json:"type"`
-		Side                string `json:"side"`
+		Symbol              string      `json:"symbol"`
+		OrderID             interface{} `json:"orderId"`     // Can be either string or int64
+		OrderListID         interface{} `json:"orderListId"` // Can be either string or int64
+		ClientOrderID       string      `json:"clientOrderId"`
+		TransactTime        int64       `json:"transactTime"`
+		Price               string      `json:"price"`
+		OrigQty             string      `json:"origQty"`
+		ExecutedQty         string      `json:"executedQty"`
+		CummulativeQuoteQty string      `json:"cummulativeQuoteQty"`
+		Status              string      `json:"status"`
+		TimeInForce         string      `json:"timeInForce"`
+		Type                string      `json:"type"`
+		Side                string      `json:"side"`
 		Fills               []struct {
 			Price           string `json:"price"`
 			Qty             string `json:"qty"`
@@ -477,28 +477,35 @@ func (c *Client) generateSignature(params url.Values) string {
 
 // PlaceOrder places a new order on the exchange
 func (c *Client) PlaceOrder(ctx context.Context, symbol string, side model.OrderSide, orderType model.OrderType, quantity float64, price float64, timeInForce model.TimeInForce) (*model.Order, error) {
-	endpoint := "/api/v3/order"
+	// Create parameters map
+	params := map[string]string{
+		"symbol": symbol,
+		"side":   string(side),
+		"type":   string(orderType),
+	}
 
-	params := url.Values{}
-	params.Add("symbol", symbol)
-	params.Add("side", string(side))
-	params.Add("type", string(orderType))
-	params.Add("quantity", strconv.FormatFloat(quantity, 'f', -1, 64))
+	// Convert quantity to string with appropriate precision
+	quantityStr := strconv.FormatFloat(quantity, 'f', -1, 64)
+	params["quantity"] = quantityStr
 
+	// Add price for limit orders
 	if orderType == model.OrderTypeLimit {
-		params.Add("price", strconv.FormatFloat(price, 'f', -1, 64))
-		params.Add("timeInForce", string(timeInForce))
+		priceStr := strconv.FormatFloat(price, 'f', -1, 64)
+		params["price"] = priceStr
+		params["timeInForce"] = string(timeInForce)
 	}
 
-	params.Add("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
-	params.Add("recvWindow", "5000")
+	// Generate client order ID
+	clientOrderID := fmt.Sprintf("go_bot_%d", time.Now().UnixNano())
+	params["newClientOrderId"] = clientOrderID
 
-	resp, err := c.sendSignedRequest(ctx, "POST", endpoint, params)
+	// Send request
+	resp, err := c.callPrivateAPI(ctx, http.MethodPost, "/order", params, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to place order: %w", err)
 	}
-	defer resp.Body.Close()
 
+	// Parse response
 	var response struct {
 		Symbol        string `json:"symbol"`
 		OrderID       string `json:"orderId"`
@@ -513,14 +520,27 @@ func (c *Client) PlaceOrder(ctx context.Context, symbol string, side model.Order
 		Side          string `json:"side"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, err
+	if err := json.Unmarshal(resp, &response); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal order response: %w", err)
 	}
 
-	priceVal, _ := strconv.ParseFloat(response.Price, 64)
-	quantityVal, _ := strconv.ParseFloat(response.OrigQty, 64)
-	executedQtyVal, _ := strconv.ParseFloat(response.ExecutedQty, 64)
+	// Parse price and quantities
+	parsedPrice, err := strconv.ParseFloat(response.Price, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid price in response: %w", err)
+	}
 
+	parsedQty, err := strconv.ParseFloat(response.OrigQty, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid quantity in response: %w", err)
+	}
+
+	executedQty, err := strconv.ParseFloat(response.ExecutedQty, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid executed quantity in response: %w", err)
+	}
+
+	// Create and return order
 	order := &model.Order{
 		OrderID:       response.OrderID,
 		ClientOrderID: response.ClientOrderID,
@@ -528,12 +548,11 @@ func (c *Client) PlaceOrder(ctx context.Context, symbol string, side model.Order
 		Side:          model.OrderSide(response.Side),
 		Type:          model.OrderType(response.Type),
 		Status:        model.OrderStatus(response.Status),
-		TimeInForce:   model.TimeInForce(response.TimeInForce),
-		Price:         priceVal,
-		Quantity:      quantityVal,
-		ExecutedQty:   executedQtyVal,
+		Price:         parsedPrice,
+		Quantity:      parsedQty,
+		ExecutedQty:   executedQty,
 		CreatedAt:     time.Unix(0, response.TransactTime*int64(time.Millisecond)),
-		UpdatedAt:     time.Unix(0, response.TransactTime*int64(time.Millisecond)),
+		UpdatedAt:     time.Now(),
 	}
 
 	return order, nil
@@ -541,39 +560,46 @@ func (c *Client) PlaceOrder(ctx context.Context, symbol string, side model.Order
 
 // CancelOrder cancels an existing order
 func (c *Client) CancelOrder(ctx context.Context, symbol string, orderID string) error {
-	endpoint := "/api/v3/order"
+	endpoint := "/order"
 
-	params := url.Values{}
-	params.Add("symbol", symbol)
-	params.Add("orderId", orderID)
-	params.Add("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
-	params.Add("recvWindow", "5000")
+	params := make(map[string]string)
+	params["symbol"] = symbol
+	params["orderId"] = orderID
 
-	resp, err := c.sendSignedRequest(ctx, "DELETE", endpoint, params)
+	resp, err := c.callPrivateAPI(ctx, http.MethodDelete, endpoint, params, nil)
 	if err != nil {
 		return fmt.Errorf("failed to cancel order: %w", err)
 	}
-	defer resp.Body.Close()
+
+	// We don't need to parse the response, just check for errors
+	_ = resp
 
 	return nil
 }
 
-// GetOrderStatus retrieves the status of an order from the exchange
-func (c *Client) GetOrderStatus(ctx context.Context, symbol, orderID string) (*model.Order, error) {
-	endpoint := "/api/v3/order"
-
-	params := url.Values{}
-	params.Add("symbol", symbol)
-	params.Add("orderId", orderID)
-	params.Add("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
-	params.Add("recvWindow", "5000")
-
-	resp, err := c.sendSignedRequest(ctx, "GET", endpoint, params)
-	if err != nil {
-		return nil, err
+// GetOrderStatus checks the status of an order
+func (c *Client) GetOrderStatus(ctx context.Context, symbol string, orderID string) (*model.Order, error) {
+	// Create parameters
+	params := map[string]string{
+		"symbol": symbol,
 	}
-	defer resp.Body.Close()
 
+	// Determine if orderID is numeric or a client order ID
+	if _, err := strconv.ParseInt(orderID, 10, 64); err == nil {
+		// OrderID is numeric
+		params["orderId"] = orderID
+	} else {
+		// OrderID is likely a client order ID
+		params["origClientOrderId"] = orderID
+	}
+
+	// Send request
+	resp, err := c.callPrivateAPI(ctx, http.MethodGet, "/order", params, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get order status: %w", err)
+	}
+
+	// Parse response
 	var response struct {
 		Symbol        string `json:"symbol"`
 		OrderID       string `json:"orderId"`
@@ -589,14 +615,27 @@ func (c *Client) GetOrderStatus(ctx context.Context, symbol, orderID string) (*m
 		UpdateTime    int64  `json:"updateTime"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, fmt.Errorf("failed to decode order response: %w", err)
+	if err := json.Unmarshal(resp, &response); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal order response: %w", err)
 	}
 
-	priceVal, _ := strconv.ParseFloat(response.Price, 64)
-	quantityVal, _ := strconv.ParseFloat(response.OrigQty, 64)
-	executedQtyVal, _ := strconv.ParseFloat(response.ExecutedQty, 64)
+	// Parse price and quantities
+	parsedPrice, err := strconv.ParseFloat(response.Price, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid price in response: %w", err)
+	}
 
+	parsedQty, err := strconv.ParseFloat(response.OrigQty, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid quantity in response: %w", err)
+	}
+
+	executedQty, err := strconv.ParseFloat(response.ExecutedQty, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid executed quantity in response: %w", err)
+	}
+
+	// Create and return order
 	order := &model.Order{
 		OrderID:       response.OrderID,
 		ClientOrderID: response.ClientOrderID,
@@ -604,10 +643,9 @@ func (c *Client) GetOrderStatus(ctx context.Context, symbol, orderID string) (*m
 		Side:          model.OrderSide(response.Side),
 		Type:          model.OrderType(response.Type),
 		Status:        model.OrderStatus(response.Status),
-		TimeInForce:   model.TimeInForce(response.TimeInForce),
-		Price:         priceVal,
-		Quantity:      quantityVal,
-		ExecutedQty:   executedQtyVal,
+		Price:         parsedPrice,
+		Quantity:      parsedQty,
+		ExecutedQty:   executedQty,
 		CreatedAt:     time.Unix(0, response.Time*int64(time.Millisecond)),
 		UpdatedAt:     time.Unix(0, response.UpdateTime*int64(time.Millisecond)),
 	}

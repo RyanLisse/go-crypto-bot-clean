@@ -21,7 +21,7 @@ type MexcAPI interface {
 	GetOrderBook(ctx context.Context, symbol string, limit int) (*model.OrderBook, error)
 
 	// PlaceOrder places a new order on the exchange
-	PlaceOrder(ctx context.Context, order *model.Order) (*model.Order, error)
+	PlaceOrder(ctx context.Context, symbol string, side model.OrderSide, orderType model.OrderType, quantity float64, price float64, timeInForce model.TimeInForce) (*model.Order, error)
 
 	// CancelOrder cancels an existing order
 	CancelOrder(ctx context.Context, symbol string, orderID string) error

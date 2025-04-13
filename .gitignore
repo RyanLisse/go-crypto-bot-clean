@@ -75,4 +75,22 @@ dev-debug.log
 # OS specific
 # Task files
 tasks.json
-tasks/ 
+tasks/
+
+# Nix specific
+.nix-defexpr/
+.nix-profile
+.nix-channels
+.nix-shells/
+.nix/
+.nixpkgs/
+.config/nixpkgs/
+.local/state/nix/
+.local/state/nix/profiles/
+result
+result-*
+/nix/
+.direnv/
+.envrc
+.idx/
+*.nix~
