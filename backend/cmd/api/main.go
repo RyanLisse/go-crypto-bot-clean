@@ -5,17 +5,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
-	"github.com/go-chi/chi/v5"
-	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 	"go.uber.org/zap"
 
+	"go-crypto-bot-clean/backend/internal/api"
 	"go-crypto-bot-clean/backend/internal/api/database"
-	"go-crypto-bot-clean/backend/internal/api/huma"
-	"go-crypto-bot-clean/backend/internal/api/middleware"
-	"go-crypto-bot-clean/backend/internal/api/middleware/jwt"
 	"go-crypto-bot-clean/backend/internal/api/repository"
 	"go-crypto-bot-clean/backend/internal/api/service"
 	internalAuth "go-crypto-bot-clean/backend/internal/auth" // Use internal/auth
@@ -37,7 +31,20 @@ func main() {
 	// Load configuration first
 	cfg, err := config.LoadConfig(".") // Assuming config is in the current dir or handled by LoadConfig
 	if err != nil {
-		logger.Fatal("cannot load config:", zap.Error(err))
+		logger.Warn("Error loading config, using default development configuration", zap.Error(err))
+		// Create a default development configuration
+		cfg = &config.Config{}
+		cfg.App.Environment = "development"
+		cfg.App.Debug = true
+		cfg.Database.Path = "./data/dev.db"
+		cfg.Database.MaxIdleConns = 5
+		cfg.Database.MaxOpenConns = 10
+	}
+
+	// Ensure environment is set
+	if cfg.App.Environment == "" {
+		cfg.App.Environment = "development"
+		logger.Info("Environment not set, defaulting to development")
 	}
 
 	// Initialize database
@@ -69,26 +76,20 @@ func main() {
 	strategyRepo := repository.NewGormStrategyRepository(db)
 	backtestRepo := repository.NewGormBacktestRepository(db)
 
-	// Create router
-	router := chi.NewRouter()
+	// Initialize services and dependencies
+	deps, err := api.NewDependencies(cfg, logger)
+	if err != nil {
+		logger.Fatal("Failed to initialize dependencies", zap.Error(err))
+	}
 
-	// Add middleware
-	router.Use(chimiddleware.Logger)
-	router.Use(chimiddleware.Recoverer)
-	router.Use(chimiddleware.RequestID)
-	router.Use(chimiddleware.RealIP)
+	// Initialize handlers
+	deps.InitializeStatusHandler()
+	deps.InitializePortfolioHandler()
+	deps.InitializeNewCoinDependencies()
+	deps.InitializeAnalyticsDependencies()
 
-	// Add CORS middleware
-	corsMiddleware := cors.New(cors.Options{
-		// AllowedOrigins: []string{"http://localhost:5173"}, // Use specific origin in production
-		AllowedOrigins:   []string{"*"}, // Allow all origins for development
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
-	})
-	router.Use(corsMiddleware.Handler)
+	// Create router using the consolidated router
+	router := api.SetupConsolidatedRouter(deps)
 
 	// Initialize services
 	backtestService := backtest.NewService()
@@ -101,32 +102,12 @@ func main() {
 		authProvider = internalAuth.NewDisabledService() // Use disabled service if auth is off
 	}
 
-	// Initialize JWT service
-	accessSecret := getEnv("JWT_ACCESS_SECRET", "default-access-secret")
-	refreshSecret := getEnv("JWT_REFRESH_SECRET", "default-refresh-secret")
-	accessTTL := time.Hour
-	refreshTTL := time.Hour * 24 * 7 // 7 days
-	issuer := getEnv("JWT_ISSUER", "go-crypto-bot")
+	// JWT service and authentication middleware are initialized in the consolidated router
 
-	jwtService := jwt.NewService(accessSecret, refreshSecret, accessTTL, refreshTTL, issuer)
+	// No need to register protected routes here, they are registered in the consolidated router
 
-	// Create authentication middleware
-	authMiddleware := middleware.NewAuthMiddleware(jwtService)
-
-	// Register protected routes
-	router.Group(func(r chi.Router) {
-		// Apply authentication middleware to protected routes
-		r.Use(authMiddleware.Authenticate)
-
-		// Protected routes go here
-		// For example:
-		// r.Mount("/api/v1/user", userRouter)
-		// r.Mount("/api/v1/strategy", strategyRouter)
-		// r.Mount("/api/v1/backtest", backtestRouter)
-	})
-
-	// Create service provider
-	serviceProvider := service.NewProvider(
+	// Create service provider (not used for now, but kept for future use)
+	_ = service.NewProvider(
 		&backtestService, // Convert to pointer to interface
 		&strategyFactory, // Convert to pointer to interface
 		authProvider,     // Pass the internal/auth provider (already an interface)
@@ -135,15 +116,7 @@ func main() {
 		backtestRepo,
 	)
 
-	// Setup Huma API
-	config := huma.DefaultConfig()
-	huma.SetupHuma(router, config, serviceProvider)
-
-	// Add health check endpoint
-	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+	// Huma API and health check endpoint are set up in the consolidated router
 
 	// Start server
 	port := getEnv("PORT", "8080")

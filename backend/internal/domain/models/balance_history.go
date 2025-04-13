@@ -24,3 +24,9 @@ type BalanceHistory struct {
 func (BalanceHistory) TableName() string {
 	return "balance_history"
 }
+
+// BalanceHistoryEntry represents a simplified balance history entry for API responses
+type BalanceHistoryEntry struct {
+	Date    time.Time `json:"date"`
+	Balance float64   `json:"balance"`
+}

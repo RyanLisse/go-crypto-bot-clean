@@ -397,6 +397,17 @@ func (h *NewCoinsHandler) GetUpcomingCoins(w http.ResponseWriter, r *http.Reques
 func (h *NewCoinsHandler) GetUpcomingCoinsForTodayAndTomorrow(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// Check if service is nil (might happen in development mode)
+	if h.NewCoinService == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
+			Code:    "service_unavailable",
+			Message: "New coin service is not available",
+			Details: "Service not initialized",
+		})
+		return
+	}
+
 	coins, err := h.NewCoinService.GetUpcomingCoinsForTodayAndTomorrow(ctx)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -444,6 +455,17 @@ func (h *NewCoinsHandler) GetUpcomingCoinsForTodayAndTomorrow(w http.ResponseWri
 // @Router /api/v1/newcoins/upcoming/by-date [post]
 func (h *NewCoinsHandler) GetUpcomingCoinsByDate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	// Check if service is nil (might happen in development mode)
+	if h.NewCoinService == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response.ErrorResponse{
+			Code:    "service_unavailable",
+			Message: "New coin service is not available",
+			Details: "Service not initialized",
+		})
+		return
+	}
 
 	var req request.DateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

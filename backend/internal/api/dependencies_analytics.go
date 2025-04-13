@@ -2,39 +2,46 @@ package api
 
 import (
 	"context"
-	"log"
 	"math/rand"
 	"time"
 
 	"go-crypto-bot-clean/backend/internal/api/handlers"
 	"go-crypto-bot-clean/backend/internal/domain/models"
 	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
+
 	"go.uber.org/zap"
 )
 
 // InitializeAnalyticsDependencies initializes the Analytics dependencies
 func (d *Dependencies) InitializeAnalyticsDependencies() {
-	// Create logger
-	logger, err := zap.NewProduction()
-	if err != nil {
-		log.Printf("Failed to create logger: %v", err)
-		// Fall back to mock service
-		d.AnalyticsHandler = handlers.NewAnalyticsHandler(&mockAnalyticsService{}, nil)
+	// Use the logger from the dependencies
+	logger := d.logger
+
+	// Check if we're in development mode
+	if d.Config.App.Environment == "development" {
+		logger.Info("Using mock Analytics service for development mode")
+		// Use our MockAnalyticsService
+		mockService := &MockAnalyticsService{}
+		d.AnalyticsService = mockService
+		d.AnalyticsHandler = handlers.NewAnalyticsHandler(mockService, logger)
 		return
 	}
 
 	// Create MEXC client for real data
-	mexcClient, err := rest.NewClient(d.Config.Mexc.APIKey, d.Config.Mexc.SecretKey, rest.WithLogger(logger))
+	mexcClient, err := rest.NewClient(d.Config.Mexc.APIKey, d.Config.Mexc.SecretKey)
 	if err != nil {
 		logger.Error("Failed to create MEXC client, falling back to mock service", zap.Error(err))
 		// Fall back to mock service
-		d.AnalyticsHandler = handlers.NewAnalyticsHandler(&mockAnalyticsService{}, logger)
+		mockService := &mockAnalyticsService{}
+		d.AnalyticsService = mockService
+		d.AnalyticsHandler = handlers.NewAnalyticsHandler(mockService, logger)
 		return
 	}
 
 	// Create real analytics service adapter
 	mockService := &mockAnalyticsService{}
 	analyticsAdapter := NewRealAnalyticsServiceAdapter(mockService, mexcClient, logger)
+	d.AnalyticsService = analyticsAdapter
 	d.AnalyticsHandler = handlers.NewAnalyticsHandler(analyticsAdapter, logger)
 }
 

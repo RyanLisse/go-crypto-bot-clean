@@ -137,10 +137,10 @@ func NewClient(apiKey, secretKey string, options ...ClientOption) (*Client, erro
 		},
 		publicRateLimiter:  ratelimiter.NewTokenBucketRateLimiter(float64(requestsPerSecond), float64(requestsPerSecond)),
 		privateRateLimiter: ratelimiter.NewTokenBucketRateLimiter(float64(requestsPerSecond/2), float64(requestsPerSecond/2)),
-		tickerCache:        cache.NewTickerCache(),
-		orderBookCache:     cache.NewOrderBookCache(),
-		klineCache:         cache.NewKlineCache(),
-		newCoinCache:       cache.NewNewCoinCache(),
+		tickerCache:        cache.NewTickerCache(5 * time.Minute),    // Pass default TTL
+		orderBookCache:     cache.NewOrderBookCache(5 * time.Minute), // Pass default TTL
+		klineCache:         cache.NewKlineCache(5 * time.Minute),     // Pass default TTL
+		newCoinCache:       cache.NewNewCoinCache(5 * time.Minute),   // Pass default TTL
 		logger:             logger,
 	}
 
@@ -153,7 +153,7 @@ func NewClient(apiKey, secretKey string, options ...ClientOption) (*Client, erro
 }
 
 // makeRequest makes an HTTP request to the MEXC API
-func (c *Client) makeRequest(ctx context.Context, method, endpoint string, params url.Values, needAuth bool, result interface{}) error {
+func (c *Client) makeRequest(ctx context.Context, method, endpoint string, params url.Values, needAuth bool, result any) error {
 	// Select appropriate rate limiter based on auth requirement
 	limiter := c.publicRateLimiter
 	if needAuth {
@@ -229,10 +229,7 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, param
 			}
 
 			// Exponential backoff with jitter
-			retryDelay := retryBaseDelay * time.Duration(1<<retryCount)
-			if retryDelay > retryMaxDelay {
-				retryDelay = retryMaxDelay
-			}
+			retryDelay := min(retryBaseDelay*time.Duration(1<<retryCount), retryMaxDelay)
 
 			select {
 			case <-time.After(retryDelay):
@@ -268,10 +265,7 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, param
 				}
 
 				// Retry with backoff
-				retryDelay := retryBaseDelay * time.Duration(1<<retryCount)
-				if retryDelay > retryMaxDelay {
-					retryDelay = retryMaxDelay
-				}
+				retryDelay := min(retryBaseDelay*time.Duration(1<<retryCount), retryMaxDelay)
 
 				select {
 				case <-time.After(retryDelay):
@@ -352,7 +346,7 @@ func parseOrderStatusFromAPI(status string) models.OrderStatus {
 }
 
 // parseTime parses a UNIX timestamp in milliseconds
-func parseTime(timestamp interface{}) (time.Time, error) {
+func parseTime(timestamp any) (time.Time, error) {
 	switch v := timestamp.(type) {
 	case int64:
 		return time.UnixMilli(v), nil
@@ -560,7 +554,7 @@ func (c *Client) GetKlines(ctx context.Context, symbol, interval string, limit i
 		params.Set("limit", strconv.Itoa(limit))
 	}
 
-	var response [][]interface{}
+	var response [][]any
 
 	err := c.makeRequest(ctx, http.MethodGet, "/api/v3/klines", params, false, &response)
 	if err != nil {
@@ -620,13 +614,39 @@ func (c *Client) ValidateKeys(ctx context.Context) (bool, error) {
 	c.logger.Debug("Validating API keys")
 
 	// Try to get account information as a simple authenticated request
-	var response struct{}
-	err := c.makeRequest(ctx, http.MethodGet, "/api/v3/account", nil, true, &response)
+	var response struct {
+		MakerCommission int `json:"makerCommission"`
+	}
+
+	// Make the request with a short timeout
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	err := c.makeRequest(ctxWithTimeout, http.MethodGet, "/api/v3/account", nil, true, &response)
 
 	// If there's no error, the keys are valid
 	if err == nil {
-		c.logger.Debug("API keys are valid")
+		c.logger.Info("API keys are valid")
 		return true, nil
+	}
+
+	// Check if it's an empty response error (special handling for this case)
+	if unmarshalErr, ok := err.(*UnmarshalError); ok && unmarshalErr.Message == "failed to unmarshal response" {
+		// Check if the body is empty
+		if len(unmarshalErr.Body) == 0 || string(unmarshalErr.Body) == "" {
+			c.logger.Warn("Received empty response during API key validation, treating as temporary connectivity issue")
+
+			// Try a simpler endpoint as fallback
+			pingErr := c.pingServer(ctx)
+			if pingErr == nil {
+				// We can reach the server but got empty response on authentication
+				// This could be a temporary API issue, but keys might be valid
+				c.logger.Warn("Server is reachable, but authentication endpoint returned empty response")
+				return false, fmt.Errorf("temporary API connectivity issue: empty response")
+			}
+
+			return false, fmt.Errorf("network connectivity issue: %w", err)
+		}
 	}
 
 	// Check if the error is related to authentication
@@ -646,6 +666,27 @@ func (c *Client) ValidateKeys(ctx context.Context) (bool, error) {
 	// For other errors, return the error
 	c.logger.Error("Error validating API keys", zap.Error(err))
 	return false, err
+}
+
+// pingServer is a simple helper method to check if the server is reachable
+func (c *Client) pingServer(ctx context.Context) error {
+	pingURL := fmt.Sprintf("%s/api/v3/ping", c.baseURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pingURL, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("ping failed with status: %d", resp.StatusCode)
+	}
+
+	return nil
 }
 
 // FetchBalances fetches all account balances and returns a structured Balance object
@@ -687,11 +728,21 @@ func (c *Client) GetAccountBalance(ctx context.Context) (float64, error) {
 func (c *Client) GetWallet(ctx context.Context) (*models.Wallet, error) {
 	c.logger.Debug("Fetching wallet from MEXC API")
 	var response struct {
-		Balances []struct {
+		MakerCommission  int    `json:"makerCommission"`
+		TakerCommission  int    `json:"takerCommission"`
+		BuyerCommission  int    `json:"buyerCommission"`
+		SellerCommission int    `json:"sellerCommission"`
+		CanTrade         bool   `json:"canTrade"`
+		CanWithdraw      bool   `json:"canWithdraw"`
+		CanDeposit       bool   `json:"canDeposit"`
+		UpdateTime       int64  `json:"updateTime"`
+		AccountType      string `json:"accountType"`
+		Balances         []struct {
 			Asset  string `json:"asset"`
 			Free   string `json:"free"`
 			Locked string `json:"locked"`
 		} `json:"balances"`
+		Permissions []string `json:"permissions"`
 	}
 
 	err := c.makeRequest(ctx, http.MethodGet, "/api/v3/account", nil, true, &response)
@@ -700,28 +751,95 @@ func (c *Client) GetWallet(ctx context.Context) (*models.Wallet, error) {
 		return nil, err
 	}
 
+	// Create wallet with update time from response
+	updateTime := time.Unix(0, response.UpdateTime*int64(time.Millisecond))
 	wallet := &models.Wallet{
-		Balances:  make(map[string]*models.AssetBalance),
-		UpdatedAt: time.Now(),
+		Balances:    make(map[string]*models.AssetBalance),
+		UpdatedAt:   updateTime,
+		CanTrade:    response.CanTrade,
+		CanDeposit:  response.CanDeposit,
+		CanWithdraw: response.CanWithdraw,
+		AccountType: response.AccountType,
+		Permissions: response.Permissions,
 	}
 
+	// Process balances
 	for _, balance := range response.Balances {
-		free, _ := strconv.ParseFloat(balance.Free, 64)
-		locked, _ := strconv.ParseFloat(balance.Locked, 64)
+		// Skip zero balances to reduce clutter
+		free, err := strconv.ParseFloat(balance.Free, 64)
+		if err != nil {
+			c.logger.Warn("Failed to parse free balance",
+				zap.String("asset", balance.Asset),
+				zap.String("value", balance.Free),
+				zap.Error(err))
+			continue
+		}
 
-		// Only add assets with non-zero balances
-		if free > 0 || locked > 0 {
-			wallet.Balances[balance.Asset] = &models.AssetBalance{
-				Asset:  balance.Asset,
-				Free:   free,
-				Locked: locked,
-				Total:  free + locked,
+		locked, err := strconv.ParseFloat(balance.Locked, 64)
+		if err != nil {
+			c.logger.Warn("Failed to parse locked balance",
+				zap.String("asset", balance.Asset),
+				zap.String("value", balance.Locked),
+				zap.Error(err))
+			continue
+		}
+
+		// Skip zero balances
+		if free <= 0 && locked <= 0 {
+			continue
+		}
+
+		// Create asset balance
+		assetBalance := &models.AssetBalance{
+			Asset:  balance.Asset,
+			Free:   free,
+			Locked: locked,
+			Total:  free + locked,
+			Price:  0, // Will be updated with ticker data
+		}
+
+		// Add to wallet
+		wallet.Balances[balance.Asset] = assetBalance
+	}
+
+	// Get all tickers to get prices
+	tickers, err := c.GetAllTickers(ctx)
+	if err != nil {
+		c.logger.Warn("Failed to fetch tickers for price data", zap.Error(err))
+		// Continue without prices
+	} else {
+		// Update prices for all assets
+		for asset, balance := range wallet.Balances {
+			// For USDT, set price to 1.0
+			if asset == "USDT" {
+				balance.Price = 1.0
+				continue
+			}
+
+			// Try to find ticker for this asset paired with USDT
+			tickerSymbol := asset + "USDT"
+			if ticker, ok := tickers[tickerSymbol]; ok {
+				balance.Price = ticker.Price
+			} else {
+				// Try to find ticker for this asset paired with BTC and convert to USDT
+				btcTickerSymbol := asset + "BTC"
+				if btcTicker, ok := tickers[btcTickerSymbol]; ok {
+					// Get BTC/USDT price
+					if btcUsdtTicker, ok := tickers["BTCUSDT"]; ok {
+						// Convert BTC price to USDT
+						balance.Price = btcTicker.Price * btcUsdtTicker.Price
+					}
+				}
 			}
 		}
 	}
 
-	c.logger.Debug("Successfully fetched wallet from MEXC API",
-		zap.Int("asset_count", len(wallet.Balances)))
+	// Log wallet summary
+	c.logger.Debug("Wallet summary",
+		zap.Int("total_assets", len(wallet.Balances)),
+		zap.Time("updated_at", wallet.UpdatedAt))
+
+	// Return the wallet
 	return wallet, nil
 }
 
@@ -1041,6 +1159,8 @@ func (c *Client) GetNewCoins(ctx context.Context) ([]*models.NewCoin, error) {
 }
 
 // Helper function to check if a symbol already exists in the coins slice
+// Currently unused but kept for future use
+// nolint:unused
 func containsSymbol(coins []*models.NewCoin, symbol string) bool {
 	for _, coin := range coins {
 		if coin.Symbol == symbol {
@@ -1163,6 +1283,8 @@ func (c *Client) GetNewCoinsFromCalendar(ctx context.Context) ([]*models.NewCoin
 }
 
 // Helper function to check if there are any upcoming coins in the slice
+// Currently unused but kept for future use
+// nolint:unused
 func containsUpcomingCoins(coins []*models.NewCoin) bool {
 	for _, coin := range coins {
 		if coin.IsUpcoming {

@@ -1,22 +1,24 @@
 package api
 
 import (
-	"log"
-
 	"go-crypto-bot-clean/backend/internal/api/handlers"
 	"go-crypto-bot-clean/backend/internal/core/newcoin"
 	"go-crypto-bot-clean/backend/internal/platform/mexc/rest"
+
 	"go.uber.org/zap"
 )
 
 // InitializeNewCoinDependencies initializes the NewCoin dependencies
 func (d *Dependencies) InitializeNewCoinDependencies() {
-	// Create logger
-	logger, err := zap.NewProduction()
-	if err != nil {
-		log.Printf("Failed to create logger: %v", err)
-		// Fall back to mock service
+	// Use the logger from the dependencies
+	logger := d.logger
+
+	// Check if we're in development mode
+	if d.Config.App.Environment == "development" {
+		logger.Info("Using mock NewCoin service for development mode")
+		// Use our MockNewCoinService
 		mockService := &mockNewCoinService{}
+		d.NewCoinService = mockService
 		d.NewCoinHandler = handlers.NewNewCoinsHandler(mockService)
 		d.CoinHandler = handlers.NewCoinHandler(nil, mockService)
 		return
@@ -27,6 +29,7 @@ func (d *Dependencies) InitializeNewCoinDependencies() {
 		logger.Error("NewCoinRepository is nil, falling back to mock service")
 		// Fall back to mock service
 		mockService := &mockNewCoinService{}
+		d.NewCoinService = mockService
 		d.NewCoinHandler = handlers.NewNewCoinsHandler(mockService)
 		d.CoinHandler = handlers.NewCoinHandler(nil, mockService)
 		return
@@ -38,6 +41,7 @@ func (d *Dependencies) InitializeNewCoinDependencies() {
 		logger.Error("Failed to create MEXC client", zap.Error(err))
 		// Fall back to mock service
 		mockService := &mockNewCoinService{}
+		d.NewCoinService = mockService
 		d.NewCoinHandler = handlers.NewNewCoinsHandler(mockService)
 		d.CoinHandler = handlers.NewCoinHandler(nil, mockService)
 		return
@@ -45,6 +49,9 @@ func (d *Dependencies) InitializeNewCoinDependencies() {
 
 	// Create NewCoin service using GORM repository
 	newCoinService := newcoin.NewGORMNewCoinService(mexcClient, d.NewCoinRepository, logger)
+
+	// Store the service in dependencies
+	d.NewCoinService = newCoinService
 
 	// Create NewCoin handler
 	d.NewCoinHandler = handlers.NewNewCoinsHandler(newCoinService)

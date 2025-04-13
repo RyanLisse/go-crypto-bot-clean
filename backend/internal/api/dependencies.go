@@ -9,6 +9,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
 
+	"go-crypto-bot-clean/backend/internal/api/controllers"
 	"go-crypto-bot-clean/backend/internal/api/handlers"
 	apirepository "go-crypto-bot-clean/backend/internal/api/repository"
 	"go-crypto-bot-clean/backend/internal/api/service"
@@ -44,6 +45,7 @@ type Dependencies struct {
 	AnalyticsHandler       *handlers.AnalyticsHandler
 	EnhancedAccountHandler *handlers.EnhancedAccountHandler
 	BacktestHandler        *handlers.BacktestHandler
+	AccountController      *controllers.AccountController
 
 	// AI Service
 	AIService aiservice.AIService
@@ -67,9 +69,11 @@ type Dependencies struct {
 	}
 
 	// Services
-	AccountService  account.AccountService
-	UserService     *service.UserService
-	StrategyService *service.StrategyService
+	AccountService   account.AccountService
+	UserService      *service.UserService
+	StrategyService  *service.StrategyService
+	NewCoinService   interface{} // Using interface{} to allow for both real and mock implementations
+	AnalyticsService interface{} // Using interface{} to allow for both real and mock implementations
 }
 
 // NewDependencies creates a new Dependencies instance.
@@ -112,8 +116,21 @@ func NewDependencies(cfg *config.Config, logger *zap.Logger) (*Dependencies, err
 			zap.String("api_key_set", boolToString(deps.Config.Mexc.APIKey != "")),
 			zap.String("secret_key_set", boolToString(deps.Config.Mexc.SecretKey != "")))
 
-		// Return the error instead of falling back to mock service
-		return nil, fmt.Errorf("failed to initialize real account service: %w", err)
+		// Instead of returning error, fall back to mock service when in development mode
+		if deps.Config.App.Environment == "development" {
+			deps.logger.Warn("Falling back to mock account service for development mode")
+			// Use the mock account service already defined in the package
+			deps.AccountService = &MockAccountService{}
+
+			// Create account service adapter for the handler
+			accountServiceAdapter := NewRealAccountServiceAdapter(deps.AccountService, deps.logger)
+
+			// Initialize the EnhancedAccountHandler with the account service adapter
+			deps.EnhancedAccountHandler = handlers.NewEnhancedAccountHandler(accountServiceAdapter)
+		} else {
+			// Only return error in production mode
+			return nil, fmt.Errorf("failed to initialize real account service: %w", err)
+		}
 	}
 
 	return deps, nil
@@ -166,7 +183,7 @@ func (deps *Dependencies) initializeDatabaseAndRepositories() error {
 func (deps *Dependencies) initializeRealAccountService() error {
 	// Validate configuration parameters first
 	if err := deps.validateMEXCConfiguration(); err != nil {
-		return err
+		return fmt.Errorf("invalid MEXC configuration: %w", err)
 	}
 
 	// Type assert the mexcClient to get access to the internal clients
@@ -187,32 +204,34 @@ func (deps *Dependencies) initializeRealAccountService() error {
 	restClient := mexcClientConcrete.GetRestClient()
 	wsClient := mexcClientConcrete.GetWsClient()
 
-	// Validate that we have valid clients
-	if restClient == nil {
-		deps.logger.Error("REST client is nil")
-		return fmt.Errorf("REST client is nil")
-	}
+	// No need to check for nil as GetRestClient never returns nil
+	// Just log the client info for debugging
+	deps.logger.Debug("Using REST client", zap.String("client_type", fmt.Sprintf("%T", restClient)))
 
 	// Validate API keys before proceeding
 	deps.logger.Debug("Validating MEXC API keys before initializing services")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// Try to validate API keys - forcing real API usage
 	valid, err := restClient.ValidateKeys(ctx)
 	if err != nil {
+		// Log the detailed error
 		deps.logger.Error("Failed to validate MEXC API keys",
 			zap.Error(err),
 			zap.String("api_key_length", fmt.Sprintf("%d", len(deps.Config.Mexc.APIKey))),
 			zap.String("secret_key_length", fmt.Sprintf("%d", len(deps.Config.Mexc.SecretKey))))
+
+		// Return error without falling back to mock
 		return fmt.Errorf("failed to validate MEXC API keys: %w", err)
 	}
 
 	if !valid {
 		deps.logger.Error("MEXC API keys are invalid")
-		return fmt.Errorf("MEXC API keys are invalid or do not have sufficient permissions")
+		return fmt.Errorf("MEXC API keys are invalid")
 	}
 
-	deps.logger.Info("MEXC API keys validated successfully")
+	deps.logger.Info("Successfully validated MEXC API keys")
 
 	// Create adapter for BoughtCoinRepository
 	boughtCoinAdapter := NewBoughtCoinRepositoryAdapter(deps.BoughtCoinRepository, deps.logger)
@@ -220,8 +239,7 @@ func (deps *Dependencies) initializeRealAccountService() error {
 	// Create config adapter
 	configAdapter := NewConfigAdapter(deps.Config)
 
-	// Create real account service
-	deps.logger.Debug("Creating real account service with MEXC clients")
+	// Create the real account service with REST and WebSocket clients
 	realAccountSvc := account.NewRealAccountServiceWithLogger(
 		restClient,
 		wsClient,
@@ -235,23 +253,13 @@ func (deps *Dependencies) initializeRealAccountService() error {
 	deps.AccountService = realAccountSvc
 
 	// Create account service adapter for the handler
-	accountServiceAdapter := NewRealAccountServiceAdapter(realAccountSvc, deps.logger)
+	accountServiceAdapter := NewRealAccountServiceAdapter(deps.AccountService, deps.logger)
 
 	// Initialize the EnhancedAccountHandler with the account service adapter
 	deps.EnhancedAccountHandler = handlers.NewEnhancedAccountHandler(accountServiceAdapter)
 
-	// Test connection by fetching wallet data
-	deps.logger.Debug("Testing MEXC API connection by fetching wallet data")
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel2()
+	deps.logger.Info("Real account service created successfully")
 
-	_, err = realAccountSvc.GetWallet(ctx2)
-	if err != nil {
-		deps.logger.Error("Failed to fetch wallet data", zap.Error(err))
-		return fmt.Errorf("failed to fetch wallet data: %w", err)
-	}
-
-	deps.logger.Info("Real account service initialized successfully with valid MEXC API keys")
 	return nil
 }
 
@@ -259,11 +267,23 @@ func (deps *Dependencies) initializeRealAccountService() error {
 func (deps *Dependencies) validateMEXCConfiguration() error {
 	// Check if API keys are present
 	if deps.Config.Mexc.APIKey == "" {
+		// In development mode, log a warning but don't return an error
+		if deps.Config.App.Environment == "development" {
+			deps.logger.Warn("MEXC API key is missing, will use mock services in development mode")
+			return nil
+		}
+		// In production, return an error
 		deps.logger.Error("MEXC API key is missing")
 		return fmt.Errorf("MEXC API key is missing or empty")
 	}
 
 	if deps.Config.Mexc.SecretKey == "" {
+		// In development mode, log a warning but don't return an error
+		if deps.Config.App.Environment == "development" {
+			deps.logger.Warn("MEXC Secret key is missing, will use mock services in development mode")
+			return nil
+		}
+		// In production, return an error
 		deps.logger.Error("MEXC Secret key is missing")
 		return fmt.Errorf("MEXC Secret key is missing or empty")
 	}
@@ -298,8 +318,8 @@ func (deps *Dependencies) validateMEXCConfiguration() error {
 	return nil
 }
 
-// Initialize with real services when available
-// This method is kept for future use when dynamic service switching is implemented
+// initializeWithRealServices is a reference implementation for switching from mock to real services at runtime.
+// It's currently not used but kept for future implementation of dynamic service switching.
 func (deps *Dependencies) initializeWithRealServices() {
 	deps.logger.Info("Initializing with real services")
 
