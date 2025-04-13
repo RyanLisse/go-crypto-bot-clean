@@ -10,7 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin" // Kept as it's required for gin.HandlerFunc
+
 	httpAdapter "github.com/neo/crypto-bot/internal/adapter/http"
 	"github.com/neo/crypto-bot/internal/adapter/http/handler"
 	gormAdapter "github.com/neo/crypto-bot/internal/adapter/persistence/gorm"
@@ -118,10 +119,10 @@ func main() {
 
 	// Register AI routes
 	// For now, we'll use a dummy auth middleware
-	aiHandler.RegisterRoutes(router, func(c *gin.Context) {
-		// In a real implementation, this would validate JWT tokens
+	aiHandler.RegisterRoutes(router, gin.HandlerFunc(func(c *gin.Context) {
+		// Dummy auth middleware to satisfy the argument requirement
 		c.Next()
-	})
+	}))
 
 	// Register Market Data routes
 	marketHandler.RegisterRoutes(apiV1)
@@ -173,6 +174,17 @@ func main() {
 
 	// Start Position Monitor
 	positionMonitor.Start()
+
+	// Create AutoBuy Factory and Handler
+	autoBuyFactory := factory.NewAutoBuyFactory(
+		context.Background(), // Added as the first argument, assuming it's the unknown type from the error
+		l,
+		dbConn,
+		marketFactory,
+		tradeFactory,
+	)
+	autoBuyHandler := autoBuyFactory.CreateAutoBuyHandler()
+	autoBuyHandler.RegisterRoutes(apiV1)
 
 	// Start server
 	srv := &http.Server{

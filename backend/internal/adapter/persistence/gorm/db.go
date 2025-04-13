@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"time"
 
 	"github.com/neo/crypto-bot/internal/config"
@@ -78,33 +79,43 @@ func NewDBConnection(cfg *config.Config, logger zerolog.Logger) (*gorm.DB, error
 	return db, nil
 }
 
-// AutoMigrateModels performs automatic migration for the specified models
+// AutoMigrateModels performs automatic migrations for all required models
 func AutoMigrateModels(db *gorm.DB, logger *zerolog.Logger) error {
-	logger.Info().Msg("Starting database migrations...")
+	migrationStart := time.Now()
+	logger.Info().Msg("Starting database migrations")
 
-	// Define the list of entities to migrate
+	// Slice of entities to migrate
 	entities := []interface{}{
-		&WalletEntity{},
-		&BalanceEntity{},
-		&BalanceHistoryEntity{},
-		&OrderEntity{},
-		&PositionEntity{},
 		&TickerEntity{},
-		&CandleEntity{},
-		&OrderBookEntity{},
-		&OrderBookEntryEntity{},
 		&SymbolEntity{},
+		&PositionEntity{},
+		&WalletEntity{},
+		&OrderEntity{},
+		// Add other entities as they are implemented
 	}
 
-	// Run migrations
+	// Migrate each entity
 	for _, entity := range entities {
+		typeName := reflect.TypeOf(entity).Elem().Name()
+		start := time.Now()
+
 		if err := db.AutoMigrate(entity); err != nil {
-			logger.Error().Err(err).Msgf("Failed to migrate: %T", entity)
-			return err
+			logger.Error().
+				Err(err).
+				Str("entity", typeName).
+				Str("duration", time.Since(start).String()).
+				Msg("Failed to migrate entity")
+			return fmt.Errorf("failed to migrate %s: %w", typeName, err)
 		}
-		logger.Debug().Msgf("Successfully migrated: %T", entity)
+
+		logger.Info().
+			Str("entity", typeName).
+			Str("duration", time.Since(start).String()).
+			Msg("Successfully migrated entity")
 	}
 
-	logger.Info().Msg("Database migrations completed successfully")
+	logger.Info().
+		Str("total_duration", time.Since(migrationStart).String()).
+		Msg("All database migrations completed successfully")
 	return nil
 }
