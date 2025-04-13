@@ -48,8 +48,10 @@ type NewCoinRepository interface {
 	Save(ctx context.Context, newCoin *model.NewCoin) error
 	GetBySymbol(ctx context.Context, symbol string) (*model.NewCoin, error)
 	GetRecent(ctx context.Context, limit int) ([]*model.NewCoin, error)
-	GetByStatus(ctx context.Context, status string) ([]*model.NewCoin, error)
+	GetByStatus(ctx context.Context, status model.NewCoinStatus) ([]*model.NewCoin, error)
 	Update(ctx context.Context, newCoin *model.NewCoin) error
+	// FindRecentlyListed retrieves coins expected to list soon or recently became tradable.
+	FindRecentlyListed(ctx context.Context, thresholdTime time.Time) ([]*model.NewCoin, error)
 }
 
 // TickerRepository defines the interface for ticker persistence operations

@@ -107,23 +107,17 @@ func TestGetMarketData(t *testing.T) {
 	// Sample response based on MEXC API documentation
 	responseBody := `{
 		"symbol": "BTCUSDT",
+		"lastPrice": "42000.0",
 		"priceChange": "100.0",
 		"priceChangePercent": "2.5",
-		"weightedAvgPrice": "42000.0",
-		"prevClosePrice": "41900.0",
-		"lastPrice": "42000.0",
-		"lastQty": "0.01",
-		"bidPrice": "41995.0",
-		"bidQty": "1.5",
-		"askPrice": "42005.0",
-		"askQty": "2.0",
-		"openPrice": "41800.0",
 		"highPrice": "42200.0",
 		"lowPrice": "41700.0",
 		"volume": "100.0",
 		"quoteVolume": "4200000.0",
-		"openTime": 1641182500000,
-		"closeTime": 1641182800000,
+		"bidPrice": "41995.0",
+		"bidQty": "1.5",
+		"askPrice": "42005.0",
+		"askQty": "2.0",
 		"count": 5000
 	}`
 
@@ -131,7 +125,7 @@ func TestGetMarketData(t *testing.T) {
 	defer cleanup()
 
 	// Test GetMarketData
-	marketData, err := client.GetMarketData("BTCUSDT")
+	marketData, err := client.GetMarketData(context.Background(), "BTCUSDT")
 
 	// Verify results
 	require.NoError(t, err)
@@ -141,19 +135,17 @@ func TestGetMarketData(t *testing.T) {
 	assert.Equal(t, "BTCUSDT", marketData.Symbol)
 
 	// Check ticker data
-	require.NotNil(t, marketData.Ticker)
-	assert.Equal(t, 42000.0, marketData.Ticker.LastPrice)
+	require.NotNil(t, marketData.Ticker)              // Ensure it's using the correct type from model
+	assert.Equal(t, 42000.0, marketData.Ticker.Price) // Use Price from market.Ticker
 	assert.Equal(t, 100.0, marketData.Ticker.PriceChange)
-	assert.Equal(t, 2.5, marketData.Ticker.PriceChangePercent)
-	assert.Equal(t, 42200.0, marketData.Ticker.HighPrice)
-	assert.Equal(t, 41700.0, marketData.Ticker.LowPrice)
+	assert.Equal(t, 2.5, marketData.Ticker.PercentChange) // Use PercentChange from market.Ticker
+	assert.Equal(t, 42200.0, marketData.Ticker.High24h)   // Use High24h from market.Ticker
+	assert.Equal(t, 41700.0, marketData.Ticker.Low24h)    // Use Low24h from market.Ticker
 	assert.Equal(t, 100.0, marketData.Ticker.Volume)
-	assert.Equal(t, 4200000.0, marketData.Ticker.QuoteVolume)
-	assert.Equal(t, 41995.0, marketData.Ticker.BidPrice)
-	assert.Equal(t, 1.5, marketData.Ticker.BidQty)
-	assert.Equal(t, 42005.0, marketData.Ticker.AskPrice)
-	assert.Equal(t, 2.0, marketData.Ticker.AskQty)
-	assert.Equal(t, int64(5000), marketData.Ticker.Count)
+	// QuoteVolume, BidPrice, BidQty, AskPrice, AskQty, Count are not in market.Ticker
+	// Add assertions for fields that *are* in market.Ticker
+	assert.Equal(t, "MEXC", marketData.Ticker.Exchange)
+	assert.NotZero(t, marketData.Ticker.LastUpdated)
 }
 
 func TestPlaceOrder(t *testing.T) {
@@ -381,7 +373,7 @@ func TestErrorHandling(t *testing.T) {
 	defer cleanup()
 
 	// Test GetMarketData with error
-	_, err := client.GetMarketData("INVALID")
+	_, err := client.GetMarketData(context.Background(), "INVALID")
 
 	// Verify error
 	require.Error(t, err)

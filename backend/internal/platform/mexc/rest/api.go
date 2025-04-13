@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/neo/crypto-bot/internal/domain/model"
+	"github.com/neo/crypto-bot/internal/domain/model/market"
 )
 
 // Response types for MEXC API responses
@@ -152,26 +153,51 @@ func (c *Client) GetAccount() (*model.Account, error) {
 }
 
 // GetMarketData retrieves market data for a symbol
-func (c *Client) GetMarketData(symbol string) (*model.MarketData, error) {
+func (c *Client) GetMarketData(ctx context.Context, symbol string) (*model.MarketData, error) {
 	// Create new market data instance
 	marketData := model.NewMarketData(symbol)
 
-	// Assuming GetTicker exists and returns *model.Ticker
-	ticker, err := c.GetTicker(symbol) // Needs implementation
+	// Get ticker data
+	ticker, err := c.GetTicker(ctx, symbol)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ticker: %w", err)
 	}
 	marketData.Ticker = ticker
 
-	// Assuming GetOrderBook exists and returns *model.OrderBook
-	orderBook, err := c.GetOrderBook(context.Background(), symbol, 20) // Use context
+	// Get order book data
+	orderBook, err := c.GetOrderBook(ctx, symbol, 20)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get order book: %w", err)
 	}
-	marketData.OrderBook = *orderBook
 
-	// Assuming GetRecentTrades exists and returns []model.MarketTrade
-	trades, err := c.GetRecentTrades(symbol, 1) // Needs implementation
+	// Convert model.OrderBookEntry to market.OrderBookEntry
+	bids := make([]market.OrderBookEntry, len(orderBook.Bids))
+	for i, bid := range orderBook.Bids {
+		bids[i] = market.OrderBookEntry{
+			Price:    bid.Price,
+			Quantity: bid.Quantity,
+		}
+	}
+
+	asks := make([]market.OrderBookEntry, len(orderBook.Asks))
+	for i, ask := range orderBook.Asks {
+		asks[i] = market.OrderBookEntry{
+			Price:    ask.Price,
+			Quantity: ask.Quantity,
+		}
+	}
+
+	marketData.OrderBook = market.OrderBook{
+		Exchange:     "MEXC",
+		Symbol:       symbol,
+		Bids:         bids,
+		Asks:         asks,
+		LastUpdated:  time.Now(),
+		LastUpdateID: orderBook.LastUpdateID,
+	}
+
+	// Get recent trades
+	trades, err := c.GetRecentTrades(symbol, 1)
 	if err == nil && len(trades) > 0 {
 		marketData.LastTrade = trades[0]
 	}
@@ -392,25 +418,57 @@ func (c *Client) GetOrderStatus(ctx context.Context, symbol string, orderID stri
 	}, nil
 }
 
-// Helper function to parse float64 from interface{}
-func parseFloat64(v interface{}) float64 {
-	switch v := v.(type) {
-	case string:
-		f, _ := strconv.ParseFloat(v, 64)
-		return f
-	case float64:
-		return v
-	default:
-		return 0
+// GetTicker retrieves current ticker data for a symbol
+func (c *Client) GetTicker(ctx context.Context, symbol string) (*market.Ticker, error) {
+	endpoint := "/api/v3/ticker/24hr"
+	params := map[string]string{
+		"symbol": symbol,
 	}
+
+	resp, err := c.callPublicAPI(ctx, "GET", endpoint, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ticker: %w", err)
+	}
+
+	var data struct {
+		Symbol             string `json:"symbol"`
+		PriceChange        string `json:"priceChange"`
+		PriceChangePercent string `json:"priceChangePercent"`
+		LastPrice          string `json:"lastPrice"`
+		Volume             string `json:"volume"`
+		QuoteVolume        string `json:"quoteVolume"`
+		High               string `json:"highPrice"`
+		Low                string `json:"lowPrice"`
+		Bid                string `json:"bidPrice"`
+		Ask                string `json:"askPrice"`
+	}
+
+	if err := json.Unmarshal(resp, &data); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal ticker response: %w", err)
+	}
+
+	// Convert string values to float64
+	price, _ := strconv.ParseFloat(data.LastPrice, 64)
+	volume, _ := strconv.ParseFloat(data.Volume, 64)
+	high24h, _ := strconv.ParseFloat(data.High, 64)
+	low24h, _ := strconv.ParseFloat(data.Low, 64)
+	priceChange, _ := strconv.ParseFloat(data.PriceChange, 64)
+	percentChange, _ := strconv.ParseFloat(data.PriceChangePercent, 64)
+
+	return &market.Ticker{
+		Exchange:      "MEXC",
+		Symbol:        data.Symbol,
+		Price:         price,
+		Volume:        volume,
+		High24h:       high24h,
+		Low24h:        low24h,
+		PriceChange:   priceChange,
+		PercentChange: percentChange,
+		LastUpdated:   time.Now(),
+	}, nil
 }
 
 // Placeholder implementations for missing methods - These need to be fully implemented!
-func (c *Client) GetTicker(symbol string) (*model.Ticker, error) {
-	// TODO: Implement GetTicker API call
-	return nil, errors.New("GetTicker not implemented")
-}
-
 func (c *Client) GetRecentTrades(symbol string, limit int) ([]model.MarketTrade, error) {
 	// TODO: Implement GetRecentTrades API call
 	return nil, errors.New("GetRecentTrades not implemented")

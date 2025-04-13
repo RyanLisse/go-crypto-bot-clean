@@ -202,7 +202,7 @@ func (c *Client) doPublicAPICall(ctx context.Context, method, path string, param
 	}
 
 	// Add query parameters
-	if params != nil && len(params) > 0 {
+	if len(params) > 0 {
 		q := req.URL.Query()
 		for k, v := range params {
 			q.Add(k, v)

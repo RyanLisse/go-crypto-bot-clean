@@ -2,6 +2,8 @@ package model
 
 import (
 	"time"
+
+	"github.com/neo/crypto-bot/internal/domain/model/market"
 )
 
 // Account represents a user's exchange account information
@@ -15,11 +17,11 @@ type Account struct {
 
 // MarketData represents aggregated market data for a trading pair
 type MarketData struct {
-	Symbol      string      `json:"symbol"`
-	Ticker      *Ticker     `json:"ticker"`
-	OrderBook   OrderBook   `json:"orderBook"`
-	LastTrade   MarketTrade `json:"lastTrade"`
-	LastUpdated time.Time   `json:"lastUpdated"`
+	Symbol      string           `json:"symbol"`
+	Ticker      *market.Ticker   `json:"ticker"`
+	OrderBook   market.OrderBook `json:"orderBook"`
+	LastTrade   MarketTrade      `json:"lastTrade"`
+	LastUpdated time.Time        `json:"lastUpdated"`
 }
 
 // NewAccount creates a new exchange account for a user
@@ -42,7 +44,7 @@ func NewMarketData(symbol string) *MarketData {
 }
 
 // UpdateMarketData updates all market data components
-func (m *MarketData) UpdateMarketData(ticker *Ticker, orderBook OrderBook, lastTrade MarketTrade) {
+func (m *MarketData) UpdateMarketData(ticker *market.Ticker, orderBook market.OrderBook, lastTrade MarketTrade) {
 	m.Ticker = ticker
 	m.OrderBook = orderBook
 	m.LastTrade = lastTrade

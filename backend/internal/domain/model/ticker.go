@@ -62,16 +62,6 @@ type Kline struct {
 	IsClosed    bool          `json:"isClosed"`
 }
 
-// NewCoin represents a newly listed coin on the exchange
-type NewCoin struct {
-	Symbol      string    `json:"symbol"`
-	BaseAsset   string    `json:"baseAsset"`
-	QuoteAsset  string    `json:"quoteAsset"`
-	Status      string    `json:"status"` // "0" = coming soon, "1" = tradable
-	ListingTime time.Time `json:"listingTime"`
-	DetectedAt  time.Time `json:"detectedAt"`
-}
-
 // OrderBook represents an order book snapshot
 type OrderBook struct {
 	Symbol       string           `json:"symbol"`
