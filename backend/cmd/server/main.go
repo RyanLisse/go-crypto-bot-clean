@@ -34,6 +34,32 @@ func (m *mockTradeUseCase) PlaceOrder(ctx context.Context, req model.OrderReques
 	}, nil
 }
 
+// Implement additional methods to satisfy the TradeUseCase interface
+func (m *mockTradeUseCase) CancelOrder(ctx context.Context, symbol, orderID string) error {
+	return nil
+}
+
+func (m *mockTradeUseCase) GetOrderStatus(ctx context.Context, symbol, orderID string) (*model.Order, error) {
+	return &model.Order{
+		ID:        orderID,
+		Symbol:    symbol,
+		Status:    model.OrderStatusNew,
+		CreatedAt: time.Now(),
+	}, nil
+}
+
+func (m *mockTradeUseCase) GetOpenOrders(ctx context.Context, symbol string) ([]*model.Order, error) {
+	return []*model.Order{}, nil
+}
+
+func (m *mockTradeUseCase) GetOrderHistory(ctx context.Context, symbol string, limit, offset int) ([]*model.Order, error) {
+	return []*model.Order{}, nil
+}
+
+func (m *mockTradeUseCase) CalculateRequiredQuantity(ctx context.Context, symbol string, side model.OrderSide, amount float64) (float64, error) {
+	return 0.001, nil
+}
+
 func main() {
 	// Load configuration
 	cfg, err := config.Load()
@@ -61,6 +87,7 @@ func main() {
 	aiFactory := factory.NewAIFactory(cfg, *l)
 	marketFactory := factory.NewMarketFactory(cfg, l, dbConn)
 	positionFactory := factory.NewPositionFactory(cfg, l, dbConn)
+	tradeFactory := factory.NewTradeFactory(cfg, l, dbConn)
 
 	// Create AI handler
 	aiHandler, err := aiFactory.CreateAIHandler()
@@ -110,11 +137,34 @@ func main() {
 		l.Fatal().Err(err).Msg("Failed to create Position Use Case")
 	}
 
-	// TODO: Replace with actual Trade Use Case implementation when available
-	// Create a mock trade use case for now
-	tradeUC := &mockTradeUseCase{}
+	// Create Position Handler
+	positionHandler := handler.NewPositionHandler(positionUC, l)
+	positionHandler.RegisterRoutes(apiV1)
 
-	// Create Position Monitor
+	// Create Order Repository
+	orderRepo := tradeFactory.CreateOrderRepository()
+
+	// Create Trade Service
+	tradeService := tradeFactory.CreateTradeService(
+		mexcAPI,
+		marketService,
+		symbolRepo,
+		orderRepo,
+	)
+
+	// Create Trade Use Case
+	tradeUC := tradeFactory.CreateTradeUseCase(
+		mexcAPI,
+		symbolRepo,
+		orderRepo,
+		tradeService,
+	)
+
+	// Create Trade Handler
+	tradeHandler := tradeFactory.CreateTradeHandler(tradeUC)
+	tradeHandler.RegisterRoutes(apiV1)
+
+	// For Position Monitor, use the TradeUseCase we just created
 	positionMonitor := positionFactory.CreatePositionMonitor(
 		positionUC,
 		marketService,

@@ -11,8 +11,8 @@ import (
 	"github.com/rs/zerolog/log" // Assuming zerolog is used based on go.mod
 )
 
-// Temporary placeholder for SymbolInfo matching the test file.
-// TODO: Replace with actual definition from model or port.
+// SymbolInfo is a struct for symbol information.
+// TODO: Ensure this is properly defined in model or adjust as needed.
 type SymbolInfo struct {
 	Symbol string
 	Status string // e.g., "TRADING", "AUCTION", "BREAK", etc. from the exchange API
@@ -22,7 +22,7 @@ type SymbolInfo struct {
 // This makes the dependency explicit for this use case.
 // TODO: Define this properly, potentially reusing/refining existing MarketDataService port.
 type MarketDataServiceProvider interface {
-	GetSymbolInfo(ctx context.Context, symbol string) (*SymbolInfo, error)
+	GetSymbolInfo(ctx context.Context, symbol string) (*SymbolInfo, error) // Using local SymbolInfo
 	// Add other methods if needed, e.g., GetTicker
 }
 

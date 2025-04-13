@@ -11,22 +11,34 @@ import (
 
 // Common errors
 var (
-	ErrInvalidOrderData = errors.New("invalid order data")
-	ErrOrderNotFound    = errors.New("order not found")
+	ErrInvalidOrderData    = errors.New("invalid order data")
+	ErrOrderNotFound       = errors.New("order not found")
+	ErrInsufficientBalance = errors.New("insufficient balance for order")
 )
 
 // TradeUseCase defines methods for trade operations
 type TradeUseCase interface {
 	// Place a new order
 	PlaceOrder(ctx context.Context, req model.OrderRequest) (*model.Order, error)
+	// Cancel an existing order
+	CancelOrder(ctx context.Context, symbol, orderID string) error
+	// Get the current status of an order
+	GetOrderStatus(ctx context.Context, symbol, orderID string) (*model.Order, error)
+	// Get all open orders for a symbol
+	GetOpenOrders(ctx context.Context, symbol string) ([]*model.Order, error)
+	// Get order history for a symbol with pagination
+	GetOrderHistory(ctx context.Context, symbol string, limit, offset int) ([]*model.Order, error)
+	// Calculate the required quantity for an order based on amount in quote currency
+	CalculateRequiredQuantity(ctx context.Context, symbol string, side model.OrderSide, amount float64) (float64, error)
 }
 
 // tradeUseCase implements the TradeUseCase interface
 type tradeUseCase struct {
-	mexcAPI    port.MexcAPI
-	orderRepo  port.OrderRepository
-	symbolRepo port.SymbolRepository
-	logger     zerolog.Logger
+	mexcAPI      port.MexcAPI
+	orderRepo    port.OrderRepository
+	symbolRepo   port.SymbolRepository
+	tradeService port.TradeService
+	logger       zerolog.Logger
 }
 
 // NewTradeUseCase creates a new TradeUseCase
@@ -34,13 +46,15 @@ func NewTradeUseCase(
 	mexcAPI port.MexcAPI,
 	orderRepo port.OrderRepository,
 	symbolRepo port.SymbolRepository,
+	tradeService port.TradeService,
 	logger zerolog.Logger,
 ) TradeUseCase {
 	return &tradeUseCase{
-		mexcAPI:    mexcAPI,
-		orderRepo:  orderRepo,
-		symbolRepo: symbolRepo,
-		logger:     logger.With().Str("component", "trade_usecase").Logger(),
+		mexcAPI:      mexcAPI,
+		orderRepo:    orderRepo,
+		symbolRepo:   symbolRepo,
+		tradeService: tradeService,
+		logger:       logger.With().Str("component", "trade_usecase").Logger(),
 	}
 }
 
@@ -57,17 +71,8 @@ func (uc *tradeUseCase) PlaceOrder(ctx context.Context, req model.OrderRequest) 
 		return nil, ErrSymbolNotFound
 	}
 
-	// Place order on exchange
-	timeInForce := model.TimeInForceGTC // Default time in force
-	order, err := uc.mexcAPI.PlaceOrder(
-		ctx,
-		req.Symbol,
-		req.Side,
-		req.Type,
-		req.Quantity,
-		req.Price,
-		timeInForce,
-	)
+	// Delegate to the trade service
+	response, err := uc.tradeService.PlaceOrder(ctx, &req)
 	if err != nil {
 		uc.logger.Error().Err(err).
 			Str("symbol", req.Symbol).
@@ -75,29 +80,99 @@ func (uc *tradeUseCase) PlaceOrder(ctx context.Context, req model.OrderRequest) 
 			Str("type", string(req.Type)).
 			Float64("quantity", req.Quantity).
 			Float64("price", req.Price).
-			Msg("Failed to place order on exchange")
+			Msg("Failed to place order")
 		return nil, err
 	}
 
-	// Save order to repository
-	err = uc.orderRepo.Create(ctx, order)
+	uc.logger.Info().
+		Str("orderId", response.OrderID).
+		Str("symbol", response.Symbol).
+		Str("side", string(response.Side)).
+		Str("type", string(response.Type)).
+		Float64("quantity", response.Quantity).
+		Float64("price", response.Price).
+		Msg("Order placed successfully")
+
+	return &response.Order, nil
+}
+
+// CancelOrder cancels an existing order
+func (uc *tradeUseCase) CancelOrder(ctx context.Context, symbol, orderID string) error {
+	// Delegate to the trade service
+	err := uc.tradeService.CancelOrder(ctx, symbol, orderID)
 	if err != nil {
 		uc.logger.Error().Err(err).
-			Str("orderId", order.ID).
-			Str("symbol", order.Symbol).
-			Msg("Failed to save order to repository")
-		// Note: We still return the order even if saving to repository fails
-		// because the order was successfully placed on the exchange
+			Str("symbol", symbol).
+			Str("orderId", orderID).
+			Msg("Failed to cancel order")
+		return err
 	}
 
 	uc.logger.Info().
-		Str("orderId", order.ID).
-		Str("symbol", order.Symbol).
-		Str("side", string(order.Side)).
-		Str("type", string(order.Type)).
-		Float64("quantity", order.Quantity).
-		Float64("price", order.Price).
-		Msg("Order placed successfully")
+		Str("symbol", symbol).
+		Str("orderId", orderID).
+		Msg("Order canceled successfully")
+
+	return nil
+}
+
+// GetOrderStatus retrieves the current status of an order
+func (uc *tradeUseCase) GetOrderStatus(ctx context.Context, symbol, orderID string) (*model.Order, error) {
+	// Delegate to the trade service
+	order, err := uc.tradeService.GetOrderStatus(ctx, symbol, orderID)
+	if err != nil {
+		uc.logger.Error().Err(err).
+			Str("symbol", symbol).
+			Str("orderId", orderID).
+			Msg("Failed to get order status")
+		return nil, err
+	}
 
 	return order, nil
+}
+
+// GetOpenOrders retrieves all open orders for a symbol
+func (uc *tradeUseCase) GetOpenOrders(ctx context.Context, symbol string) ([]*model.Order, error) {
+	// Delegate to the trade service
+	orders, err := uc.tradeService.GetOpenOrders(ctx, symbol)
+	if err != nil {
+		uc.logger.Error().Err(err).
+			Str("symbol", symbol).
+			Msg("Failed to get open orders")
+		return nil, err
+	}
+
+	return orders, nil
+}
+
+// GetOrderHistory retrieves order history for a symbol with pagination
+func (uc *tradeUseCase) GetOrderHistory(ctx context.Context, symbol string, limit, offset int) ([]*model.Order, error) {
+	// Delegate to the trade service
+	orders, err := uc.tradeService.GetOrderHistory(ctx, symbol, limit, offset)
+	if err != nil {
+		uc.logger.Error().Err(err).
+			Str("symbol", symbol).
+			Int("limit", limit).
+			Int("offset", offset).
+			Msg("Failed to get order history")
+		return nil, err
+	}
+
+	return orders, nil
+}
+
+// CalculateRequiredQuantity calculates the required quantity for an order based on amount
+func (uc *tradeUseCase) CalculateRequiredQuantity(ctx context.Context, symbol string, side model.OrderSide, amount float64) (float64, error) {
+	// Delegate to the trade service
+	quantity, err := uc.tradeService.CalculateRequiredQuantity(ctx, symbol, side, amount)
+	if err != nil {
+		uc.logger.Error().Err(err).
+			Str("symbol", symbol).
+			Str("side", string(side)).
+			Float64("amount", amount).
+			Msg("Failed to calculate required quantity")
+		return 0, err
+	}
+
+	return quantity, nil
 }

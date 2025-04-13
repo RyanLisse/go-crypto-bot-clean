@@ -10,7 +10,6 @@ import (
 
 	"github.com/neo/crypto-bot/internal/domain/event"
 	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/port" // Added import for port
 	"github.com/neo/crypto-bot/internal/usecase"
 )
 
@@ -39,7 +38,7 @@ func (m *MockNewCoinRepository) Update(ctx context.Context, coin *model.NewCoin)
 	return args.Error(0)
 }
 
-func (m *MockNewCoinRepository) FindByStatus(ctx context.Context, status model.NewCoinStatus) ([]*model.NewCoin, error) {
+func (m *MockNewCoinRepository) GetByStatus(ctx context.Context, status model.NewCoinStatus) ([]*model.NewCoin, error) {
 	args := m.Called(ctx, status)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

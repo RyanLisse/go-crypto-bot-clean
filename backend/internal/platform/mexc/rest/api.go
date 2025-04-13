@@ -11,6 +11,7 @@ import (
 
 	"github.com/neo/crypto-bot/internal/domain/model"
 	"github.com/neo/crypto-bot/internal/domain/model/market"
+	"github.com/rs/zerolog/log"
 )
 
 // Response types for MEXC API responses
@@ -420,29 +421,15 @@ func (c *Client) GetOrderStatus(ctx context.Context, symbol string, orderID stri
 
 // GetTicker retrieves current ticker data for a symbol
 func (c *Client) GetTicker(ctx context.Context, symbol string) (*market.Ticker, error) {
-	endpoint := "/api/v3/ticker/24hr"
-	params := map[string]string{
-		"symbol": symbol,
-	}
+	log.Debug().Str("symbol", symbol).Msg("Retrieving ticker data from MEXC")
 
-	resp, err := c.callPublicAPI(ctx, "GET", endpoint, params)
+	endpoint := fmt.Sprintf("/api/v3/ticker/24hr?symbol=%s", symbol)
+	resp, err := c.callPublicAPI(ctx, "GET", endpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get ticker: %w", err)
+		return nil, fmt.Errorf("failed to get ticker from MEXC: %w", err)
 	}
 
-	var data struct {
-		Symbol             string `json:"symbol"`
-		PriceChange        string `json:"priceChange"`
-		PriceChangePercent string `json:"priceChangePercent"`
-		LastPrice          string `json:"lastPrice"`
-		Volume             string `json:"volume"`
-		QuoteVolume        string `json:"quoteVolume"`
-		High               string `json:"highPrice"`
-		Low                string `json:"lowPrice"`
-		Bid                string `json:"bidPrice"`
-		Ask                string `json:"askPrice"`
-	}
-
+	var data TickerResponse
 	if err := json.Unmarshal(resp, &data); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal ticker response: %w", err)
 	}
@@ -450,14 +437,13 @@ func (c *Client) GetTicker(ctx context.Context, symbol string) (*market.Ticker, 
 	// Convert string values to float64
 	price, _ := strconv.ParseFloat(data.LastPrice, 64)
 	volume, _ := strconv.ParseFloat(data.Volume, 64)
-	high24h, _ := strconv.ParseFloat(data.High, 64)
-	low24h, _ := strconv.ParseFloat(data.Low, 64)
-	priceChange, _ := strconv.ParseFloat(data.PriceChange, 64)
+	high24h, _ := strconv.ParseFloat(data.HighPrice, 64)
+	low24h, _ := strconv.ParseFloat(data.LowPrice, 64)
 	percentChange, _ := strconv.ParseFloat(data.PriceChangePercent, 64)
+	priceChange, _ := strconv.ParseFloat(data.PriceChange, 64)
 
-	return &market.Ticker{
-		Exchange:      "MEXC",
-		Symbol:        data.Symbol,
+	ticker := &market.Ticker{
+		Symbol:        symbol,
 		Price:         price,
 		Volume:        volume,
 		High24h:       high24h,
@@ -465,7 +451,10 @@ func (c *Client) GetTicker(ctx context.Context, symbol string) (*market.Ticker, 
 		PriceChange:   priceChange,
 		PercentChange: percentChange,
 		LastUpdated:   time.Now(),
-	}, nil
+		Exchange:      "MEXC",
+	}
+
+	return ticker, nil
 }
 
 // Placeholder implementations for missing methods - These need to be fully implemented!
