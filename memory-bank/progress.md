@@ -3,6 +3,14 @@
 ## Overall Status
 The project has made significant progress with several key components now implemented. The Position Management System implementation is now complete. The next focus will be on implementing the Trade Execution System.
 
+## Completed Milestones
+
+- Core Project Setup (Task 1)
+- Domain Model Implementation (Task 2)
+- Database Integration (Task 3)
+- Market Data System (Task 4)
+- Position Management System (Task 5)
+
 ## Completed Tasks
 - Core project structure and architecture setup (Task ID 1)
 - MEXC API client implementation (Task ID 2)

@@ -63,3 +63,10 @@ type Symbol struct {
 	// UpdatedAt is when this symbol was last updated
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+// SymbolInfo represents exchange info for a symbol, including status.
+type SymbolInfo struct {
+	Symbol string
+	Status string // e.g., "TRADING", "AUCTION", "BREAK", etc.
+	// Add other relevant fields as needed from exchange info API
+}
