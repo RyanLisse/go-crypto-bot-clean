@@ -42,5 +42,5 @@ TURSO_SYNC_ENABLED = "true"
 TURSO_SYNC_INTERVAL_SECONDS = "300"
 
 # MEXC Configuration
-MEXC_BASE_URL = "https://api.mexc.com/api/v3"
+MEXC_BASE_URL = "https://api.mexc.com"
 MEXC_WEBSOCKET_URL = "wss://wbs.mexc.com/ws"

@@ -1,199 +1,281 @@
-# Go Crypto Bot - Product Requirements Document (PRD)
+---
+
+**Product Requirements Document: Go Crypto Trading Bot (MEXC Focused)**
 
 ---
 
-# 🌐 Overview
-Go Crypto Bot is an advanced, hexagonally-architected trading bot that automates cryptocurrency trading strategies on the MEXC exchange. It is built for traders who want to execute trades automatically based on predefined strategies with a strong emphasis on performance, reliability, and safety. Developers and financial analysts can use it as a framework to implement, test, and evaluate trading models.
+`<context>`
 
-The product solves the need for consistent, emotionless trading by applying rule-based logic and machine-driven decision-making. It removes the need for constant manual oversight while giving users full transparency, configurability, and risk control.
+**# Overview**
+
+This document outlines the requirements for an automated cryptocurrency trading bot designed primarily for the MEXC exchange. The bot aims to solve the challenge of manual trading by providing automated execution based on predefined strategies, real-time market data analysis, and robust risk management. It targets traders seeking to automate their trading processes, capitalize on opportunities like new coin listings, and potentially leverage AI for insights and decision support. The core value lies in its potential for efficient, data-driven, and disciplined trading execution, operating 24/7 with integrated risk controls.
+
+**# Core Features**
+
+1.  **MEXC Exchange Integration:**
+    *   **What:** Securely connect to MEXC via REST API and WebSocket.
+    *   **Why:** Essential for accessing real-time market data, account information, and executing trades on the target exchange.
+    *   **How:** Utilizes dedicated platform clients (`internal/platform/mexc`) wrapped by an adapter (`internal/adapter/gateway/mexc`) adhering to a domain port interface (`internal/domain/port/MexcAPI`) for fetching data (tickers, klines, order book, wallet) and executing/managing orders. Implements rate limiting and robust error handling.
+
+2.  **Account & Portfolio Management:**
+    *   **What:** Track user wallet balances, asset distribution, and overall portfolio value in real-time (or near real-time).
+    *   **Why:** Provides users visibility into their holdings and available capital, crucial for decision-making and risk management.
+    *   **How:** An `AccountUsecase` interacts with the `MexcAPI` gateway and `WalletRepository` port to fetch and persist balance information. Real-time updates are potentially pushed via WebSocket through the gateway.
+
+3.  **Market Data Handling:**
+    *   **What:** Ingest and process real-time market data (tickers, trades) via WebSocket and historical data (klines) via REST API.
+    *   **Why:** Provides the necessary price and volume information for strategies, analysis, and user display.
+    *   **How:** The `MexcAPI` gateway handles data fetching (using `platform/mexc`). Data streams (e.g., tickers) are potentially distributed internally. Caching (`internal/adapter/cache`) is used for REST API data (tickers, klines) to optimize performance and reduce API calls.
+
+4.  **Trade Execution & Order Management:**
+    *   **What:** Place, cancel, and track the status of market and limit orders (Buy/Sell).
+    *   **Why:** The fundamental mechanism for interacting with the market based on strategy signals or user input.
+    *   **How:** A `TradeUsecase` orchestrates the process. It receives trade requests (from strategies or users), performs risk checks (via `RiskUsecase`), interacts with the `MexcAPI` gateway to place/cancel orders, and updates the `OrderRepository` and potentially `PositionUsecase`.
+
+5.  **Position Management:**
+    *   **What:** Track open trading positions, including entry price, quantity, current P&L, stop-loss (SL), and take-profit (TP) levels. Support for scaling into positions.
+    *   **Why:** Essential for managing ongoing trades, applying risk rules (SL/TP), and calculating performance.
+    *   **How:** A `PositionUsecase` manages position lifecycle. It creates/updates positions in the `PositionRepository` based on filled orders received from the `TradeUsecase`. It interacts with a `PriceService` (implemented via `MexcAPI`) to update current prices and P&L. It includes logic for monitoring and triggering SL/TP exits.
+
+6.  **Strategy Engine:**
+    *   **What:** A framework to define, configure, and run different trading strategies. Includes example strategies (e.g., `NewCoinStrategy`). Supports strategy selection based on market regimes.
+    *   **Why:** Allows the bot to make automated trading decisions based on various technical or event-driven logic.
+    *   **How:** A `StrategyFactory` (`internal/domain/strategy`) allows creating strategy instances. Strategies implement a common `Strategy` interface (`internal/domain/strategy`). A `StrategyUsecase` (or similar orchestration layer) feeds market data to active strategies, receives signals, and potentially triggers trades via `TradeUsecase`.
+
+7.  **Risk Management:**
+    *   **What:** Implement various risk controls: position sizing based on % risk, max drawdown limits, max exposure limits, daily loss limits.
+    *   **Why:** Protects capital and prevents catastrophic losses. Ensures disciplined trading.
+    *   **How:** A dedicated `RiskUsecase` interacts with risk control components (like those in `internal/domain/risk/controls`), `AccountUsecase` (for balance), and potentially `PositionRepository` (for exposure). It provides checks (`IsTradeAllowed`) consulted by the `TradeUsecase`.
+
+8.  **New Coin Detection & AutoBuy:**
+    *   **What:** Monitor MEXC for newly listed coins and *reliably* trigger an automated purchase shortly after they become tradable, based on configurable criteria.
+    *   **Why:** Capitalizes on potential volatility and opportunities associated with new listings.
+    *   **How:** A `NewCoinUsecase` uses the `MexcAPI` (`GetNewCoins`, potentially using calendar API) to detect listings and updates the `NewCoinRepository`. An event-driven mechanism (e.g., a listener service or enhanced strategy) is required to react *precisely* when a coin becomes tradable (Status "1" detected by `NewCoinUsecase`). This trigger initiates a buy flow via `TradeUsecase`, passing specific parameters (size, SL/TP) from the AutoBuy configuration. (This requires careful implementation linking detection to execution).
+
+9.  **AI Assistant (Gemini Integration):**
+    *   **What:** Provide AI-powered features: natural language chat, market/portfolio insights generation, function execution (fetching data, analysis), trade confirmation flows, and conversation similarity search.
+    *   **Why:** Enhances user experience, provides data analysis assistance, and adds a layer of safety for AI-initiated actions.
+    *   **How:** An `AIUsecase` interacts with an `AIService` gateway port (`internal/domain/port/gateway.go`). The concrete implementation (`internal/adapter/gateway/ai/gemini.go`) uses the Gemini API. It leverages conversation memory (`ConversationMemoryRepository`), template registry, function registry, similarity service, risk guardrails, confirmation flow, and security services (`internal/domain/ai/*`).
+
+10. **Notifications:**
+    *   **What:** Send notifications to users about important events (e.g., trade execution, errors, significant P&L changes, required confirmations).
+    *   **Why:** Keeps the user informed about the bot's activity and critical issues.
+    *   **How:** A `NotificationService` port (`internal/domain/port/notification.go`) defines the interface. Implementations in `internal/adapter/gateway/notification` (e.g., Telegram, Slack) send messages based on user preferences fetched from a `NotificationPreferenceRepository`. Usecases call the `NotificationService` when needed.
+
+11. **Analytics & Reporting:**
+    *   **What:** Calculate and potentially report on trading performance metrics (win rate, P&L, profit factor, drawdown).
+    *   **Why:** Allows users to evaluate the effectiveness of the bot and strategies.
+    *   **How:** An `AnalyticsUsecase` interacts with repositories (`ClosedPositionRepository`, `BalanceHistoryRepository`, `TradeDecisionRepository`) to compute metrics. Results can be exposed via API or used for generating reports (`internal/domain/models/performance_report.go`).
+
+12. **System Status & Monitoring:**
+    *   **What:** Provide an overview of the bot's operational status, including connected components and system resource usage. Allow starting/stopping core processes.
+    *   **Why:** Essential for understanding if the bot is running correctly and for basic operational control.
+    *   **How:** A `StatusUsecase` interacts with status providers for different components (e.g., WebSocket connection, NewCoin watcher) and provides a consolidated status report, potentially via an API endpoint handled by `internal/adapter/delivery/http`.
+
+**# User Experience**
+
+*   **User Personas:**
+    *   *Automated Trader:* Wants to set up strategies (or use defaults like autobuy) and let the bot run with minimal intervention, relying on notifications and status checks. Needs clear performance visibility.
+    *   *AI-Assisted Trader:* Interacts with the AI for market analysis, insights, and potentially trade idea generation. Values the confirmation flow for AI trades.
+    *   *Operator/Developer:* Monitors system health, configures settings (API keys, risk parameters, strategy configs), reviews logs and audit trails. Needs robust status reporting and control.
+*   **Key User Flows:**
+    *   *Initial Setup:* Configure API keys, database connection, risk parameters, select/configure strategies (including AutoBuy settings).
+    *   *Monitoring:* View dashboard (portfolio value, P&L, open positions, system status), check logs, review trade history/analytics.
+    *   *Strategy Execution (Automated):* Bot fetches data, strategy generates signal, risk checks pass, trade usecase executes order, position is updated, notifications sent.
+    *   *New Coin AutoBuy:* Bot detects new tradable coin, AutoBuy service/listener triggers, validates criteria, checks risk, executes buy, creates position, sends notification.
+    *   *AI Interaction:* User sends query via API/UI, `AIUsecase` processes it, potentially calls functions (like get market data), generates response/insights, possibly triggers confirmation flow for trades.
+    *   *Trade Confirmation (AI):* User receives notification for pending confirmation, reviews details, approves/rejects via API/UI.
+*   **UI/UX Considerations (Assuming a Web UI/API):**
+    *   **Dashboard:** Real-time overview of portfolio value, key balances, open positions P&L, recent trades, system status indicators (connections, services).
+    *   **Configuration:** Secure input for API keys, clear forms for risk parameters and strategy settings.
+    *   **Positions/Trades:** Clear tables for open positions and trade history with relevant data points.
+    *   **AI Interface:** Chat-like interface for interacting with the AI assistant, clear display of insights and function call results, dedicated section for pending trade confirmations.
+    *   **Notifications:** Visible alert system within the UI, plus integration with external notification channels.
+    *   **Status Page:** Detailed status of different bot components and connections.
+    *   **Logs:** Accessible view of application logs (filtered by severity/component).
+
+`</context>`
+`<PRD>`
+
+**# Technical Architecture**
+
+*   **Proposed Refactored Directory Structure:**
+
+    ```
+    ├── cmd/
+    │   └── server/
+    │       └── main.go              # Application entry point, dependency wiring
+    ├── internal/
+    │   ├── config/                  # Configuration loading and struct definition
+    │   │   └── config.go
+    │   ├── domain/                  # Core business logic and entities
+    │   │   ├── model/               # Domain entities (Order, Position, Wallet, Ticker, etc.)
+    │   │   │   ├── order.go
+    │   │   │   ├── position.go
+    │   │   │   ├── wallet.go
+    │   │   │   ├── ai_types.go      # (e.g., Insight, Message, TradeRecommendation)
+    │   │   │   └── ... (other models)
+    │   │   └── port/                # Interfaces for external dependencies (Repositories, Gateways)
+    │   │       ├── repository.go    # All repository interfaces (OrderRepo, PositionRepo, etc.)
+    │   │       ├── gateway.go       # Interfaces for external services (MexcAPI, AIService, etc.)
+    │   │       └── notification.go  # Notification interfaces
+    │   ├── usecase/                 # Application logic / features
+    │   │   ├── account_uc.go        # Account use case interface and implementation
+    │   │   ├── trade_uc.go          # Trading use case
+    │   │   ├── position_uc.go       # Position management use case
+    │   │   ├── analytics_uc.go      # Analytics use case
+    │   │   ├── ai_uc.go             # AI interaction use case
+    │   │   ├── newcoin_uc.go        # New Coin use case
+    │   │   └── status_uc.go         # System Status use case
+    │   ├── adapter/                 # Implementations of ports / interaction with external systems
+    │   │   ├── delivery/            # How the application is accessed
+    │   │   │   ├── http/            # HTTP handlers, router setup
+    │   │   │   │   ├── handler/
+    │   │   │   │   │   ├── account_handler.go
+    │   │   │   │   │   └── ...
+    │   │   │   │   └── router.go
+    │   │   │   └── cli/             # (If applicable) CLI command handlers
+    │   │   ├── persistence/         # Database interactions
+    │   │   │   └── gorm/            # GORM implementations of repository ports
+    │   │   │       ├── repo/
+    │   │   │       │   ├── order_repo.go
+    │   │   │       │   └── ...
+    │   │   │       └── db.go        # GORM connection setup
+    │   │   ├── gateway/             # External service interactions
+    │   │   │   ├── mexc/            # Adapter for MEXC platform code
+    │   │   │   │   └── client.go    # Implements domain/port/MexcAPI
+    │   │   │   ├── ai/              # AI service adapters
+    │   │   │   │   ├── gemini.go    # Implements domain/port/AIService using Gemini
+    │   │   │   │   ├── openai.go    # Implements domain/port/EmbeddingsService using OpenAI
+    │   │   │   │   └── embedding.go # Implements domain/port/EmbeddingsService (could be fallback)
+    │   │   │   └── notification/    # Notification gateway implementations
+    │   │   │       └── telegram.go  # Example
+    │   │   └── cache/               # Cache implementations (e.g., Redis, in-memory)
+    │   │       └── memory.go
+    │   ├── platform/                # Low-level, reusable platform components
+    │   │   ├── database/            # DB utility functions (might be empty if using ORM directly)
+    │   │   ├── mexc/                # Original MEXC REST/WS/Cache code (mostly unchanged)
+    │   │   │   ├── rest/
+    │   │   │   ├── websocket/
+    │   │   │   └── cache/
+    │   │   ├── logger/              # Logger setup
+    │   │   └── ...
+    │   └── apperror/                # Application-specific error types
+    │       └── errors.go
+    ├── pkg/                       # Shared, general-purpose libraries
+    │   └── ratelimiter/
+    │       └── ratelimiter.go
+    ├── go.mod
+    ├── go.sum
+    └── migrations/                # Database migration files
+        └── ...
+    ```
+
+*   **Layering:** Follows Clean Architecture principles:
+    *   **Domain:** Core business entities (`model`) and interfaces (`port`) defining contracts for repositories and external gateways. Independent of frameworks.
+    *   **Usecase:** Application-specific business logic, orchestrating domain entities and ports. Handles feature implementation.
+    *   **Adapter:** Implements interfaces defined in the domain port layer.
+        *   *Delivery:* HTTP API (using `gin` or standard library) exposing use cases. CLI interface (optional).
+        *   *Persistence:* GORM implementation (`adapter/persistence/gorm`) interacting with a database (e.g., PostgreSQL, SQLite/Turso).
+        *   *Gateway:* Adapters for external services:
+            *   `adapter/gateway/mexc`: Implements `port.MexcAPI` using `platform/mexc` REST/WebSocket clients.
+            *   `adapter/gateway/ai`: Implements `port.AIService` and `port.EmbeddingsService` using specific providers (Gemini, OpenAI) located in `platform/ai`.
+            *   `adapter/gateway/notification`: Implements `port.NotificationService` using specific libs (e.g., Telegram bot API).
+        *   *Cache:* Memory or Redis implementation of caching interfaces.
+    *   **Platform:** Low-level, framework-agnostic code. Contains the MEXC REST/WebSocket clients, logger setup, database helpers (if any), configuration loading utilities.
+*   **System Components:** See Layering above. Key components include: MEXC clients, Database ORM (GORM), AI Client (Gemini), Strategy Implementations, Use Case Services, HTTP Router/Handlers, Repositories, Gateways.
+*   **Data Models:** Primarily defined in `internal/domain/model`. Database schemas defined in `internal/adapter/persistence/gorm/schema` (or similar). Potential DTOs (Data Transfer Objects) used in the delivery layer (`adapter/delivery/http`) to decouple API contracts from domain models.
+*   **APIs and Integrations:**
+    *   **Internal API:** RESTful API exposed by `adapter/delivery/http` for UI or external control.
+    *   **External APIs:**
+        *   MEXC REST API (Account, Market Data, Orders).
+        *   MEXC WebSocket API (Real-time Tickers, Account Updates, Order Book).
+        *   Gemini API (Generative Models, Embeddings).
+        *   (Potentially) OpenAI API (Embeddings fallback).
+        *   (Potentially) Notification provider APIs (Telegram, Slack, etc.).
+*   **Infrastructure Requirements:**
+    *   **Compute:** Server (VM, Container instance - e.g., Docker) capable of running the Go application 24/7.
+    *   **Database:** Relational database compatible with GORM (PostgreSQL recommended for production, SQLite/Turso potentially suitable depending on scale and vector search needs).
+    *   **Caching:** Optional (Redis recommended for scalability, in-memory possible for simpler setups).
+    *   **Networking:** Stable internet connection with low latency to MEXC servers. Firewall rules allowing outbound connections to MEXC/AI APIs and inbound connections to the bot's API/UI port.
+
+**# Development Roadmap**
+
+*(Phased approach, focusing on logical dependencies, not timelines)*
+
+**Phase 1: Foundation & Core Connectivity**
+
+*   **Scope:** Basic project structure setup (as defined above), configuration loading, logging implementation, MEXC REST client integration (`platform` & `adapter`), basic `AccountUsecase` (GetWallet/Balance via REST), basic `MarketDataUsecase` (GetTicker via REST), initial GORM setup and `WalletRepository` implementation, basic HTTP API endpoints for status and balance check.
+*   **Goal:** Establish connection to MEXC, fetch basic account and market data, prove core setup works. Provide basic visibility via API.
+
+**Phase 2: Manual Trading & Position Basics**
+
+*   **Scope:** Implement `TradeUsecase` for placing manual Buy/Sell orders (market/limit) via API, `OrderRepository` implementation, `PositionUsecase` to create/track basic positions based on *filled* orders, update `PositionRepository`, enhance HTTP API for manual order placement and viewing open positions/order history.
+*   **Goal:** Enable manual control of trading through the bot's API, establish core position tracking.
+
+**Phase 3: Core Automation Loop (Strategy & Risk)**
+
+*   **Scope:** MEXC WebSocket integration (`platform` & `adapter`) for real-time tickers, basic `Strategy` interface and `StrategyFactory`, implement one simple strategy (e.g., MA Crossover), `StrategyUsecase` to feed data and receive signals, integrate `TradeUsecase` to execute signals, implement basic `RiskUsecase` (position sizing % risk), integrate risk checks into `TradeUsecase`, implement basic SL/TP monitoring within `PositionUsecase` (triggering sells via `TradeUsecase`).
+*   **Goal:** Achieve the first end-to-end automated trading cycle based on a simple strategy with basic risk management.
+
+**Phase 4: New Coin Functionality**
+
+*   **Scope:** Implement `NewCoinUsecase` using `MexcAPI` (`GetNewCoins` / Calendar) and `NewCoinRepository`, **develop a reliable event-driven mechanism or service** to trigger buys precisely when coins become tradable, implement the `NewCoinStrategy` logic (or integrate into the autobuy service), ensure specific AutoBuy config (size, SL/TP) is used in `TradeUsecase` calls, implement `NotificationService` port and a basic adapter (e.g., console/log) to report autobuy attempts/successes/failures.
+*   **Goal:** Reliably detect and automatically purchase newly listed coins according to specified criteria and risk controls.
+
+**Phase 5: Advanced Risk & Strategy**
+
+*   **Scope:** Implement advanced risk controls (`internal/domain/risk/controls`) for drawdown, daily loss, exposure, integrate them fully into `RiskUsecase` and `TradeUsecase` checks, implement `BalanceHistoryRepository` and tracking, implement advanced strategy features (e.g., adaptive parameters, regime detection), enhance `PositionUsecase` with scaling logic.
+*   **Goal:** Improve trading robustness and adaptivity with sophisticated risk management and strategy features.
+
+**Phase 6: AI Integration**
+
+*   **Scope:** Implement `AIService` and `EmbeddingsService` ports, implement Gemini gateway adapter (`adapter/gateway/ai/gemini`), implement `AIUsecase`, integrate AI response generation, insight generation (requires Portfolio/Trade data access), function calling framework, implement AI Risk Guardrails and Confirmation Flow, integrate `ConversationMemoryRepository`, implement `SimilarityService` and integrate indexing/searching.
+*   **Goal:** Add AI capabilities for user assistance, analysis, and potentially controlled trade execution.
+
+**Phase 7: Analytics, UI & Polish**
+
+*   **Scope:** Implement `AnalyticsUsecase` and repository integrations, develop Backtesting capabilities, build out comprehensive HTTP API endpoints for all features, develop a user interface (if planned), enhance security (input/output validation), implement caching strategies (`adapter/cache`), add more notification channels, refine logging and monitoring.
+*   **Goal:** Provide performance insights, improve usability, and prepare for production deployment.
+
+**# Logical Dependency Chain**
+
+1.  **Core Setup (Phase 1):** Config, Logging, DB Connection, Basic MEXC REST connection, Get Balance API. *Provides basic visibility and proves connectivity.*
+2.  **Manual Control (Phase 2):** Requires Phase 1. Adds Trade Execution API, Order/Position persistence and basic tracking API. *Allows user-driven trading via the bot.*
+3.  **Basic Automation (Phase 3):** Requires Phase 2. Adds WebSocket, Strategy Framework, Signal Execution, Basic Risk (Sizing, SL/TP). *First automated trades.*
+4.  **New Coin AutoBuy (Phase 4):** Requires Phase 3 (for execution/risk) + New Coin Detection logic. **Crucially needs the reliable trigger mechanism linking detection to execution.** *Adds a key specialized feature.*
+5.  **Advanced Capabilities (Phase 5):** Requires Phase 3. Builds upon basic automation with sophisticated risk controls and strategy logic. *Improves robustness.*
+6.  **AI Integration (Phase 6):** Requires Phase 1, 2, 3 (for context data, function execution). Can be developed somewhat in parallel but needs core data. *Adds intelligence layer.*
+7.  **User Facing & Polish (Phase 7):** Requires most previous phases. Focuses on analytics, usability, backtesting, and production readiness. *Makes the bot usable and evaluable.*
+
+*Getting to a visible front-end showing balance/status depends on completing Phase 1 APIs.*
+*Getting the first automated trade signal executed depends on completing Phase 3.*
+*Reliable Autobuy is dependent on getting the trigger mechanism in Phase 4 right.*
+
+**# Risks and Mitigations**
+
+*   **Technical Risks:**
+    *   *MEXC API Changes/Rate Limits/Errors:* Adapter pattern isolates exchange logic; Implement robust error handling, retries, and adhere to rate limits using `pkg/ratelimiter`. Monitor API documentation. Use WebSockets where possible to reduce REST calls.
+    *   *WebSocket Stability:* Implement reliable auto-reconnect logic with exponential backoff (`platform/mexc/websocket`). Use ping/pong checks to detect dead connections quickly. Ensure state (subscriptions) is restored on reconnect.
+    *   *Data Consistency:* Use database transactions where appropriate (e.g., updating position and balance). Handle potential race conditions with locking (e.g., `sync.Mutex`). Design state management carefully.
+    *   *AI API Reliability/Cost:* Implement fallbacks (if using multiple providers), caching for repeatable requests (e.g., embeddings), monitor usage costs.
+*   **Scope Risks:**
+    *   *Autobuy Complexity:* The link between detecting a tradable coin and executing the buy *reliably* and *quickly* is complex. **Mitigation:** Prioritize building the event/trigger mechanism robustly in Phase 4. Start with simpler criteria and potentially manual confirmation before full automation.
+    *   *MVP Definition:* Defining a truly minimal but valuable MVP. **Mitigation:** Focus Phase 1/2 on proving core connectivity and manual trading control via API, providing immediate value/utility. Defer complex strategies/AI initially.
+*   **Resource Constraints:**
+    *   *Development Time/Expertise:* Requires Go, API integration, potentially database tuning, AI prompting, and trading domain knowledge. **Mitigation:** Phased development allows focusing resources. Clear architecture helps onboarding. Prioritize core features over complex AI initially.
+*   **Market & Financial Risks:**
+    *   *Bot Losing Money:* Strategies may underperform. Bugs can cause financial loss. **Mitigation:** Implement comprehensive Risk Management (Phase 3 & 5) as non-negotiable. Thorough backtesting (Phase 7). Start with paper trading or very small capital. Require user confirmations for significant actions initially.
+    *   *Security Risks:* API key leakage, malicious input via AI. **Mitigation:** Secure storage for API keys (env vars, secrets manager). Implement input/output sanitization and validation (`internal/domain/ai/service/security.go`). Use confirmation flows for AI-driven trades. Conduct security reviews.
+
+**# Appendix**
+
+*   [Link to MEXC API Documentation]
+*   [Link to Gemini API Documentation]
+*   [Detailed Database Schema Diagrams (To be created)]
+*   [Specific Algorithm Details for Core Strategies (To be added)]
+*   [UI Mockups/Wireframes (if applicable)]
+
+`</PRD>`
 
 ---
-
-# 📊 Core Features
-
-## Exchange Integration
-- **What it does**: Interfaces with MEXC REST and WebSocket APIs
-- **Why it's important**: Enables live trading and data collection
-- **How it works**: Token-bucket rate limiter, reconnect logic, caching, authenticated requests
-
-## Trading Strategy Framework
-- **What it does**: Manages how trading decisions are made
-- **Why it's important**: Supports multiple dynamic strategies for different market conditions
-- **How it works**: Pluggable strategy interface, regime detection, signal generation
-
-## Risk Management
-- **What it does**: Prevents overexposure and manages losses
-- **Why it's important**: Preserves capital and enables sustainable trading
-- **How it works**: Position sizing, stop-loss/trailing stop, daily loss caps, drawdown monitoring
-
-## Portfolio Management
-- **What it does**: Tracks holdings and valuations in real time
-- **Why it's important**: Traders need visibility into their current positions and performance
-- **How it works**: Calculates real-time P&L, portfolio value, and exposure metrics
-
-## Backtesting Framework
-- **What it does**: Allows strategies to be tested against historical data
-- **Why it's important**: Helps validate strategy performance before risking real capital
-- **How it works**: Loads historical data (CSV/DB), simulates trades, computes Sharpe ratio, drawdown, etc.
-
-## Notification System
-- **What it does**: Sends real-time alerts
-- **Why it's important**: Keeps traders informed of critical events
-- **How it works**: Async worker pool, integration with Telegram/Slack, templated messages
-
-## User Interfaces
-- **What it does**: Enables users to interact with the bot via CLI, API, and Dashboard
-- **Why it's important**: Provides flexible control options for different user roles
-- **How it works**: RESTful API (Gin), WebSocket streams, CLI with Cobra, React dashboard (mobile-optimized)
-
----
-
-# 📈 User Experience
-
-## User Personas
-- **Traders**: Want automation, risk control, and performance visibility
-- **Developers**: Extend the bot with new strategies or APIs
-- **Analysts**: Review historical and live trade data
-
-## Key User Flows
-1. **Configuration**
-   - Set MEXC API keys
-   - Choose strategy and risk parameters
-   - Enable notifications
-
-2. **Live Trading**
-   - Bot starts scanning market
-   - Generates signals and places trades
-   - Monitors position P&L, risk, drawdown
-
-3. **Monitoring**
-   - Dashboard displays live positions, risk, and alerts
-   - Users receive real-time updates via Slack/Telegram
-
-4. **Backtesting**
-   - Select strategy and dataset
-   - Simulate trades
-   - View report with charts and metrics
-
-## UI/UX Considerations
-- Intuitive CLI and REST API for tech-savvy users
-- Modern, mobile-friendly dashboard
-- Clear status indicators and actionable alerts
-- Secure credential storage and session management
-
----
-
-# ⚖️ Technical Architecture
-
-## System Components
-- **Domain Layer**: Entities, value objects, interfaces (ports)
-- **Application Layer**: Use case orchestration, transactions, services
-- **API Layer**: REST, WebSocket, OpenAPI
-- **CLI Layer**: Command-driven control and monitoring
-- **Infrastructure Layer**: MEXC integration, TursoDB (SQLite-compatible), caching, auth, notifications
-- **Cross-Cutting**: Logging (zap), config, metrics, error tracking
-
-## Data Models
-- `Account`, `Order`, `Position`, `ClosedPosition`, `BalanceHistory`, `Ticker`, `Strategy`, `RiskParameters`
-
-## APIs and Integrations
-- MEXC REST/WebSocket
-- Telegram Bot API, Slack API
-- Clerk authentication (OAuth2, RBAC)
-
-## Infrastructure Requirements
-- Go 1.21+
-- **TursoDB** (SQLite-compatible, edge-first database)
-- Docker for local/cloud deployment
-- GitHub Actions for CI/CD
-- Zap for structured logging
-
----
-
-# 📆 Development Roadmap
-
-## Phase 1: Foundation (MVP)
-- Set up hexagonal architecture
-- Build MEXC client (REST + WebSocket)
-- Implement account, trade, and position services
-- CLI interface for trading and monitoring
-- NewCoinStrategy as baseline
-- TursoDB + schema migrations
-- Unit test coverage + CI/CD pipeline
-
-## Phase 2: Advanced Trading
-- Strategy framework and factory pattern
-- Add BreakoutStrategy and VolumeSpikeStrategy
-- Full risk management suite (sizing, exposure, limits)
-- Notification system (Telegram, Slack)
-- Backtest framework with metrics and CLI commands
-
-## Phase 3: UX & Extensions
-- Clerk-based auth and RBAC
-- REST + WebSocket API endpoints with Huma
-- React dashboard with real-time data
-- Mobile optimization
-- Strategy visualization tools
-- ML module (coin behavior, pattern detection)
-- Multi-exchange support with adapter pattern
-
----
-
-# ⚛ Logical Dependency Chain
-1. Domain model + repository interfaces
-2. MEXC API client + caching
-3. Application services: Trade, Account, Position
-4. Strategy interface + base implementation (NewCoin)
-5. CLI interface for controlling bot
-6. Risk management integration
-7. REST API with real-time updates
-8. Backtesting tools and analytics
-9. Notification engine
-10. Dashboard frontend and ML enhancements
-
----
-
-# ⚠ Risks and Mitigations
-
-## Technical Challenges
-- **MEXC instability**: Add retry logic, exponential backoff, circuit breaker
-- **Concurrency bugs**: Test with Go race detector, sync primitives
-- **API testing**: Use mocks/stubs for exchange simulation
-
-## MVP Definition
-- Focus only on MEXC, single strategy, CLI/REST interfaces
-- Delay ML, dashboard, multi-exchange until Phase 3
-
-## Resource Constraints
-- Modular code design for parallel feature development
-- Strong test suite to reduce future bugs and regressions
-
----
-
-# 🔹 Appendix
-
-## Research Findings
-- NewCoin launches often drive high early volatility
-- Volume spikes are reliable breakout indicators
-- Drawdown limits are crucial for strategy robustness
-
-## Technical Specifications
-- Auth: Clerk + JWT + OAuth
-- DB: **TursoDB** with soft delete and indexing
-- CLI: Cobra
-- API: Gin + Huma
-- Logging: zap
-
-## Example Endpoints
-- `GET /api/v1/account`
-- `POST /api/v1/positions`
-- `POST /api/v1/strategies/backtest`
-
-## CLI Commands
-- `account`, `positions`, `trade`, `backtest`, `config`, `bot`
-
----
-
-# 📅 Summary
-Go Crypto Bot is a scalable, testable, and modular bot framework for crypto trading automation. Its hexagonal architecture enables rapid development of reliable features while ensuring clear separation of concerns, safe trading execution, and long-term extensibility.
-

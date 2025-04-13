@@ -18,6 +18,7 @@ help:
 	@echo "  make frontend-dev     - Start only the frontend container in development mode"
 	@echo "  make logs             - Show logs from all containers"
 	@echo "  make clean            - Remove all containers, volumes, and images"
+	@echo "  make run-backend      - Run the backend server locally with proper env variables"
 
 # Build all containers
 .PHONY: build
@@ -69,3 +70,15 @@ logs:
 clean:
 	$(DOCKER_COMPOSE) down -v --rmi all
 	$(DOCKER_COMPOSE_DEV) down -v --rmi all
+
+# Run the backend server locally with proper env variables
+.PHONY: run-backend
+run-backend:
+	@echo "Starting backend server with proper environment variables..."
+	cd backend && \
+	export MEXC_API_KEY="mx0vglsgdd7flAhfqq" && \
+	export MEXC_SECRET_KEY="0351d73e5a444d5ea5de2d527bd2a07a" && \
+	export MEXC_BASE_URL="https://api.mexc.com" && \
+	export HTTP_PROXY="" && \
+	export HTTPS_PROXY="" && \
+	go run main.go serve

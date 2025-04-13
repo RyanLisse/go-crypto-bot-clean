@@ -1,145 +1,148 @@
 package ratelimiter
 
 import (
-	"context"
-	"fmt"
-	"math"
 	"sync"
 	"time"
 )
 
-// TokenBucketRateLimiter implements a token bucket rate limiting algorithm
-type TokenBucketRateLimiter struct {
-	// Maximum number of tokens in the bucket
-	capacity float64
-	// Current number of tokens
-	tokens float64
-	// Rate of token replenishment per second
-	rate float64
-	// Last time tokens were updated
-	lastUpdate time.Time
-	// Mutex to ensure thread-safety
-	mu sync.Mutex
+// TokenBucket represents a token bucket rate limiter
+type TokenBucket struct {
+	rate       float64    // tokens per second
+	capacity   float64    // bucket capacity
+	tokens     float64    // current number of tokens
+	lastUpdate time.Time  // last time tokens were added
+	mu         sync.Mutex // mutex for concurrent access
 }
 
-// NewTokenBucketRateLimiter creates a new rate limiter
-func NewTokenBucketRateLimiter(rate float64, capacity float64) *TokenBucketRateLimiter {
-	return &TokenBucketRateLimiter{
+// NewTokenBucket creates a new token bucket rate limiter
+func NewTokenBucket(rate float64, capacity float64) *TokenBucket {
+	return &TokenBucket{
+		rate:       rate,
 		capacity:   capacity,
 		tokens:     capacity,
-		rate:       rate,
 		lastUpdate: time.Now(),
 	}
 }
 
-// updateTokens updates the number of tokens based on elapsed time
-func (rl *TokenBucketRateLimiter) updateTokens() {
+// Allow returns true if a request is allowed, and consumes a token
+func (t *TokenBucket) Allow() bool {
+	return t.AllowN(1)
+}
+
+// AllowN returns true if n requests are allowed, and consumes n tokens
+func (t *TokenBucket) AllowN(n float64) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	now := time.Now()
-	elapsed := now.Sub(rl.lastUpdate).Seconds()
-	rl.tokens += rl.rate * elapsed
+	elapsed := now.Sub(t.lastUpdate).Seconds()
+	t.lastUpdate = now
 
-	// Cap tokens at capacity
-	if rl.tokens > rl.capacity {
-		rl.tokens = rl.capacity
+	// Add tokens based on elapsed time
+	t.tokens += elapsed * t.rate
+	if t.tokens > t.capacity {
+		t.tokens = t.capacity
 	}
 
-	rl.lastUpdate = now
+	// Check if we have enough tokens
+	if t.tokens < n {
+		return false
+	}
+
+	// Consume tokens
+	t.tokens -= n
+	return true
 }
 
-// Wait blocks until a token is available
-func (rl *TokenBucketRateLimiter) Wait(ctx context.Context) error {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
+// WaitN waits until n tokens are available and then consumes them
+func (t *TokenBucket) WaitN(n float64) {
+	for {
+		t.mu.Lock()
+		now := time.Now()
+		elapsed := now.Sub(t.lastUpdate).Seconds()
+		t.lastUpdate = now
 
-	// Update tokens
-	rl.updateTokens()
-
-	// If no tokens available, wait
-	for rl.tokens < 1 {
-		// Check context cancellation
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			// Calculate wait time - handle division by zero and very small rates
-			var waitTime time.Duration
-			if rl.rate <= 1e-9 { // Consider rates smaller than 1 token per ~31 years as zero
-				return fmt.Errorf("rate limit exceeded: effective rate is zero (%v tokens/sec)", rl.rate)
-			} else {
-				needed := 1.0 - rl.tokens
-				// Calculate wait time in seconds, ensure it's positive
-				secondsToWait := math.Max(0, needed/rl.rate)
-				waitTime = time.Duration(secondsToWait * float64(time.Second))
-				
-				// Add a small buffer (e.g., 1ms) to prevent potential infinite loops due to floating-point inaccuracies
-				if waitTime == 0 && needed > 0 {
-					waitTime = time.Millisecond
-				}
-			}
-
-			// Unlock mutex while waiting
-			rl.mu.Unlock()
-			// Use a timer that respects context cancellation
-			timer := time.NewTimer(waitTime)
-
-			// Wait with context
-			select {
-			case <-timer.C:
-				// Reacquire mutex
-				rl.mu.Lock()
-
-				// Update tokens again after waiting
-				rl.updateTokens()
-
-				// Re-check if a token is available in the next loop iteration
-			case <-ctx.Done():
-				// Stop the timer if context is cancelled
-				if !timer.Stop() {
-					<-timer.C // Drain the channel if Stop() returned false
-				}
-				// Reacquire mutex before returning
-				rl.mu.Lock()
-				return ctx.Err()
-			}
+		// Add tokens based on elapsed time
+		t.tokens += elapsed * t.rate
+		if t.tokens > t.capacity {
+			t.tokens = t.capacity
 		}
+
+		// If we have enough tokens, consume them and return
+		if t.tokens >= n {
+			t.tokens -= n
+			t.mu.Unlock()
+			return
+		}
+
+		// Calculate how long to wait for the required tokens
+		waitTime := time.Duration((n - t.tokens) / t.rate * float64(time.Second))
+		t.mu.Unlock()
+
+		// Wait for tokens to replenish
+		time.Sleep(waitTime)
+	}
+}
+
+// Wait waits until a token is available and then consumes it
+func (t *TokenBucket) Wait() {
+	t.WaitN(1)
+}
+
+// GetTokens returns the current number of tokens in the bucket
+func (t *TokenBucket) GetTokens() float64 {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	now := time.Now()
+	elapsed := now.Sub(t.lastUpdate).Seconds()
+
+	// Add tokens based on elapsed time
+	tokens := t.tokens + elapsed*t.rate
+	if tokens > t.capacity {
+		tokens = t.capacity
 	}
 
-	// Consume a token
-	rl.tokens--
-
-	return nil
+	return tokens
 }
 
-// TryAcquire attempts to acquire a token without blocking
-func (rl *TokenBucketRateLimiter) TryAcquire() bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
+// RateLimiterMap manages multiple rate limiters by key
+type RateLimiterMap struct {
+	limiters map[string]*TokenBucket
+	rate     float64
+	capacity float64
+	mu       sync.Mutex
+}
 
-	// Update tokens
-	rl.updateTokens()
+// NewRateLimiterMap creates a new rate limiter map
+func NewRateLimiterMap(rate float64, capacity float64) *RateLimiterMap {
+	return &RateLimiterMap{
+		limiters: make(map[string]*TokenBucket),
+		rate:     rate,
+		capacity: capacity,
+	}
+}
 
-	// Check if token is available
-	if rl.tokens >= 1 {
-		rl.tokens--
-		return true
+// Get returns a rate limiter for the given key
+func (r *RateLimiterMap) Get(key string) *TokenBucket {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	limiter, exists := r.limiters[key]
+	if !exists {
+		limiter = NewTokenBucket(r.rate, r.capacity)
+		r.limiters[key] = limiter
 	}
 
-	return false
+	return limiter
 }
 
-// GetTokens returns the current number of tokens
-func (rl *TokenBucketRateLimiter) GetTokens() float64 {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	
-	rl.updateTokens()
-	return rl.tokens
+// Allow returns true if a request is allowed for the given key
+func (r *RateLimiterMap) Allow(key string) bool {
+	return r.Get(key).Allow()
 }
 
-// GetRate returns the rate at which tokens are replenished
-func (rl *TokenBucketRateLimiter) GetRate() float64 {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	
-	return rl.rate
+// Wait waits until a token is available for the given key
+func (r *RateLimiterMap) Wait(key string) {
+	r.Get(key).Wait()
 }

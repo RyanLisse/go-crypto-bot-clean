@@ -17,7 +17,7 @@ services:
       # MEXC API Configuration
       - MEXC_API_KEY=${MEXC_API_KEY}
       - MEXC_SECRET_KEY=${MEXC_SECRET_KEY}
-      - MEXC_BASE_URL=${MEXC_BASE_URL:-https://api.mexc.com/api/v3}
+      - MEXC_BASE_URL=${MEXC_BASE_URL:-https://api.mexc.com}
       - MEXC_WEBSOCKET_URL=${MEXC_WEBSOCKET_URL:-wss://wbs.mexc.com/ws}
       
       # Turso Database Configuration

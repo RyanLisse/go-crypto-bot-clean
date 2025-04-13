@@ -56,7 +56,7 @@ vendor/
 tmp/
 temp/
 /crypto-brute-dash
-
+/backend_old
 # Added by Claude Task Master
 logs
 npm-debug.log*

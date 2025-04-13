@@ -1,0 +1,67 @@
+├── cmd/
+│   └── server/
+│       └── main.go              # Application entry point, dependency wiring
+├── internal/
+│   ├── config/                  # Configuration loading and struct definition
+│   │   └── config.go
+│   ├── domain/                  # Core business logic and entities
+│   │   ├── model/               # Domain entities (Order, Position, Wallet, Ticker, etc.)
+│   │   │   ├── order.go
+│   │   │   ├── position.go
+│   │   │   ├── wallet.go
+│   │   │   ├── ai_types.go      # (e.g., Insight, Message, TradeRecommendation)
+│   │   │   └── ... (other models)
+│   │   └── port/                # Interfaces for external dependencies (Repositories, Gateways)
+│   │       ├── repository.go    # All repository interfaces (OrderRepo, PositionRepo, etc.)
+│   │       ├── gateway.go       # Interfaces for external services (MexcAPI, AIService, etc.)
+│   │       └── notification.go  # Notification interfaces
+│   ├── usecase/                 # Application logic / features
+│   │   ├── account_uc.go        # Account use case interface and implementation
+│   │   ├── trade_uc.go          # Trading use case
+│   │   ├── position_uc.go       # Position management use case
+│   │   ├── analytics_uc.go      # Analytics use case
+│   │   ├── ai_uc.go             # AI interaction use case
+│   │   ├── newcoin_uc.go        # New Coin use case
+│   │   └── status_uc.go         # System Status use case
+│   ├── adapter/                 # Implementations of ports / interaction with external systems
+│   │   ├── delivery/            # How the application is accessed
+│   │   │   ├── http/            # HTTP handlers, router setup
+│   │   │   │   ├── handler/
+│   │   │   │   │   ├── account_handler.go
+│   │   │   │   │   └── ...
+│   │   │   │   └── router.go
+│   │   │   └── cli/             # (If applicable) CLI command handlers
+│   │   ├── persistence/         # Database interactions
+│   │   │   └── gorm/            # GORM implementations of repository ports
+│   │   │       ├── repo/
+│   │   │       │   ├── order_repo.go
+│   │   │       │   └── ...
+│   │   │       └── db.go        # GORM connection setup
+│   │   ├── gateway/             # External service interactions
+│   │   │   ├── mexc/            # Adapter for MEXC platform code
+│   │   │   │   └── client.go    # Implements domain/port/MexcAPI
+│   │   │   ├── ai/              # AI service adapters
+│   │   │   │   ├── gemini.go    # Implements domain/port/AIService using Gemini
+│   │   │   │   ├── openai.go    # Implements domain/port/EmbeddingsService using OpenAI
+│   │   │   │   └── embedding.go # Implements domain/port/EmbeddingsService (could be fallback)
+│   │   │   └── notification/    # Notification gateway implementations
+│   │   │       └── telegram.go  # Example
+│   │   └── cache/               # Cache implementations (e.g., Redis, in-memory)
+│   │       └── memory.go
+│   ├── platform/                # Low-level, reusable platform components
+│   │   ├── database/            # DB utility functions (might be empty if using ORM directly)
+│   │   ├── mexc/                # Original MEXC REST/WS/Cache code (mostly unchanged)
+│   │   │   ├── rest/
+│   │   │   ├── websocket/
+│   │   │   └── cache/
+│   │   ├── logger/              # Logger setup
+│   │   └── ...
+│   └── apperror/                # Application-specific error types
+│       └── errors.go
+├── pkg/                       # Shared, general-purpose libraries
+│   └── ratelimiter/
+│       └── ratelimiter.go
+├── go.mod
+├── go.sum
+└── migrations/                # Database migration files
+    └── ...

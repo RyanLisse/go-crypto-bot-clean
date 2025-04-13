@@ -22,13 +22,21 @@ export const useAccountBalanceQuery = () => {
 };
 
 // Get wallet
-export const useWalletQuery = () => {
+export const useWalletQuery = (options?: {
+  refetchInterval?: number;
+  staleTime?: number;
+  retry?: number;
+  refetchOnWindowFocus?: boolean;
+  enabled?: boolean;
+}) => {
   return useQuery({
     queryKey: accountKeys.wallet(),
     queryFn: () => api.getWallet(),
-    staleTime: 30000, // Consider data stale after 30 seconds
-    retry: 2, // Retry failed requests up to 2 times
-    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: options?.staleTime ?? 30000, // Consider data stale after 30 seconds by default
+    retry: options?.retry ?? 2, // Retry failed requests up to 2 times by default
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? true, // Refetch when window regains focus by default
+    refetchInterval: options?.refetchInterval, // Optional refetch interval
+    enabled: options?.enabled ?? true, // Enabled by default
   });
 };
 

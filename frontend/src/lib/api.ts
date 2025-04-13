@@ -1,8 +1,11 @@
 // Removed Clerk import to rely on global instance and avoid duplicate identifier errors
 
-// Define API base URL based on environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
-console.log('API_BASE_URL:', API_BASE_URL);
+// Import API configuration
+import { API_CONFIG } from '@/config';
+
+// Define API base URL based on configuration
+const API_BASE_URL = API_CONFIG.API_URL;
+console.log('API_BASE_URL:', API_BASE_URL, API_CONFIG.USE_LOCAL_API ? '(Local)' : '(Remote)');
 
 // Define a type for the window object with Clerk - Ensure Clerk type is available globally or import if needed
 // Assuming Clerk is globally available via script tag for now.
@@ -969,9 +972,9 @@ export interface PortfolioUpdatePayload {
 
 // WebSocket client with reconnection and error handling
 export const createWebSocketClient = () => {
-  // WebSocket base URL
-  const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
-  console.log('WS_BASE_URL:', WS_BASE_URL);
+  // WebSocket base URL from configuration
+  const WS_BASE_URL = API_CONFIG.WS_URL;
+  console.log('WS_BASE_URL:', WS_BASE_URL, API_CONFIG.USE_LOCAL_API ? '(Local)' : '(Remote)');
 
   let socket: WebSocket | null = null;
   let reconnectAttempts = 0;

@@ -80,14 +80,19 @@ export function UpcomingCoins() {
   }, [isError, error, toast]);
 
   // Format new coins data to match our UI requirements
-  const formatCoins = (coinsData: any[]): CoinData[] => {
-    if (!coinsData || coinsData.length === 0) {
+  const formatCoins = (coinsData: any): CoinData[] => {
+    // Check if coinsData is an array and has items
+    if (!coinsData || !Array.isArray(coinsData) || coinsData.length === 0) {
+      console.log('Using fallback data for upcoming coins');
       return upcomingCoins; // Use fallback data
     }
 
-    return coinsData
-      .slice(0, 5) // Limit to 5 coins
-      .map(coin => ({
+    console.log('Formatting coins data:', coinsData);
+
+    try {
+      return coinsData
+        .slice(0, 5) // Limit to 5 coins
+        .map(coin => ({
         symbol: coin.symbol || 'UNKNOWN',
         name: coin.name || 'Unknown Coin',
         releaseDate: new Date(coin.firstOpenTime || coin.first_open_time || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -95,6 +100,10 @@ export function UpcomingCoins() {
         expectedChange: `${(coin.expected_change || Math.random() * 15).toFixed(1)}%`,
         isPositive: coin.expected_change > 0 || Math.random() > 0.2 // Mostly positive if not provided
       }));
+    } catch (error) {
+      console.error('Error formatting coins data:', error);
+      return upcomingCoins; // Use fallback data on error
+    }
   };
 
   // Get formatted coins
