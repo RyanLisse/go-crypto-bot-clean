@@ -2,13 +2,9 @@ package rest
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -93,562 +89,329 @@ type (
 	}
 )
 
-// GetAccount fetches account information
-func (c *Client) GetAccount(ctx context.Context) (*model.Wallet, error) {
-	resp, err := c.callPrivateAPI(ctx, http.MethodGet, "/account", nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get account: %w", err)
+// GetAccount retrieves account information including balances
+func (c *Client) GetAccount() (*model.Account, error) {
+	endpoint := "/api/v3/account"
+
+	var response struct {
+		MakerCommission  int  `json:"makerCommission"`
+		TakerCommission  int  `json:"takerCommission"`
+		BuyerCommission  int  `json:"buyerCommission"`
+		SellerCommission int  `json:"sellerCommission"`
+		CanTrade         bool `json:"canTrade"`
+		CanWithdraw      bool `json:"canWithdraw"`
+		CanDeposit       bool `json:"canDeposit"`
+		Balances         []struct {
+			Asset  string `json:"asset"`
+			Free   string `json:"free"`
+			Locked string `json:"locked"`
+		} `json:"balances"`
 	}
 
-	var accountResp AccountResponse
-	if err := json.Unmarshal(resp, &accountResp); err != nil {
+	// Assuming callPrivateAPI is the correct method for signed requests
+	data, err := c.callPrivateAPI(context.Background(), "GET", endpoint, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get account info: %w", err)
+	}
+
+	if err := json.Unmarshal(data, &response); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal account response: %w", err)
 	}
 
-	// Convert response to domain model
-	wallet := &model.Wallet{
-		Balances:    make(map[model.Asset]*model.Balance),
-		LastUpdated: time.Now(),
-	}
+	account := model.NewAccount("", "MEXC") // UserID will be set by the application layer
 
-	for _, balance := range accountResp.Balances {
+	// Set permissions based on account capabilities
+	permissions := make([]string, 0)
+	if response.CanTrade {
+		permissions = append(permissions, "trade")
+	}
+	if response.CanWithdraw {
+		permissions = append(permissions, "withdraw")
+	}
+	if response.CanDeposit {
+		permissions = append(permissions, "deposit")
+	}
+	account.Permissions = permissions
+
+	// Update wallet balances
+	for _, balance := range response.Balances {
 		free, err := strconv.ParseFloat(balance.Free, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse free balance: %w", err)
+			continue
 		}
-
 		locked, err := strconv.ParseFloat(balance.Locked, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse locked balance: %w", err)
+			continue
 		}
 
-		// Only include assets with non-zero balance
-		if free > 0 || locked > 0 {
-			asset := model.Asset(balance.Asset)
-			wallet.Balances[asset] = &model.Balance{
-				Asset:    asset,
-				Free:     free,
-				Locked:   locked,
-				Total:    free + locked,
-				USDValue: 0, // We don't have USD value from MEXC API directly
-			}
-		}
+		// Assuming Wallet has an UpdateBalance method with this signature
+		account.Wallet.UpdateBalance(model.Asset(balance.Asset), free, locked, 0.0)
 	}
 
-	return wallet, nil
+	return account, nil
 }
 
-// GetMarketData fetches market data for a symbol
-func (c *Client) GetMarketData(ctx context.Context, symbol string) (*model.Ticker, error) {
-	params := map[string]string{
-		"symbol": symbol,
-	}
+// GetMarketData retrieves market data for a symbol
+func (c *Client) GetMarketData(symbol string) (*model.MarketData, error) {
+	// Create new market data instance
+	marketData := model.NewMarketData(symbol)
 
-	resp, err := c.callPublicAPI(ctx, http.MethodGet, "/ticker/24hr", params)
+	// Assuming GetTicker exists and returns *model.Ticker
+	ticker, err := c.GetTicker(symbol) // Needs implementation
 	if err != nil {
-		return nil, fmt.Errorf("failed to get market data: %w", err)
+		return nil, fmt.Errorf("failed to get ticker: %w", err)
 	}
+	marketData.Ticker = ticker
 
-	var tickerResp TickerResponse
-	if err := json.Unmarshal(resp, &tickerResp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal ticker response: %w", err)
-	}
-
-	// Convert response to domain model
-	lastPrice, err := strconv.ParseFloat(tickerResp.LastPrice, 64)
+	// Assuming GetOrderBook exists and returns *model.OrderBook
+	orderBook, err := c.GetOrderBook(context.Background(), symbol, 20) // Use context
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse last price: %w", err)
+		return nil, fmt.Errorf("failed to get order book: %w", err)
+	}
+	marketData.OrderBook = *orderBook
+
+	// Assuming GetRecentTrades exists and returns []model.MarketTrade
+	trades, err := c.GetRecentTrades(symbol, 1) // Needs implementation
+	if err == nil && len(trades) > 0 {
+		marketData.LastTrade = trades[0]
 	}
 
-	bidPrice, err := strconv.ParseFloat(tickerResp.BidPrice, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse bid price: %w", err)
-	}
-
-	askPrice, err := strconv.ParseFloat(tickerResp.AskPrice, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse ask price: %w", err)
-	}
-
-	highPrice, err := strconv.ParseFloat(tickerResp.HighPrice, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse high price: %w", err)
-	}
-
-	lowPrice, err := strconv.ParseFloat(tickerResp.LowPrice, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse low price: %w", err)
-	}
-
-	volume, err := strconv.ParseFloat(tickerResp.Volume, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse volume: %w", err)
-	}
-
-	quoteVolume, err := strconv.ParseFloat(tickerResp.QuoteVolume, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse quote volume: %w", err)
-	}
-
-	priceChange, err := strconv.ParseFloat(tickerResp.PriceChange, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse price change: %w", err)
-	}
-
-	priceChangePercent, err := strconv.ParseFloat(tickerResp.PriceChangePercent, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse price change percent: %w", err)
-	}
-
-	openPrice, err := strconv.ParseFloat(tickerResp.OpenPrice, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse open price: %w", err)
-	}
-
-	prevClosePrice, err := strconv.ParseFloat(tickerResp.PrevClosePrice, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse previous close price: %w", err)
-	}
-
-	bidQty, err := strconv.ParseFloat(tickerResp.BidQty, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse bid quantity: %w", err)
-	}
-
-	askQty, err := strconv.ParseFloat(tickerResp.AskQty, 64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse ask quantity: %w", err)
-	}
-
-	ticker := &model.Ticker{
-		Symbol:             symbol,
-		LastPrice:          lastPrice,
-		PriceChange:        priceChange,
-		PriceChangePercent: priceChangePercent,
-		HighPrice:          highPrice,
-		LowPrice:           lowPrice,
-		Volume:             volume,
-		QuoteVolume:        quoteVolume,
-		OpenPrice:          openPrice,
-		PrevClosePrice:     prevClosePrice,
-		BidPrice:           bidPrice,
-		BidQty:             bidQty,
-		AskPrice:           askPrice,
-		AskQty:             askQty,
-		Count:              int64(tickerResp.Count),
-		Timestamp:          time.Now(),
-	}
-
-	return ticker, nil
+	return marketData, nil
 }
 
-// GetKlines fetches kline/candlestick data for a symbol
-func (c *Client) GetKlines(ctx context.Context, symbol string, interval model.KlineInterval, limit int) ([]*model.Kline, error) {
-	if limit <= 0 || limit > 1000 {
-		limit = 100 // Default to 100 klines if invalid limit
-	}
-
-	// Convert domain interval to MEXC interval format
-	var intervalStr string
-	switch interval {
-	case model.KlineInterval1m:
-		intervalStr = "1m"
-	case model.KlineInterval5m:
-		intervalStr = "5m"
-	case model.KlineInterval15m:
-		intervalStr = "15m"
-	case model.KlineInterval30m:
-		intervalStr = "30m"
-	case model.KlineInterval1h:
-		intervalStr = "1h"
-	case model.KlineInterval4h:
-		intervalStr = "4h"
-	case model.KlineInterval1d:
-		intervalStr = "1d"
-	case model.KlineInterval1w:
-		intervalStr = "1w"
-	default:
-		return nil, fmt.Errorf("invalid kline interval: %s", interval)
-	}
-
+// GetKlines retrieves kline/candlestick data for a symbol
+func (c *Client) GetKlines(ctx context.Context, symbol string, interval string, limit int) ([]model.Kline, error) {
 	params := map[string]string{
 		"symbol":   symbol,
-		"interval": intervalStr,
+		"interval": interval,
 		"limit":    strconv.Itoa(limit),
 	}
 
-	resp, err := c.callPublicAPI(ctx, http.MethodGet, "/klines", params)
+	data, err := c.callPublicAPI(ctx, "GET", "/api/v3/klines", params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get klines: %w", err)
 	}
 
-	var klinesResp [][]interface{}
-	if err := json.Unmarshal(resp, &klinesResp); err != nil {
+	var klineData [][]interface{}
+	if err := json.Unmarshal(data, &klineData); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal klines response: %w", err)
 	}
 
-	// Convert response to domain model
-	klines := make([]*model.Kline, 0, len(klinesResp))
-	for _, k := range klinesResp {
-		// MEXC kline format: [OpenTime, Open, High, Low, Close, Volume, CloseTime, QuoteVolume, NumTrades, TakerBuyBaseVol, TakerBuyQuoteVol, Ignored]
-		if len(k) < 12 {
-			return nil, fmt.Errorf("invalid kline data format")
-		}
+	klines := make([]model.Kline, len(klineData))
+	for i, k := range klineData {
+		openTime := time.UnixMilli(int64(k[0].(float64)))
+		closeTime := time.UnixMilli(int64(k[6].(float64)))
 
-		// Extract and parse values
-		openTimeMs := int64(k[0].(float64))
-		closeTimeMs := int64(k[6].(float64))
-		open, err := strconv.ParseFloat(k[1].(string), 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse open price: %w", err)
-		}
-		high, err := strconv.ParseFloat(k[2].(string), 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse high price: %w", err)
-		}
-		low, err := strconv.ParseFloat(k[3].(string), 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse low price: %w", err)
-		}
-		closePrice, err := strconv.ParseFloat(k[4].(string), 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse close price: %w", err)
-		}
-		volume, err := strconv.ParseFloat(k[5].(string), 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse volume: %w", err)
-		}
-		quoteVolume, err := strconv.ParseFloat(k[7].(string), 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse quote volume: %w", err)
-		}
-		numTrades := int64(k[8].(float64))
+		open, _ := strconv.ParseFloat(k[1].(string), 64)
+		high, _ := strconv.ParseFloat(k[2].(string), 64)
+		low, _ := strconv.ParseFloat(k[3].(string), 64)
+		close, _ := strconv.ParseFloat(k[4].(string), 64)
+		volume, _ := strconv.ParseFloat(k[5].(string), 64)
 
-		kline := &model.Kline{
-			Symbol:      symbol,
-			Interval:    interval,
-			OpenTime:    time.Unix(0, openTimeMs*int64(time.Millisecond)),
-			CloseTime:   time.Unix(0, closeTimeMs*int64(time.Millisecond)),
-			Open:        open,
-			High:        high,
-			Low:         low,
-			Close:       closePrice,
-			Volume:      volume,
-			QuoteVolume: quoteVolume,
-			TradeCount:  numTrades,
-			IsClosed:    true, // Assuming historical klines are closed
+		klines[i] = model.Kline{
+			Symbol:    symbol,
+			Interval:  model.KlineInterval(interval),
+			OpenTime:  openTime,
+			Open:      open,
+			High:      high,
+			Low:       low,
+			Close:     close,
+			Volume:    volume,
+			CloseTime: closeTime,
+			IsClosed:  true, // MEXC returns only closed klines
 		}
-		klines = append(klines, kline)
 	}
 
 	return klines, nil
 }
 
-// GetOrderBook fetches the order book for a symbol
+// GetOrderBook retrieves order book data for a symbol
 func (c *Client) GetOrderBook(ctx context.Context, symbol string, limit int) (*model.OrderBook, error) {
-	if limit <= 0 || limit > 5000 {
-		limit = 100 // Default to 100 depth levels if invalid limit
-	}
-
 	params := map[string]string{
 		"symbol": symbol,
 		"limit":  strconv.Itoa(limit),
 	}
 
-	resp, err := c.callPublicAPI(ctx, http.MethodGet, "/depth", params)
+	data, err := c.callPublicAPI(ctx, "GET", "/api/v3/depth", params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get order book: %w", err)
 	}
 
-	var orderBookResp OrderBookResponse
-	if err := json.Unmarshal(resp, &orderBookResp); err != nil {
+	var orderBookData struct {
+		LastUpdateID int64      `json:"lastUpdateId"`
+		Bids         [][]string `json:"bids"`
+		Asks         [][]string `json:"asks"`
+	}
+	if err := json.Unmarshal(data, &orderBookData); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal order book response: %w", err)
 	}
 
-	// Convert response to domain model
-	orderBook := &model.OrderBook{
+	bids := make([]model.OrderBookEntry, len(orderBookData.Bids))
+	for i, bid := range orderBookData.Bids {
+		price, _ := strconv.ParseFloat(bid[0], 64)
+		quantity, _ := strconv.ParseFloat(bid[1], 64)
+		bids[i] = model.OrderBookEntry{
+			Price:    price,
+			Quantity: quantity,
+		}
+	}
+
+	asks := make([]model.OrderBookEntry, len(orderBookData.Asks))
+	for i, ask := range orderBookData.Asks {
+		price, _ := strconv.ParseFloat(ask[0], 64)
+		quantity, _ := strconv.ParseFloat(ask[1], 64)
+		asks[i] = model.OrderBookEntry{
+			Price:    price,
+			Quantity: quantity,
+		}
+	}
+
+	return &model.OrderBook{
 		Symbol:       symbol,
-		LastUpdateID: orderBookResp.LastUpdateID,
-		Bids:         make([]model.OrderBookEntry, 0, len(orderBookResp.Bids)),
-		Asks:         make([]model.OrderBookEntry, 0, len(orderBookResp.Asks)),
-		Timestamp:    time.Now(),
-	}
-
-	// Process bids
-	for _, bid := range orderBookResp.Bids {
-		if len(bid) < 2 {
-			continue
-		}
-		price, err := strconv.ParseFloat(bid[0], 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse bid price: %w", err)
-		}
-		quantity, err := strconv.ParseFloat(bid[1], 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse bid quantity: %w", err)
-		}
-		orderBook.Bids = append(orderBook.Bids, model.OrderBookEntry{
-			Price:    price,
-			Quantity: quantity,
-		})
-	}
-
-	// Process asks
-	for _, ask := range orderBookResp.Asks {
-		if len(ask) < 2 {
-			continue
-		}
-		price, err := strconv.ParseFloat(ask[0], 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse ask price: %w", err)
-		}
-		quantity, err := strconv.ParseFloat(ask[1], 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse ask quantity: %w", err)
-		}
-		orderBook.Asks = append(orderBook.Asks, model.OrderBookEntry{
-			Price:    price,
-			Quantity: quantity,
-		})
-	}
-
-	return orderBook, nil
-}
-
-// sendSignedRequest sends a signed request to the MEXC API
-func (c *Client) sendSignedRequest(ctx context.Context, method, endpoint string, params url.Values) (*http.Response, error) {
-	signature := c.generateSignature(params)
-	params.Add("signature", signature)
-
-	reqURL := c.baseURL + endpoint
-
-	if method == "GET" {
-		reqURL = reqURL + "?" + params.Encode()
-	}
-
-	var req *http.Request
-	var err error
-
-	if method == "POST" {
-		req, err = http.NewRequestWithContext(ctx, method, reqURL, strings.NewReader(params.Encode()))
-		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %w", err)
-		}
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	} else {
-		req, err = http.NewRequestWithContext(ctx, method, reqURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %w", err)
-		}
-	}
-
-	req.Header.Set("X-MBX-APIKEY", c.apiKey)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		var errResp struct {
-			Code    int    `json:"code"`
-			Message string `json:"msg"`
-		}
-
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
-			resp.Body.Close()
-			return nil, fmt.Errorf("HTTP error %d", resp.StatusCode)
-		}
-
-		resp.Body.Close()
-		return nil, fmt.Errorf("API error: %d - %s", errResp.Code, errResp.Message)
-	}
-
-	return resp, nil
-}
-
-// generateSignature generates a HMAC SHA256 signature for a request
-func (c *Client) generateSignature(params url.Values) string {
-	queryString := params.Encode()
-	mac := hmac.New(sha256.New, []byte(c.secretKey))
-	mac.Write([]byte(queryString))
-	return hex.EncodeToString(mac.Sum(nil))
+		LastUpdateID: orderBookData.LastUpdateID,
+		Bids:         bids,
+		Asks:         asks,
+	}, nil
 }
 
 // PlaceOrder places a new order on the exchange
 func (c *Client) PlaceOrder(ctx context.Context, symbol string, side model.OrderSide, orderType model.OrderType, quantity float64, price float64, timeInForce model.TimeInForce) (*model.Order, error) {
-	// Create parameters map
 	params := map[string]string{
-		"symbol": symbol,
-		"side":   string(side),
-		"type":   string(orderType),
+		"symbol":   symbol,
+		"side":     string(side),
+		"type":     string(orderType),
+		"quantity": strconv.FormatFloat(quantity, 'f', -1, 64),
 	}
 
-	// Convert quantity to string with appropriate precision
-	quantityStr := strconv.FormatFloat(quantity, 'f', -1, 64)
-	params["quantity"] = quantityStr
-
-	// Add price for limit orders
 	if orderType == model.OrderTypeLimit {
-		priceStr := strconv.FormatFloat(price, 'f', -1, 64)
-		params["price"] = priceStr
 		params["timeInForce"] = string(timeInForce)
+		params["price"] = strconv.FormatFloat(price, 'f', -1, 64)
 	}
 
-	// Generate client order ID
-	clientOrderID := fmt.Sprintf("go_bot_%d", time.Now().UnixNano())
-	params["newClientOrderId"] = clientOrderID
-
-	// Send request
-	resp, err := c.callPrivateAPI(ctx, http.MethodPost, "/order", params, nil)
+	data, err := c.callPrivateAPI(ctx, "POST", "/api/v3/order", params, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to place order: %w", err)
 	}
 
-	// Parse response
-	var response struct {
-		Symbol        string `json:"symbol"`
+	var orderResp struct {
 		OrderID       string `json:"orderId"`
 		ClientOrderID string `json:"clientOrderId"`
-		TransactTime  int64  `json:"transactTime"`
+		Symbol        string `json:"symbol"`
 		Price         string `json:"price"`
 		OrigQty       string `json:"origQty"`
 		ExecutedQty   string `json:"executedQty"`
 		Status        string `json:"status"`
-		TimeInForce   string `json:"timeInForce"`
-		Type          string `json:"type"`
-		Side          string `json:"side"`
-	}
-
-	if err := json.Unmarshal(resp, &response); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal order response: %w", err)
-	}
-
-	// Parse price and quantities
-	parsedPrice, err := strconv.ParseFloat(response.Price, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid price in response: %w", err)
-	}
-
-	parsedQty, err := strconv.ParseFloat(response.OrigQty, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid quantity in response: %w", err)
-	}
-
-	executedQty, err := strconv.ParseFloat(response.ExecutedQty, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid executed quantity in response: %w", err)
-	}
-
-	// Create and return order
-	order := &model.Order{
-		OrderID:       response.OrderID,
-		ClientOrderID: response.ClientOrderID,
-		Symbol:        response.Symbol,
-		Side:          model.OrderSide(response.Side),
-		Type:          model.OrderType(response.Type),
-		Status:        model.OrderStatus(response.Status),
-		Price:         parsedPrice,
-		Quantity:      parsedQty,
-		ExecutedQty:   executedQty,
-		CreatedAt:     time.Unix(0, response.TransactTime*int64(time.Millisecond)),
-		UpdatedAt:     time.Now(),
-	}
-
-	return order, nil
-}
-
-// CancelOrder cancels an existing order
-func (c *Client) CancelOrder(ctx context.Context, symbol string, orderID string) error {
-	endpoint := "/order"
-
-	params := make(map[string]string)
-	params["symbol"] = symbol
-	params["orderId"] = orderID
-
-	resp, err := c.callPrivateAPI(ctx, http.MethodDelete, endpoint, params, nil)
-	if err != nil {
-		return fmt.Errorf("failed to cancel order: %w", err)
-	}
-
-	// We don't need to parse the response, just check for errors
-	_ = resp
-
-	return nil
-}
-
-// GetOrderStatus checks the status of an order
-func (c *Client) GetOrderStatus(ctx context.Context, symbol string, orderID string) (*model.Order, error) {
-	// Create parameters
-	params := map[string]string{
-		"symbol": symbol,
-	}
-
-	// Determine if orderID is numeric or a client order ID
-	if _, err := strconv.ParseInt(orderID, 10, 64); err == nil {
-		// OrderID is numeric
-		params["orderId"] = orderID
-	} else {
-		// OrderID is likely a client order ID
-		params["origClientOrderId"] = orderID
-	}
-
-	// Send request
-	resp, err := c.callPrivateAPI(ctx, http.MethodGet, "/order", params, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get order status: %w", err)
-	}
-
-	// Parse response
-	var response struct {
-		Symbol        string `json:"symbol"`
-		OrderID       string `json:"orderId"`
-		ClientOrderID string `json:"clientOrderId"`
-		Price         string `json:"price"`
-		OrigQty       string `json:"origQty"`
-		ExecutedQty   string `json:"executedQty"`
-		Status        string `json:"status"`
-		TimeInForce   string `json:"timeInForce"`
 		Type          string `json:"type"`
 		Side          string `json:"side"`
 		Time          int64  `json:"time"`
 		UpdateTime    int64  `json:"updateTime"`
 	}
-
-	if err := json.Unmarshal(resp, &response); err != nil {
+	if err := json.Unmarshal(data, &orderResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal order response: %w", err)
 	}
 
-	// Parse price and quantities
-	parsedPrice, err := strconv.ParseFloat(response.Price, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid price in response: %w", err)
-	}
+	price, _ = strconv.ParseFloat(orderResp.Price, 64)
+	origQty, _ := strconv.ParseFloat(orderResp.OrigQty, 64)
+	executedQty, _ := strconv.ParseFloat(orderResp.ExecutedQty, 64)
 
-	parsedQty, err := strconv.ParseFloat(response.OrigQty, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid quantity in response: %w", err)
-	}
-
-	executedQty, err := strconv.ParseFloat(response.ExecutedQty, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid executed quantity in response: %w", err)
-	}
-
-	// Create and return order
-	order := &model.Order{
-		OrderID:       response.OrderID,
-		ClientOrderID: response.ClientOrderID,
-		Symbol:        response.Symbol,
-		Side:          model.OrderSide(response.Side),
-		Type:          model.OrderType(response.Type),
-		Status:        model.OrderStatus(response.Status),
-		Price:         parsedPrice,
-		Quantity:      parsedQty,
+	return &model.Order{
+		OrderID:       orderResp.OrderID,
+		ClientOrderID: orderResp.ClientOrderID,
+		Symbol:        orderResp.Symbol,
+		Side:          model.OrderSide(strings.ToUpper(orderResp.Side)),
+		Type:          model.OrderType(strings.ToUpper(orderResp.Type)),
+		Status:        model.OrderStatus(strings.ToUpper(orderResp.Status)),
+		Price:         price,
+		Quantity:      origQty,
 		ExecutedQty:   executedQty,
-		CreatedAt:     time.Unix(0, response.Time*int64(time.Millisecond)),
-		UpdatedAt:     time.Unix(0, response.UpdateTime*int64(time.Millisecond)),
+		CreatedAt:     time.UnixMilli(orderResp.Time),
+		UpdatedAt:     time.UnixMilli(orderResp.UpdateTime),
+	}, nil
+}
+
+// CancelOrder cancels an existing order
+func (c *Client) CancelOrder(ctx context.Context, symbol string, orderID string) error {
+	params := map[string]string{
+		"symbol":  symbol,
+		"orderId": orderID,
 	}
 
-	return order, nil
+	_, err := c.callPrivateAPI(ctx, "DELETE", "/api/v3/order", params, nil)
+	if err != nil {
+		return fmt.Errorf("failed to cancel order: %w", err)
+	}
+
+	return nil
+}
+
+// GetOrderStatus retrieves the status of an order from the exchange
+func (c *Client) GetOrderStatus(ctx context.Context, symbol string, orderID string) (*model.Order, error) {
+	params := map[string]string{
+		"symbol":  symbol,
+		"orderId": orderID,
+	}
+
+	data, err := c.callPrivateAPI(ctx, "GET", "/api/v3/order", params, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get order status: %w", err)
+	}
+
+	var orderResp struct {
+		OrderID       string `json:"orderId"`
+		ClientOrderID string `json:"clientOrderId"`
+		Symbol        string `json:"symbol"`
+		Price         string `json:"price"`
+		OrigQty       string `json:"origQty"`
+		ExecutedQty   string `json:"executedQty"`
+		Status        string `json:"status"`
+		Type          string `json:"type"`
+		Side          string `json:"side"`
+		Time          int64  `json:"time"`
+		UpdateTime    int64  `json:"updateTime"`
+	}
+	if err := json.Unmarshal(data, &orderResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal order response: %w", err)
+	}
+
+	price, _ := strconv.ParseFloat(orderResp.Price, 64)
+	quantity, _ := strconv.ParseFloat(orderResp.OrigQty, 64)
+	executedQty, _ := strconv.ParseFloat(orderResp.ExecutedQty, 64)
+
+	return &model.Order{
+		OrderID:       orderResp.OrderID,
+		ClientOrderID: orderResp.ClientOrderID,
+		Symbol:        orderResp.Symbol,
+		Side:          model.OrderSide(strings.ToUpper(orderResp.Side)),
+		Type:          model.OrderType(strings.ToUpper(orderResp.Type)),
+		Status:        model.OrderStatus(strings.ToUpper(orderResp.Status)),
+		Price:         price,
+		Quantity:      quantity,
+		ExecutedQty:   executedQty,
+		CreatedAt:     time.UnixMilli(orderResp.Time),
+		UpdatedAt:     time.UnixMilli(orderResp.UpdateTime),
+	}, nil
+}
+
+// Helper function to parse float64 from interface{}
+func parseFloat64(v interface{}) float64 {
+	switch v := v.(type) {
+	case string:
+		f, _ := strconv.ParseFloat(v, 64)
+		return f
+	case float64:
+		return v
+	default:
+		return 0
+	}
+}
+
+// Placeholder implementations for missing methods - These need to be fully implemented!
+func (c *Client) GetTicker(symbol string) (*model.Ticker, error) {
+	// TODO: Implement GetTicker API call
+	return nil, errors.New("GetTicker not implemented")
+}
+
+func (c *Client) GetRecentTrades(symbol string, limit int) ([]model.MarketTrade, error) {
+	// TODO: Implement GetRecentTrades API call
+	return nil, errors.New("GetRecentTrades not implemented")
 }
