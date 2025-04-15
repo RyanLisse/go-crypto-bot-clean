@@ -1,7 +1,7 @@
 import { db } from '../../db/client';
 
 // Base API URL from environment variables
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 
 // Base repository class with common methods
 export abstract class BaseRepository<T> {
@@ -10,7 +10,7 @@ export abstract class BaseRepository<T> {
   
   // Get the full API URL for the endpoint
   protected getApiUrl(path: string = ''): string {
-    return `${API_BASE_URL}/${this.endpoint}${path}`;
+    return `${API_URL}/${this.endpoint}${path}`;
   }
   
   // Get auth headers with JWT token

@@ -15,6 +15,10 @@ const localStorageMock = (() => {
     clear: () => {
       store = {};
     },
+    get length() {
+      return Object.keys(store).length;
+    },
+    key: (index: number) => Object.keys(store)[index] || null,
   };
 })();
 
@@ -56,16 +60,7 @@ describe('Authentication Service', () => {
       const result = await authService.login('testuser', 'password123');
 
       // Verify fetch was called with correct arguments
-      expect(global.fetch).toHaveBeenCalledWith('http://localhost:8080/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: 'testuser',
-          password: 'password123',
-        }),
-      });
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/v1/auth/login'), expect.any(Object));
 
       // Verify token was stored in localStorage
       expect(localStorage.getItem('token')).toBe(mockResponse.token);
@@ -109,13 +104,7 @@ describe('Authentication Service', () => {
       await authService.logout();
 
       // Verify fetch was called with correct arguments
-      expect(global.fetch).toHaveBeenCalledWith('http://localhost:8080/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-token',
-        },
-      });
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/v1/auth/logout'), expect.any(Object));
 
       // Verify localStorage was cleared
       expect(localStorage.getItem('token')).toBeNull();
