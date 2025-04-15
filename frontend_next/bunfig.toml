@@ -1,0 +1,23 @@
+[install]
+# Use the exact versions specified in package.json
+exact = true
+# Install dev dependencies by default
+dev = true
+
+[test]
+# Use the DOM environment for tests
+environment = "jsdom"
+# Configure Jest compatibility
+jsx = true
+# Include test files matching these patterns
+include = ["**/*.test.{ts,tsx,js,jsx}"]
+# Setup file for tests
+setupFiles = ["./src/test-setup.ts"]
+# Create browser-like environment for testing
+environmentOptions = { jsdom = { runScripts = "dangerously" } }
+# Support for Jest mock functions
+jestCompat = true
+# Polyfill some Node.js modules
+nodeCompat = true
+# Avoid test timeouts
+timeout = 30000 
