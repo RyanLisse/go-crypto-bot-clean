@@ -218,3 +218,8 @@ backend/
 - Automated scheduling
 - Performance monitoring
 - Cloud service integration
+
+### API Integration (June 2024)
+- All frontend API calls are now standardized to use `VITE_API_URL` (default: `http://localhost:8080/api/v1`)
+- Authentication endpoints use `/api/v1/auth/*` for both Clerk and JWT flows
+- CORS and environment configuration are unified for local development and production

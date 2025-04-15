@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/model/market"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,6 +15,24 @@ import (
 // Mock implementations
 type MockPositionUseCase struct {
 	mock.Mock
+}
+
+// GetActiveByUser implements the usecase.PositionUseCase interface
+func (m *MockPositionUseCase) GetActiveByUser(ctx context.Context, userID string) ([]*model.Position, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.Position), args.Error(1)
+}
+
+// GetByUserID implements the usecase.PositionUseCase interface
+func (m *MockPositionUseCase) GetByUserID(ctx context.Context, userID string, limit, offset int) ([]*model.Position, error) {
+	args := m.Called(ctx, userID, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.Position), args.Error(1)
 }
 
 func (m *MockPositionUseCase) CreatePosition(ctx context.Context, req model.PositionCreateRequest) (*model.Position, error) {
@@ -140,6 +158,48 @@ func (m *MockMarketDataService) GetHistoricalPrices(ctx context.Context, symbol 
 
 type MockTradeUseCase struct {
 	mock.Mock
+}
+
+// CalculateRequiredQuantity implements the usecase.TradeUseCase interface
+func (m *MockTradeUseCase) CalculateRequiredQuantity(ctx context.Context, symbol string, side model.OrderSide, amount float64) (float64, error) {
+	args := m.Called(ctx, symbol, side, amount)
+	if args.Get(0) == nil {
+		return 0, args.Error(1)
+	}
+	return args.Get(0).(float64), args.Error(1)
+}
+
+// CancelOrder implements the usecase.TradeUseCase interface
+func (m *MockTradeUseCase) CancelOrder(ctx context.Context, symbol, orderID string) error {
+	args := m.Called(ctx, symbol, orderID)
+	return args.Error(0)
+}
+
+// GetOrderStatus implements the usecase.TradeUseCase interface
+func (m *MockTradeUseCase) GetOrderStatus(ctx context.Context, symbol, orderID string) (*model.Order, error) {
+	args := m.Called(ctx, symbol, orderID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Order), args.Error(1)
+}
+
+// GetOpenOrders implements the usecase.TradeUseCase interface
+func (m *MockTradeUseCase) GetOpenOrders(ctx context.Context, symbol string) ([]*model.Order, error) {
+	args := m.Called(ctx, symbol)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.Order), args.Error(1)
+}
+
+// GetOrderHistory implements the usecase.TradeUseCase interface
+func (m *MockTradeUseCase) GetOrderHistory(ctx context.Context, symbol string, limit, offset int) ([]*model.Order, error) {
+	args := m.Called(ctx, symbol, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.Order), args.Error(1)
 }
 
 func (m *MockTradeUseCase) PlaceOrder(ctx context.Context, req model.OrderRequest) (*model.Order, error) {

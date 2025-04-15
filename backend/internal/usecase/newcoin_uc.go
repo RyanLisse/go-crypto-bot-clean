@@ -5,106 +5,172 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/event"
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/port"
-	"github.com/rs/zerolog/log" // Assuming zerolog is used based on go.mod
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
+	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
-// SymbolInfo is a struct for symbol information.
-// TODO: Ensure this is properly defined in model or adjust as needed.
-type SymbolInfo struct {
-	Symbol string
-	Status string // e.g., "TRADING", "AUCTION", "BREAK", etc. from the exchange API
-}
-
-// MarketDataServiceProvider defines the interface required from the market data service.
-// This makes the dependency explicit for this use case.
-// TODO: Define this properly, potentially reusing/refining existing MarketDataService port.
-type MarketDataServiceProvider interface {
-	GetSymbolInfo(ctx context.Context, symbol string) (*SymbolInfo, error) // Using local SymbolInfo
-	// Add other methods if needed, e.g., GetTicker
-}
-
-// NewCoinUsecase handles the logic for detecting and processing new coin listings.
-type NewCoinUsecase struct {
+// NewCoinUseCase implements the new coin detection and management logic
+type NewCoinUseCase struct {
 	repo      port.NewCoinRepository
-	bus       port.EventBus
-	marketSvc MarketDataServiceProvider // Use the specific interface
+	eventRepo port.EventRepository
+	eventBus  port.EventBus // Added EventBus
+	mexc      port.MEXCClient
+	logger    *zerolog.Logger
 }
 
-// NewNewCoinUsecase creates a new instance of NewCoinUsecase.
-func NewNewCoinUsecase(
-	repo port.NewCoinRepository,
-	bus port.EventBus,
-	marketSvc MarketDataServiceProvider, // Use the specific interface
-) *NewCoinUsecase {
-	return &NewCoinUsecase{
+// NewNewCoinUseCase creates a new NewCoinUseCase instance
+func NewNewCoinUseCase(repo port.NewCoinRepository, eventRepo port.EventRepository, eventBus port.EventBus, mexc port.MEXCClient, logger *zerolog.Logger) *NewCoinUseCase {
+	return &NewCoinUseCase{
 		repo:      repo,
-		bus:       bus,
-		marketSvc: marketSvc,
+		eventRepo: eventRepo,
+		eventBus:  eventBus, // Initialize EventBus
+		mexc:      mexc,
+		logger:    logger,
 	}
 }
 
-// CheckNewListings polls for new coins, checks their status, and publishes events when they become tradable.
-func (uc *NewCoinUsecase) CheckNewListings(ctx context.Context) error {
-	// For now, just check coins listed/expected recently based on the test setup.
-	// A real implementation would need more sophisticated time window logic.
-	threshold := time.Now().Add(-24 * time.Hour) // Arbitrary threshold for FindRecentlyListed
-	coinsToCheck, err := uc.repo.FindRecentlyListed(ctx, threshold)
+// DetectNewCoins checks for newly listed coins on MEXC
+func (uc *NewCoinUseCase) DetectNewCoins() error {
+	ctx := context.Background()
+	coins, err := uc.mexc.GetNewListings(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to find recently listed coins")
-		return fmt.Errorf("failed to find recently listed coins: %w", err)
+		return fmt.Errorf("failed to get new listings: %w", err)
 	}
 
-	log.Info().Int("count", len(coinsToCheck)).Msg("Checking status for potential new coins")
+	for _, coin := range coins {
+		existing, err := uc.repo.GetBySymbol(ctx, coin.Symbol)
+		if err != nil {
+			uc.logger.Error().Err(err).Str("symbol", coin.Symbol).Msg("Failed to check existing coin")
+			continue
+		}
 
-	for _, coin := range coinsToCheck {
-		// Only check coins that are expected but not yet trading
-		if coin.Status == model.StatusExpected {
-			log.Info().Str("symbol", coin.Symbol).Msg("Checking status for expected coin")
-			symbolInfo, err := uc.marketSvc.GetSymbolInfo(ctx, coin.Symbol)
-			if err != nil {
-				// Log error but continue checking other coins
-				log.Error().Err(err).Str("symbol", coin.Symbol).Msg("Failed to get symbol info from market service")
+		if existing == nil {
+			// New coin found
+			coin.ID = uuid.New().String()
+			if err := uc.repo.Save(ctx, coin); err != nil {
+				uc.logger.Error().Err(err).Str("symbol", coin.Symbol).Msg("Failed to create new coin")
 				continue
 			}
 
-			// Check if the status from the exchange indicates it's now tradable.
-			// This comparison might need adjustment based on actual API response values.
-			// Assuming "TRADING" status string for now, matching the test mock.
-			if symbolInfo.Status == "TRADING" {
-				log.Info().Str("symbol", coin.Symbol).Msg("Coin detected as TRADING")
-				now := time.Now().UTC()
-				coin.MarkAsTradable(now) // Update coin state
+			// Create and emit event
+			event := &model.NewCoinEvent{
+				ID:        uuid.New().String(),
+				CoinID:    coin.ID,
+				EventType: "new_coin_detected",
+				NewStatus: coin.Status,
+				CreatedAt: time.Now(),
+			}
+			if err := uc.eventRepo.SaveEvent(ctx, event); err != nil { // Use eventRepo.SaveEvent
+				uc.logger.Error().Err(err).Str("symbol", coin.Symbol).Msg("Failed to save event")
+			}
+			uc.eventBus.Publish(event) // Publish event via EventBus
+		} else {
+			// Update existing coin if status changed
+			if existing.Status != coin.Status {
+				oldStatus := existing.Status
+				existing.Status = coin.Status
+				existing.UpdatedAt = time.Now()
 
-				// Persist the status change
-				err = uc.repo.Update(ctx, coin)
-				if err != nil {
-					log.Error().Err(err).Str("symbol", coin.Symbol).Msg("Failed to update coin status in repository")
-					// Decide on error handling: continue, return, retry? For now, continue.
+				if coin.Status == model.StatusTrading && existing.BecameTradableAt == nil {
+					now := time.Now()
+					existing.BecameTradableAt = &now
+				}
+
+				if err := uc.repo.Update(ctx, existing); err != nil {
+					uc.logger.Error().Err(err).Str("symbol", coin.Symbol).Msg("Failed to update coin")
 					continue
 				}
-				log.Info().Str("symbol", coin.Symbol).Msg("Coin status updated in repository")
 
-				// Publish the domain event
-				// TODO: Get actual price/volume if available from GetSymbolInfo or another call
-				tradableEvent := event.NewNewCoinTradable(coin, nil, nil) // Pass nil for price/volume for now
-				err = uc.bus.Publish(ctx, tradableEvent)
-				if err != nil {
-					log.Error().Err(err).Str("symbol", coin.Symbol).Msg("Failed to publish NewCoinTradable event")
-					// If publishing fails, should we revert the DB update? Depends on transaction strategy.
-					// For now, log and continue.
-					continue
+				// Create and emit status change event
+				event := &model.NewCoinEvent{
+					ID:        uuid.New().String(),
+					CoinID:    existing.ID,
+					EventType: "status_changed",
+					OldStatus: oldStatus,
+					NewStatus: coin.Status,
+					CreatedAt: time.Now(),
 				}
-				log.Info().Str("symbol", coin.Symbol).Msg("NewCoinTradable event published")
-
-				// Optionally, mark as processed immediately or let another process handle it
-				// coin.MarkAsProcessed(now)
-				// uc.repo.Update(ctx, coin) // Update again if marking processed here
+				if err := uc.eventRepo.SaveEvent(ctx, event); err != nil { // Use eventRepo.SaveEvent
+					uc.logger.Error().Err(err).Str("symbol", coin.Symbol).Msg("Failed to save event")
+				}
+				uc.eventBus.Publish(event) // Publish event via EventBus
 			}
 		}
 	}
 
 	return nil
 }
+
+// UpdateCoinStatus updates a coin's status and creates an event
+func (uc *NewCoinUseCase) UpdateCoinStatus(coinID string, newStatus model.Status) error {
+	ctx := context.Background()
+	coin, err := uc.repo.GetBySymbol(ctx, coinID)
+	if err != nil {
+		return fmt.Errorf("failed to get coin: %w", err)
+	}
+	if coin == nil {
+		return fmt.Errorf("coin not found: %s", coinID)
+	}
+
+	oldStatus := coin.Status
+	coin.Status = newStatus
+	coin.UpdatedAt = time.Now()
+
+	if newStatus == model.StatusTrading && coin.BecameTradableAt == nil {
+		now := time.Now()
+		coin.BecameTradableAt = &now
+	}
+
+	if err := uc.repo.Update(ctx, coin); err != nil {
+		return fmt.Errorf("failed to update coin: %w", err)
+	}
+
+	event := &model.NewCoinEvent{
+		ID:        uuid.New().String(),
+		CoinID:    coin.ID,
+		EventType: "status_changed",
+		OldStatus: oldStatus,
+		NewStatus: newStatus,
+		CreatedAt: time.Now(),
+	}
+	if err := uc.eventRepo.SaveEvent(ctx, event); err != nil { // Use eventRepo.SaveEvent
+		return fmt.Errorf("failed to save event: %w", err)
+	}
+	uc.eventBus.Publish(event) // Publish event via EventBus
+
+	return nil
+}
+
+// GetCoinDetails retrieves detailed information about a coin
+func (uc *NewCoinUseCase) GetCoinDetails(symbol string) (*model.NewCoin, error) {
+	ctx := context.Background()
+	return uc.repo.GetBySymbol(ctx, symbol)
+}
+
+// ListNewCoins retrieves a list of new coins with optional filtering
+func (uc *NewCoinUseCase) ListNewCoins(status model.Status, limit, offset int) ([]*model.NewCoin, error) {
+	ctx := context.Background()
+	return uc.repo.GetByStatus(ctx, status)
+}
+
+// GetRecentTradableCoins retrieves recently listed coins that are now tradable
+func (uc *NewCoinUseCase) GetRecentTradableCoins(limit int) ([]*model.NewCoin, error) {
+	ctx := context.Background()
+	return uc.repo.GetRecent(ctx, limit)
+}
+
+// SubscribeToEvents allows subscribing to new coin events
+func (uc *NewCoinUseCase) SubscribeToEvents(callback func(*model.NewCoinEvent)) error {
+	uc.eventBus.Subscribe(callback)
+	return nil
+}
+
+// UnsubscribeFromEvents removes an event subscription
+func (uc *NewCoinUseCase) UnsubscribeFromEvents(callback func(*model.NewCoinEvent)) error {
+	uc.eventBus.Unsubscribe(callback)
+	return nil
+}
+
+// Note: emitEvent is removed as publishing is handled by the eventBus directly.

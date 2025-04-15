@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "generatedAt": "2025-04-13T23:09:54.823Z",
+    "tasksAnalyzed": 10,
+    "thresholdScore": 5,
+    "projectName": "Your Project Name",
+    "usedResearch": true
+  },
+  "complexityAnalysis": [
+    {
+      "taskId": 1,
+      "taskTitle": "Setup Project Foundation",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down each component setup (e.g., directory structure, logging, config loading) into detailed steps with specific tools and dependencies.",
+      "reasoning": "This task involves multiple foundational setups that are interdependent, requiring in-depth knowledge of Go project structuring, dependency management, and tool configuration."
+    },
+    {
+      "taskId": 2,
+      "taskTitle": "Implement MEXC API Gateway",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Detail each API component (REST, WebSocket, rate limiting, retry mechanisms) and their integration points with the adapter design.",
+      "reasoning": "This task is complex due to the need for multiple integrations (REST and WebSocket), error handling, rate limiting, and adherence to API-specific requirements."
+    },
+    {
+      "taskId": 3,
+      "taskTitle": "Implement Account and Wallet Management",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Outline subtasks for defining models, creating repository interfaces, implementing HTTP handlers, and integrating wallet balance updates.",
+      "reasoning": "While straightforward in structure, this task requires integration with dependencies and careful design to ensure accurate wallet balance management."
+    },
+    {
+      "taskId": 4,
+      "taskTitle": "Implement Market Data Handling",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Expand on data models, caching mechanisms, WebSocket real-time updates, and REST API integration for historical data.",
+      "reasoning": "The task is complex due to the need for both real-time and historical data handling, caching, and efficient processing of market data."
+    },
+    {
+      "taskId": 5,
+      "taskTitle": "Implement Position Management System",
+      "complexityScore": 8,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Detail subtasks for position model creation, repository and use case implementation, and advanced position tracking logic (e.g., stop-loss, scaling).",
+      "reasoning": "Managing trading positions involves intricate tracking, calculations for P&L, and implementing risk-aware features like stop-loss."
+    },
+    {
+      "taskId": 6,
+      "taskTitle": "Implement Trade Execution System",
+      "complexityScore": 9,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Define subtasks for order model implementation, repository setup, use case logic for trade execution, and robust error handling strategies.",
+      "reasoning": "This task is highly complex due to the critical nature of trade execution, error handling, and updating positions based on trades."
+    },
+    {
+      "taskId": 7,
+      "taskTitle": "Implement Risk Management System",
+      "complexityScore": 9,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Expand into specific risk metrics (drawdown limits, exposure, daily loss), risk use cases, and integration with trade validation.",
+      "reasoning": "Risk management is inherently complex due to the need for precise calculations and integration with multiple systems to enforce limits."
+    },
+    {
+      "taskId": 8,
+      "taskTitle": "Implement New Coin Detection and AutoBuy",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Detail steps for detection logic, repository setup, AutoBuy flow, and risk checks for automated purchase.",
+      "reasoning": "The task is moderately complex, with challenges in event-driven detection and ensuring automated actions align with risk parameters."
+    },
+    {
+      "taskId": 9,
+      "taskTitle": "Implement AI Assistant Integration",
+      "complexityScore": 6,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down into AI service interface creation, Gemini adapter implementation, and trade recommendation flows.",
+      "reasoning": "The task has lower complexity as it involves integration with an external AI system, though it requires careful handling of conversation memory and trade flows."
+    },
+    {
+      "taskId": 10,
+      "taskTitle": "Implement System Status and Monitoring",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Detail subtasks for status providers, resource monitoring, notification logic, and control interfaces for system processes.",
+      "reasoning": "This task involves moderate complexity due to the need for real-time monitoring, system-wide status aggregation, and notification handling."
+    }
+  ]
+}

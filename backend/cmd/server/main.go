@@ -3,220 +3,266 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin" // Kept as it's required for gin.HandlerFunc
-
-	httpAdapter "github.com/neo/crypto-bot/internal/adapter/http"
-	"github.com/neo/crypto-bot/internal/adapter/http/handler"
-	gormAdapter "github.com/neo/crypto-bot/internal/adapter/persistence/gorm"
-	"github.com/neo/crypto-bot/internal/config"
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/port"
-	"github.com/neo/crypto-bot/internal/factory"
-	"github.com/neo/crypto-bot/internal/platform/logger"
+	adapterhttp "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/handler"
+	adapterfactory "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/factory"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/wallet"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/di"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/logger"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/util/crypto"
+	"github.com/go-chi/chi/v5"
 )
 
-// mockTradeUseCase is a temporary mock implementation of the TradeUseCase interface
-type mockTradeUseCase struct{}
+// MockAuthService is a mock implementation of the AuthServiceInterface
+type MockAuthService struct{}
 
-func (m *mockTradeUseCase) PlaceOrder(ctx context.Context, req model.OrderRequest) (*model.Order, error) {
-	// Return a dummy order for now
-	return &model.Order{
-		ID:     "mock-order-id",
-		Symbol: req.Symbol,
-		Side:   req.Side,
-		Type:   req.Type,
+// VerifyToken verifies a token and returns the user ID
+func (m *MockAuthService) VerifyToken(ctx context.Context, token string) (string, error) {
+	return "user123", nil
+}
+
+// GetUserFromToken returns a mock user from a token
+func (m *MockAuthService) GetUserFromToken(ctx context.Context, token string) (*model.User, error) {
+	return &model.User{
+		ID:    "user123",
+		Email: "test@example.com",
+		Name:  "Test User",
 	}, nil
 }
 
-// Implement additional methods to satisfy the TradeUseCase interface
-func (m *mockTradeUseCase) CancelOrder(ctx context.Context, symbol, orderID string) error {
-	return nil
+// GetUserRoles returns mock roles for a user
+func (m *MockAuthService) GetUserRoles(ctx context.Context, userID string) ([]string, error) {
+	return []string{"user", "admin"}, nil
 }
 
-func (m *mockTradeUseCase) GetOrderStatus(ctx context.Context, symbol, orderID string) (*model.Order, error) {
-	return &model.Order{
-		ID:        orderID,
-		Symbol:    symbol,
-		Status:    model.OrderStatusNew,
-		CreatedAt: time.Now(),
+// GetUserByID returns a mock user by ID
+func (m *MockAuthService) GetUserByID(ctx context.Context, id string) (*model.User, error) {
+	return &model.User{
+		ID:    id,
+		Email: "test@example.com",
+		Name:  "Test User",
 	}, nil
 }
 
-func (m *mockTradeUseCase) GetOpenOrders(ctx context.Context, symbol string) ([]*model.Order, error) {
-	return []*model.Order{}, nil
-}
-
-func (m *mockTradeUseCase) GetOrderHistory(ctx context.Context, symbol string, limit, offset int) ([]*model.Order, error) {
-	return []*model.Order{}, nil
-}
-
-func (m *mockTradeUseCase) CalculateRequiredQuantity(ctx context.Context, symbol string, side model.OrderSide, amount float64) (float64, error) {
-	return 0.001, nil
+// GetUserByEmail returns a mock user by email
+func (m *MockAuthService) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	return &model.User{
+		ID:    "user123",
+		Email: email,
+		Name:  "Test User",
+	}, nil
 }
 
 func main() {
-	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
-
 	// Initialize logger
-	loggerInstance := logger.New(cfg.LogLevel)
-	l := &loggerInstance
-	l.Info().Msg("Starting crypto trading bot server...")
+	logger := logger.NewLogger()
+	logger.Info().Msg("Starting crypto bot backend service")
 
-	// Setup Database Connection
-	dbConn, err := gormAdapter.NewDBConnection(cfg, *l)
-	if err != nil {
-		l.Fatal().Err(err).Msg("Failed to connect to database")
-	}
-	// Run Migrations
-	gormAdapter.AutoMigrateModels(dbConn, l)
+	// Load configuration
+	cfg := config.LoadConfig(logger)
 
-	// Set up router
-	router, apiV1 := httpAdapter.SetupRouter(*l)
+	// Initialize DB connection
+	db := gorm.NewDB(cfg, logger)
 
-	// Create factories
-	aiFactory := factory.NewAIFactory(cfg, *l)
-	marketFactory := factory.NewMarketFactory(cfg, l, dbConn)
-	positionFactory := factory.NewPositionFactory(cfg, l, dbConn)
-	tradeFactory := factory.NewTradeFactory(cfg, l, dbConn)
-
-	// Create AI handler
-	aiHandler, err := aiFactory.CreateAIHandler()
-	if err != nil {
-		l.Fatal().Err(err).Msg("Failed to create AI handler")
+	// Run database migrations
+	if err := gorm.AutoMigrateModels(db, logger); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to run database migrations")
 	}
 
-	// Create Market Data Use Case and Handler
-	marketUseCase, err := marketFactory.CreateMarketDataUseCase()
-	if err != nil {
-		l.Fatal().Err(err).Msg("Failed to create Market Data Use Case")
-	}
-	marketHandler := handler.NewMarketDataHandler(marketUseCase, l)
-
-	// Create Market Data Service
-	marketRepo, symbolRepo := marketFactory.CreateMarketRepository()
-	cache := marketFactory.CreateMarketCache()
-
-	// TODO: Replace with actual MEXC API implementation when available
-	var mexcAPI port.MexcAPI = nil
-
-	marketService := marketFactory.CreateMarketDataService(
-		marketRepo,
-		symbolRepo,
-		cache,
-		mexcAPI,
-	)
-
-	// Register AI routes
-	// For now, we'll use a dummy auth middleware
-	aiHandler.RegisterRoutes(router, gin.HandlerFunc(func(c *gin.Context) {
-		// Dummy auth middleware to satisfy the argument requirement
-		c.Next()
-	}))
-
-	// Register Market Data routes
-	marketHandler.RegisterRoutes(apiV1)
-
-	// Create and register WebSocket handler
-	wsHandler := handler.NewWebSocketHandler(marketUseCase, l)
-	wsHandler.RegisterRoutes(apiV1)
-	wsHandler.Start()
-
-	// Create Position Use Case and Monitor
-	positionUC, err := positionFactory.CreatePositionUseCase(marketRepo, symbolRepo)
-	if err != nil {
-		l.Fatal().Err(err).Msg("Failed to create Position Use Case")
+	// Initialize DI container
+	container := di.NewContainer(cfg, logger, db)
+	if err := container.Initialize(); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to initialize dependency injection container")
 	}
 
-	// Create Position Handler
-	positionHandler := handler.NewPositionHandler(positionUC, l)
-	positionHandler.RegisterRoutes(apiV1)
+	// Initialize factories
+	marketFactory := factory.NewMarketFactory(cfg, logger, db)
+	statusFactory := factory.NewStatusFactory(cfg, logger, db)
+	accountFactory := factory.NewAccountFactory(cfg, logger, db)
+	apiCredentialFactory := adapterfactory.NewAPICredentialFactory(db, logger)
+	web3WalletFactory := factory.NewWeb3WalletFactory(cfg, logger, db)
+	addressValidatorFactory := factory.NewAddressValidatorFactory(cfg, logger, db)
+	apiCredentialManagerFactory := factory.NewAPICredentialManagerFactory(cfg, logger, db)
+	walletDataSyncFactory := factory.NewWalletDataSyncFactory(cfg, logger, db)
 
-	// Create Order Repository
-	orderRepo := tradeFactory.CreateOrderRepository()
+	// Create market data use case and handler
+	marketDataUseCase, err := marketFactory.CreateMarketDataUseCase()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create market data use case")
+	}
+	mexcClient := marketFactory.CreateMEXCClient()
+	marketDataHandler := handler.NewMarketDataHandler(marketDataUseCase, mexcClient, logger)
+	logger.Info().Msg("Created market data handler")
 
-	// Create Trade Service
-	tradeService := tradeFactory.CreateTradeService(
-		mexcAPI,
-		marketService,
-		symbolRepo,
-		orderRepo,
+	// Create status use case and handler
+	statusUseCase := statusFactory.CreateStatusUseCase()
+	statusHandler := statusFactory.CreateStatusHandler()
+	logger.Info().Msg("Created status handler")
+	statusFactory.RegisterStatusProviders(statusUseCase, marketFactory)
+	if err := statusUseCase.Start(context.Background()); err != nil {
+		logger.Error().Err(err).Msg("Failed to start status monitoring")
+	}
+
+	// Create alert handler
+	alertHandler := statusFactory.CreateAlertHandler()
+	logger.Info().Msg("Created alert handler")
+
+	// Create test and auth handlers
+	testHandler := handler.NewTestHandler(cfg, logger)
+	logger.Info().Msg("Created test handler")
+	authHandler := handler.NewAuthHandler(cfg, logger)
+	logger.Info().Msg("Created auth handler")
+
+	// Create account handler using the account factory
+	accountHandler := accountFactory.CreateAccountHandler(mexcClient)
+	logger.Info().Msg("Created account handler")
+
+	// Create API credential handler
+	apiCredentialHandler := apiCredentialFactory.CreateAPICredentialHandler()
+	logger.Info().Msg("Created API credential handler")
+
+	// Get API credential repository from the factory
+	// For now, we'll create it directly since the factory doesn't expose it
+	encryptionSvc, err := crypto.NewAESEncryptionService()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create encryption service")
+	}
+	// Use the API credential repository from the factory
+	apiCredentialRepo := apiCredentialFactory.CreateAPICredentialRepository()
+
+	// Create wallet provider registry
+	walletProviderRegistry := wallet.NewProviderRegistry()
+
+	// Register Ethereum provider
+	ethereumProvider := wallet.NewEthereumProvider(
+		1, // Ethereum Mainnet
+		"Ethereum",
+		"https://mainnet.infura.io/v3/"+cfg.InfuraAPIKey,
+		"https://etherscan.io",
+		logger,
 	)
+	walletProviderRegistry.RegisterProvider(ethereumProvider)
+	logger.Info().Msg("Registered Ethereum wallet provider")
 
-	// Create Trade Use Case
-	tradeUC := tradeFactory.CreateTradeUseCase(
-		mexcAPI,
-		symbolRepo,
-		orderRepo,
-		tradeService,
+	// Register MEXC provider
+	mexcProvider := wallet.NewMEXCProvider(mexcClient, logger)
+	walletProviderRegistry.RegisterProvider(mexcProvider)
+	logger.Info().Msg("Registered MEXC wallet provider")
+
+	// Create wallet repository
+	walletRepo := factory.NewRepositoryFactory(db, logger, cfg).CreateWalletRepository()
+
+	// Create Web3 wallet service and handler
+	web3WalletService := web3WalletFactory.CreateWeb3WalletService(
+		walletRepo,
+		walletProviderRegistry,
 	)
+	web3WalletHandler := web3WalletFactory.CreateWeb3WalletHandler(web3WalletService)
+	logger.Info().Msg("Created Web3 wallet handler")
 
-	// Create Trade Handler
-	tradeHandler := tradeFactory.CreateTradeHandler(tradeUC)
-	tradeHandler.RegisterRoutes(apiV1)
-
-	// For Position Monitor, use the TradeUseCase we just created
-	positionMonitor := positionFactory.CreatePositionMonitor(
-		positionUC,
-		marketService,
-		tradeUC,
+	// Create address validator service and handler
+	addressValidatorService := addressValidatorFactory.CreateAddressValidatorService(
+		walletProviderRegistry,
 	)
+	addressValidatorHandler := addressValidatorFactory.CreateAddressValidatorHandler(addressValidatorService)
+	logger.Info().Msg("Created address validator handler")
 
-	// Start Position Monitor
-	positionMonitor.Start()
-
-	// Create AutoBuy Factory and Handler
-	autoBuyFactory := factory.NewAutoBuyFactory(
-		context.Background(), // Added as the first argument, assuming it's the unknown type from the error
-		l,
-		dbConn,
-		marketFactory,
-		tradeFactory,
+	// Create API credential manager service
+	apiCredentialManagerService := apiCredentialManagerFactory.CreateAPICredentialManagerService(
+		apiCredentialRepo,
+		encryptionSvc,
+		walletProviderRegistry,
 	)
-	autoBuyHandler := autoBuyFactory.CreateAutoBuyHandler()
-	autoBuyHandler.RegisterRoutes(apiV1)
+	logger.Info().Msg("Created API credential manager service")
 
-	// Start server
-	srv := &http.Server{
+	// Use the wallet repository created earlier
+	// walletRepo is already defined above
+
+	// Create wallet data sync service
+	walletDataSyncService := walletDataSyncFactory.CreateWalletDataSyncService(
+		walletRepo,
+		apiCredentialManagerService,
+		walletProviderRegistry,
+	)
+	logger.Info().Msg("Created wallet data sync service")
+
+	// Use the wallet data sync service
+	_ = walletDataSyncService // Will be used by wallet service
+
+	// Initialize router (now modular)
+	r := adapterhttp.NewRouter(cfg, logger)
+
+	// API v1 routes
+	r.Route("/api/v1", func(r chi.Router) {
+		// Public routes
+		r.Group(func(r chi.Router) {
+			statusHandler.RegisterRoutes(r)
+			authHandler.RegisterRoutes(r)
+		})
+
+		// Conditionally register test/dev endpoints
+		if cfg.ENV == "development" {
+			r.Route("/test", func(r chi.Router) {
+				testHandler.RegisterRoutes(r)
+				// Move account-test endpoints under /test
+				r.Get("/account-test", func(w http.ResponseWriter, r *http.Request) {
+					accountHandler.GetWallet(w, r)
+				})
+				r.Get("/account-wallet-test", func(w http.ResponseWriter, r *http.Request) {
+					accountHandler.GetWallet(w, r)
+				})
+			})
+		}
+
+		// Protected routes (require authentication)
+		r.Group(func(r chi.Router) {
+			// Create a simple auth middleware for testing
+			authMiddleware := adapterhttp.NewSimpleAuthMiddleware(logger)
+
+			// Use the middleware's RequireAuthentication method
+			r.Use(authMiddleware.RequireAuthentication)
+			marketDataHandler.RegisterRoutes(r)
+			accountHandler.RegisterRoutes(r)
+			alertHandler.RegisterRoutes(r)
+			apiCredentialHandler.RegisterRoutes(r)
+			web3WalletHandler.RegisterRoutes(r, authMiddleware)
+			addressValidatorHandler.RegisterRoutes(r)
+		})
+	})
+
+	// Create HTTP server
+	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler: router,
+		Handler: r,
 	}
 
-	// Run server in a goroutine
+	// Graceful shutdown
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		l.Info().Msgf("Server is listening on port %d", cfg.Server.Port)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			l.Fatal().Err(err).Msg("Failed to start server")
+		<-shutdown
+		logger.Info().Msg("Shutting down server...")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			logger.Error().Err(err).Msg("Server shutdown error")
 		}
 	}()
 
-	// Set up graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	l.Info().Msg("Shutting down server...")
-
-	// Stop services
-	wsHandler.Stop()
-	positionMonitor.Stop()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		l.Fatal().Err(err).Msg("Server forced to shutdown")
+	// Start server
+	logger.Info().Int("port", cfg.Server.Port).Msg("HTTP server started")
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		logger.Fatal().Err(err).Msg("Server failed to start")
 	}
-
-	l.Info().Msg("Server exited properly")
+	logger.Info().Msg("Server shutdown complete")
 }

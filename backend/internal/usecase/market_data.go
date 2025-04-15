@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model/market"
-	"github.com/neo/crypto-bot/internal/domain/port"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/rs/zerolog"
 )
 
@@ -197,7 +197,6 @@ func (uc *MarketDataUseCase) GetCandles(
 // GetAllSymbols returns all available trading symbols
 func (uc *MarketDataUseCase) GetAllSymbols(ctx context.Context) ([]market.Symbol, error) {
 	// Try to get from cache first
-	const cacheKey = "all_symbols"
 
 	// For now, since the Cache interface doesn't have a direct method to get all symbols,
 	// we'll just fetch from the database

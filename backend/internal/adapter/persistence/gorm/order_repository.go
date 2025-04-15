@@ -2,10 +2,9 @@ package gorm
 
 import (
 	"context"
-	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/port"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 )
@@ -13,27 +12,7 @@ import (
 // Ensure OrderRepository implements the port.OrderRepository interface
 var _ port.OrderRepository = (*OrderRepository)(nil)
 
-// OrderEntity represents the GORM model for orders
-type OrderEntity struct {
-	ID            string `gorm:"type:uuid;primary_key"`
-	OrderID       string `gorm:"type:varchar(100);index"`
-	ClientOrderID string `gorm:"type:varchar(100)"`
-	Symbol        string `gorm:"type:varchar(20);index"`
-	Side          string `gorm:"type:varchar(10)"`
-	Type          string `gorm:"type:varchar(20)"`
-	Status        string `gorm:"type:varchar(20);index"`
-	TimeInForce   string `gorm:"type:varchar(10)"`
-	Price         float64
-	Quantity      float64
-	ExecutedQty   float64
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-}
-
-// TableName returns the table name for the order entity
-func (OrderEntity) TableName() string {
-	return "orders"
-}
+// OrderEntity is defined in entity.go
 
 // OrderRepository implements the port.OrderRepository interface using GORM
 type OrderRepository struct {

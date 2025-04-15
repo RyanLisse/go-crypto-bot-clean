@@ -1,0 +1,4 @@
+=== RUN   TestAuthFactory_CreateAuthMiddleware
+=== RUN   TestAuthFactory_CreateAuthMiddleware/JWT_Auth_with_valid_token
+FAIL	github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware	0.418s
+FAIL

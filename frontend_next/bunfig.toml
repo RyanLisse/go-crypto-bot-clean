@@ -11,8 +11,8 @@ environment = "jsdom"
 jsx = true
 # Include test files matching these patterns
 include = ["**/*.test.{ts,tsx,js,jsx}"]
-# Setup file for tests
-setupFiles = ["./src/test-setup.ts"]
+# Setup files for tests - use our pretest hook first, then the regular setup
+setupFiles = ["./src/test/pretest.js", "./src/test/setup.ts"]
 # Create browser-like environment for testing
 environmentOptions = { jsdom = { runScripts = "dangerously" } }
 # Support for Jest mock functions

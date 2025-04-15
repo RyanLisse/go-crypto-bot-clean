@@ -3,7 +3,7 @@ package port
 import (
 	"context"
 
-	"github.com/neo/crypto-bot/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 )
 
 // TradeService defines the interface for trading operations

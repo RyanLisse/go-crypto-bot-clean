@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
 export default function Home() {
-  redirect('/portfolio');
-  return null;
+  // Just redirect to the sign-in page, Clerk middleware will handle the authentication check
+  redirect('/sign-in');
 }

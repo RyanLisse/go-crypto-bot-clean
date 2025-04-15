@@ -1,18 +1,18 @@
 package factory
 
 import (
-	"github.com/neo/crypto-bot/internal/adapter/handler"
-	"github.com/neo/crypto-bot/internal/adapter/persistence/gorm"
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/port"
-	"github.com/neo/crypto-bot/internal/usecase"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/handler"
+	gormrepo "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 	"github.com/rs/zerolog"
 	gormdb "gorm.io/gorm"
 )
 
 // AutoBuyFactory creates and provides auto-buy related components
 type AutoBuyFactory struct {
-	config        *model.Config
+	config        *config.Config
 	logger        *zerolog.Logger
 	db            *gormdb.DB
 	marketFactory *MarketFactory
@@ -21,7 +21,7 @@ type AutoBuyFactory struct {
 
 // NewAutoBuyFactory creates a new AutoBuyFactory
 func NewAutoBuyFactory(
-	config *model.Config,
+	config *config.Config,
 	logger *zerolog.Logger,
 	db *gormdb.DB,
 	marketFactory *MarketFactory,
@@ -38,22 +38,22 @@ func NewAutoBuyFactory(
 
 // CreateAutoBuyRuleRepository creates a repository for auto-buy rules
 func (f *AutoBuyFactory) CreateAutoBuyRuleRepository() port.AutoBuyRuleRepository {
-	return gorm.NewAutoBuyRuleRepository(f.db, f.logger.With().Str("component", "auto_buy_rule_repository").Logger())
+	return gormrepo.NewAutoBuyRuleRepository(f.db, f.logger.With().Str("repository", "auto_buy_rule").Logger())
 }
 
 // CreateAutoBuyExecutionRepository creates a repository for auto-buy execution records
 func (f *AutoBuyFactory) CreateAutoBuyExecutionRepository() port.AutoBuyExecutionRepository {
-	return gorm.NewAutoBuyExecutionRepository(f.db, f.logger.With().Str("component", "auto_buy_execution_repository").Logger())
+	return gormrepo.NewAutoBuyExecutionRepository(f.db, f.logger.With().Str("repository", "auto_buy_execution").Logger())
 }
 
 // CreateAutoBuyUseCase creates the auto-buy use case
 func (f *AutoBuyFactory) CreateAutoBuyUseCase() usecase.AutoBuyUseCase {
 	ruleRepo := f.CreateAutoBuyRuleRepository()
 	executionRepo := f.CreateAutoBuyExecutionRepository()
-	marketDataService := f.marketFactory.CreateMarketDataUseCase()
-	symbolRepo := f.marketFactory.CreateSymbolRepository()
-	walletRepo := f.tradeFactory.CreateWalletRepository()
-	tradeService := f.tradeFactory.CreateTradeService()
+	marketDataService, _ := f.marketFactory.CreateMarketDataUseCase()
+	symbolRepo := f.CreateSymbolRepository()
+	walletRepo := f.CreateWalletRepository()
+	tradeService := f.CreateTradeService()
 	riskService := f.CreateRiskService()
 
 	return usecase.NewAutoBuyUseCase(
@@ -66,6 +66,24 @@ func (f *AutoBuyFactory) CreateAutoBuyUseCase() usecase.AutoBuyUseCase {
 		riskService,
 		f.logger.With().Str("component", "auto_buy_usecase").Logger(),
 	)
+}
+
+// CreateSymbolRepository creates a symbol repository
+func (f *AutoBuyFactory) CreateSymbolRepository() port.SymbolRepository {
+	// TODO: implement actual repository when needed
+	return nil
+}
+
+// CreateWalletRepository creates a wallet repository
+func (f *AutoBuyFactory) CreateWalletRepository() port.WalletRepository {
+	// TODO: implement actual repository when needed
+	return nil
+}
+
+// CreateTradeService creates a trade service
+func (f *AutoBuyFactory) CreateTradeService() port.TradeService {
+	// TODO: implement actual trade service when needed
+	return nil
 }
 
 // CreateRiskService creates a mock risk service

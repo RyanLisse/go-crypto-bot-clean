@@ -1,12 +1,12 @@
 package factory
 
 import (
-	"github.com/neo/crypto-bot/internal/adapter/gateway/ai"
-	"github.com/neo/crypto-bot/internal/adapter/http/handler"
-	"github.com/neo/crypto-bot/internal/adapter/persistence/memory"
-	"github.com/neo/crypto-bot/internal/config"
-	"github.com/neo/crypto-bot/internal/domain/port"
-	"github.com/neo/crypto-bot/internal/usecase"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/handler"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/gateway/ai"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/memory"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 	"github.com/rs/zerolog"
 )
 
@@ -57,10 +57,10 @@ func (f *AIFactory) CreateAIUsecase() (*usecase.AIUsecase, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	conversationMemoryRepo := f.CreateConversationMemoryRepository()
 	embeddingRepo := f.CreateEmbeddingRepository()
-	
+
 	// Create usecase
 	return usecase.NewAIUsecase(aiService, conversationMemoryRepo, embeddingRepo, f.logger), nil
 }
@@ -72,7 +72,7 @@ func (f *AIFactory) CreateAIHandler() (*handler.AIHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Create handler
-	return handler.NewAIHandler(aiUsecase, f.logger), nil
+	return handler.NewAIHandler(aiUsecase, &f.logger), nil
 }

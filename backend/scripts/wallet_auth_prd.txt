@@ -1,0 +1,257 @@
+<context>
+# Overview
+The Wallet Authentication System provides secure, user-friendly authentication and credential management for our cryptocurrency trading bot. It solves the problem of safely storing and using exchange API credentials, ensuring only authorized users can access wallet data. This system is essential for security-conscious crypto traders and power users managing multiple exchange accounts.
+
+# Core Features
+1. **User Authentication with Clerk**
+   - Provides secure, modern authentication and identity management.
+   - Ensures only authorized users can access sensitive wallet features.
+   - Integrates with Clerk’s SDK and JWT validation.
+
+2. **Secure API Credential Storage**
+   - Encrypts and stores exchange API credentials using AES-256-GCM.
+   - Protects against unauthorized access and credential leakage.
+   - Implements key rotation, secure key management, and audit logging.
+
+3. **Wallet Connection and Management**
+   - Allows users to connect, manage, and view multiple wallets/exchanges.
+   - Supports wallet signature verification and multi-wallet association.
+   - Enables real-time balance and transaction history retrieval.
+
+4. **Comprehensive Audit Logging & Monitoring**
+   - Logs all sensitive operations (credential CRUD, failed access, authentication attempts).
+   - Provides user-accessible audit logs.
+   - Alerts on suspicious activity (e.g., repeated failed logins, abnormal credential access).
+
+5. **Robust Error Handling & User Feedback**
+   - All error messages are generic to prevent information leakage.
+   - Users receive clear feedback for common issues (invalid session, missing key, credential not found).
+
+# User Experience
+- **Personas:** Security-focused crypto traders, multi-account users, and compliance-driven institutions.
+- **Key Flows:** Registration/authentication, adding/managing API credentials, connecting wallets, viewing balances/history.
+- **UI/UX:** Security indicators, intuitive credential management, seamless authentication, proactive error feedback, session expiration handling.
+</context>
+<PRD>
+# Technical Architecture
+- **Authentication Layer:** Clerk SDK, JWT validation, protected routes, session management.
+- **Encryption Service:** AES-256-GCM, secure key derivation, nonce management, key rotation (env-based, never hot-reloaded).
+- **API Credential Management:** Secure CRUD, validation, access control, last-used timestamp, never return secrets in plaintext.
+- **Wallet System:** Signature verification, multi-wallet support, wallet-user association, metadata storage, real-time balance retrieval.
+- **Security Infrastructure:** Rate limiting, CSRF protection, secure HTTP headers, audit/event logging, alerting on suspicious activity.
+- **Data Models:**
+  - User (Clerk + metadata)
+  - APICredential (audit-logged, last-used, never return secret in plaintext)
+  - Wallet (multi-wallet, association with user)
+  - Balance (asset, free, locked, total, USD value)
+- **APIs:** RESTful endpoints for authentication, credential management, wallet data, refresh, and audit log export.
+- **Infrastructure:** PostgreSQL (with indexes, FKs), secure key mgmt, HTTPS, monitoring/logging, GDPR-compliance.
+
+# Development Roadmap
+- **Phase 1: Foundation & Authentication**
+  - DB schema for credentials, wallets, balances; migrations and rollback.
+  - Clerk SDK integration, session management, protected routes.
+  - Encryption utilities (AES-256-GCM, key derivation, nonce, key rotation).
+- **Phase 2: Credential Management & Storage**
+  - Credential repository and CRUD APIs.
+  - Secure storage, validation, and error handling.
+  - Audit logging for all credential operations.
+- **Phase 3: Wallet Integration & UX**
+  - Wallet connection, signature verification, multi-wallet support.
+  - Real-time balance/transaction retrieval.
+  - Frontend UI for credential management and wallet display.
+- **Phase 4: Security, Testing & Compliance**
+  - Rate limiting, CSRF, security headers.
+  - Comprehensive testing (security edge cases, error boundaries, rate limiting).
+  - Audit log review, GDPR/user-rights compliance.
+  - Monitoring, alerting, user-accessible audit logs.
+2. **Wallet Management**
+   - Implement wallet-to-user associations
+   - Create multi-wallet support
+   - Add wallet metadata storage
+
+3. **Wallet Data Access**
+   - Implement real-time wallet data retrieval
+   - Create balance history tracking
+   - Add data synchronization mechanism
+
+## Phase 4: Security Enhancements and UI
+
+1. **Security Measures**
+   - Implement rate limiting
+   - Add CSRF protection
+   - Configure secure HTTP headers
+   - Create comprehensive security logging
+
+2. **Key Rotation and Management**
+   - Implement key rotation strategy
+   - Create credential update mechanism
+   - Add automatic expiration and renewal
+
+3. **User Interface**
+   - Develop credential management UI
+   - Create wallet management interface
+   - Implement balance display components
+
+## Phase 5: Testing and Deployment
+
+1. **Comprehensive Testing**
+   - Write unit tests for all components
+   - Perform integration testing
+   - Conduct security testing
+
+2. **Documentation and Finalization**
+   - Create user documentation
+   - Finalize API documentation
+   - Prepare deployment instructions
+
+3. **Production Deployment**
+   - Deploy to production environment
+   - Monitor for issues
+   - Implement feedback mechanism
+
+# Logical Dependency Chain
+
+1. **Foundation First**
+   - Database schema setup must be completed first
+   - Clerk integration provides the authentication foundation
+   - Encryption utilities are required for secure storage
+
+2. **Core Functionality**
+   - API credential storage builds on the foundation
+   - Wallet connection requires authentication to be in place
+   - Secure storage depends on encryption utilities
+
+3. **Enhanced Features**
+   - Multi-wallet support extends basic wallet connection
+   - Key rotation builds on the credential management system
+   - Security measures can be implemented incrementally
+
+4. **User Interface and Experience**
+   - Credential management UI requires backend APIs to be complete
+   - Wallet management interface depends on wallet connection system
+   - Balance display components need real-time data access
+
+# Risks and Mitigations  
+
+## Technical Challenges
+
+1. **Secure Encryption Implementation**
+   - Risk: Improper encryption could lead to credential exposure
+   - Mitigation: Use well-tested libraries, follow security best practices, conduct security audits
+
+2. **Authentication Integration Complexity**
+   - Risk: Clerk integration might be complex and have edge cases
+   - Mitigation: Start with simple flows, test thoroughly, gradually add complexity
+
+3. **Database Migration Issues**
+   - Risk: Schema changes could affect existing data
+   - Mitigation: Create comprehensive migration plan, test migrations in staging, have rollback strategy
+
+## MVP Considerations
+
+1. **Feature Scope**
+   - Risk: Trying to implement too many features at once
+   - Mitigation: Focus on core authentication and credential storage first, add wallet features incrementally
+
+2. **User Experience vs. Security**
+   - Risk: Security measures might impact user experience
+   - Mitigation: Find balance between security and usability, implement security measures that don't disrupt flow
+
+3. **Integration with Existing System**
+   - Risk: New authentication system might not integrate smoothly with existing components
+   - Mitigation: Carefully plan integration points, create adapter layer if needed
+
+## Resource Constraints
+
+1. **Development Time**
+   - Risk: Complex security features might take longer than expected
+   - Mitigation: Prioritize features, implement incrementally, focus on security-critical components first
+
+2. **Testing Requirements**
+   - Risk: Security testing requires specialized knowledge
+   - Mitigation: Allocate resources for security testing, consider external security audit
+
+3. **Maintenance Overhead**
+   - Risk: Complex security systems require ongoing maintenance
+   - Mitigation: Design for maintainability, document thoroughly, implement monitoring
+
+# Appendix  
+
+## Security Considerations
+
+### Encryption
+
+API secrets will be encrypted using AES-256-GCM with the following approach:
+
+1. Generate a random nonce for each encryption operation
+2. Use AES-256-GCM for authenticated encryption
+3. Store the nonce with the ciphertext
+4. Use a master encryption key stored in environment variables
+
+```go
+func Encrypt(plaintext string, key []byte) ([]byte, error) {
+    // Create cipher
+    block, err := aes.NewCipher(key)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Create GCM
+    gcm, err := cipher.NewGCM(block)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Create nonce
+    nonce := make([]byte, gcm.NonceSize())
+    if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+        return nil, err
+    }
+    
+    // Encrypt
+    ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+    
+    return ciphertext, nil
+}
+```
+
+### JWT Validation
+
+Clerk JWT tokens will be validated using the Clerk SDK:
+
+1. Extract JWT from Authorization header
+2. Validate JWT signature using Clerk public key
+3. Validate JWT claims (expiration, issuer, etc.)
+4. Extract user ID from JWT
+
+## Testing Strategy
+
+Testing should cover all aspects of the authentication system:
+
+1. **Unit Tests**
+   - Test encryption/decryption utilities with various inputs
+   - Verify password hashing functions
+   - Test credential storage and retrieval mechanisms
+   - Validate wallet signature verification logic
+
+2. **Integration Tests**
+   - Test Clerk authentication flows
+   - Verify protected routes properly restrict access
+   - Test wallet connection and authentication process
+   - Verify credential encryption/decryption works end-to-end
+
+3. **Security Tests**
+   - Attempt to access protected routes without authentication
+   - Try to decrypt credentials with incorrect keys
+   - Test rate limiting by making multiple authentication attempts
+   - Verify session expiration and renewal works correctly
+   - Test CSRF protection by simulating cross-site requests
+
+## Performance Considerations
+
+1. Implement caching for wallet data (TTL: 5 minutes)
+2. Use connection pooling for database connections
+3. Implement rate limiting for API endpoints
+4. Use background jobs for wallet refresh operations
+</PRD>

@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/usecase"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 	"github.com/rs/zerolog"
 )
 

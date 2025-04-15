@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 )
 
 // OrderRepository defines the interface for order persistence operations
@@ -20,25 +20,16 @@ type OrderRepository interface {
 	Delete(ctx context.Context, id string) error
 }
 
-// PositionRepository defines the interface for position persistence operations
-type PositionRepository interface {
-	Create(ctx context.Context, position *model.Position) error
-	GetByID(ctx context.Context, id string) (*model.Position, error)
-	Update(ctx context.Context, position *model.Position) error
-	GetOpenPositions(ctx context.Context) ([]*model.Position, error)
-	GetOpenPositionsBySymbol(ctx context.Context, symbol string) ([]*model.Position, error)
-	GetOpenPositionsByType(ctx context.Context, positionType model.PositionType) ([]*model.Position, error)
-	GetBySymbol(ctx context.Context, symbol string, limit, offset int) ([]*model.Position, error)
-	GetByUserID(ctx context.Context, userID string, limit, offset int) ([]*model.Position, error)
-	GetClosedPositions(ctx context.Context, from, to time.Time, limit, offset int) ([]*model.Position, error)
-	Count(ctx context.Context, filters map[string]interface{}) (int64, error)
-	Delete(ctx context.Context, id string) error
-}
-
 // WalletRepository defines the interface for wallet persistence operations
 type WalletRepository interface {
+	// Core wallet operations
 	Save(ctx context.Context, wallet *model.Wallet) error
+	GetByID(ctx context.Context, id string) (*model.Wallet, error)
 	GetByUserID(ctx context.Context, userID string) (*model.Wallet, error)
+	GetWalletsByUserID(ctx context.Context, userID string) ([]*model.Wallet, error)
+	DeleteWallet(ctx context.Context, id string) error
+
+	// Balance history operations
 	SaveBalanceHistory(ctx context.Context, history *model.BalanceHistory) error
 	GetBalanceHistory(ctx context.Context, userID string, asset model.Asset, from, to time.Time) ([]*model.BalanceHistory, error)
 }
@@ -48,7 +39,7 @@ type NewCoinRepository interface {
 	Save(ctx context.Context, newCoin *model.NewCoin) error
 	GetBySymbol(ctx context.Context, symbol string) (*model.NewCoin, error)
 	GetRecent(ctx context.Context, limit int) ([]*model.NewCoin, error)
-	GetByStatus(ctx context.Context, status model.NewCoinStatus) ([]*model.NewCoin, error)
+	GetByStatus(ctx context.Context, status model.Status) ([]*model.NewCoin, error) // Changed NewCoinStatus to Status
 	Update(ctx context.Context, newCoin *model.NewCoin) error
 	// FindRecentlyListed retrieves coins expected to list soon or recently became tradable.
 	FindRecentlyListed(ctx context.Context, thresholdTime time.Time) ([]*model.NewCoin, error)

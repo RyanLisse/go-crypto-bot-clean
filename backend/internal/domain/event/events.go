@@ -3,7 +3,7 @@ package event
 import (
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 )
 
 // EventType defines the type of a domain event.
@@ -45,13 +45,16 @@ func (e BaseEvent) AggregateID() string   { return e.aggregateID }
 
 // --- Specific Event Definitions ---
 
-// NewCoinTradable is published when a new coin becomes available for trading.
+// NewCoinTradable represents a newly tradable coin event
 type NewCoinTradable struct {
 	BaseEvent
 	Symbol        string    `json:"symbol"`
 	TradableAt    time.Time `json:"tradable_at"`
-	InitialPrice  *float64  `json:"initial_price,omitempty"`  // Optional: Price at the time it became tradable
-	InitialVolume *float64  `json:"initial_volume,omitempty"` // Optional: Volume at the time it became tradable
+	InitialPrice  float64   `json:"initial_price,omitempty"`
+	InitialVolume float64   `json:"initial_volume,omitempty"`
+	Price         float64   `json:"price"`
+	Volume        float64   `json:"volume"`
+	QuoteAsset    string    `json:"quote_asset"`
 }
 
 // NewNewCoinTradable creates a new NewCoinTradable event.
@@ -62,12 +65,26 @@ func NewNewCoinTradable(coin *model.NewCoin, price *float64, volume *float64) *N
 		tradableAt = *coin.BecameTradableAt
 	}
 
+	// Handle nil values for price and volume
+	var initialPrice, initialVolume, currentPrice, currentVolume float64
+	if price != nil {
+		initialPrice = *price
+		currentPrice = *price
+	}
+	if volume != nil {
+		initialVolume = *volume
+		currentVolume = *volume
+	}
+
 	return &NewCoinTradable{
 		BaseEvent:     NewBaseEvent(NewCoinTradableEvent, coin.Symbol),
 		Symbol:        coin.Symbol,
 		TradableAt:    tradableAt,
-		InitialPrice:  price,  // Pass along if available
-		InitialVolume: volume, // Pass along if available
+		InitialPrice:  initialPrice,
+		InitialVolume: initialVolume,
+		Price:         currentPrice,
+		Volume:        currentVolume,
+		QuoteAsset:    coin.QuoteAsset,
 	}
 }
 

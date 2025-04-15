@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model/market"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 )
 
 // MarketDataService defines the interface for market data operations

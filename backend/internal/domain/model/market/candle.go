@@ -30,31 +30,31 @@ type Candle struct {
 	Symbol string `json:"symbol"`
 
 	// Exchange indicates which exchange this candle is from
-	Exchange string `json:"exchange"`
+	Exchange string
 
 	// Interval represents the timeframe of this candle
-	Interval Interval `json:"interval"`
+	Interval Interval
 
 	// OpenTime is the opening time of this candle
-	OpenTime time.Time `json:"openTime"`
+	OpenTime time.Time
 
 	// CloseTime is the closing time of this candle
-	CloseTime time.Time `json:"closeTime"`
+	CloseTime time.Time
 
 	// Open is the opening price of this candle
-	Open float64 `json:"open"`
+	Open float64
 
 	// High is the highest price during this candle period
-	High float64 `json:"high"`
+	High float64 
 
 	// Low is the lowest price during this candle period
-	Low float64 `json:"low"`
+	Low float64 
 
 	// Close is the closing price of this candle
-	Close float64 `json:"close"`
+	Close float64 
 
 	// Volume is the trading volume in base asset during this candle period
-	Volume float64 `json:"volume"`
+	Volume float64 
 
 	// QuoteVolume is the trading volume in quote asset during this candle period
 	QuoteVolume float64 `json:"quoteVolume"`

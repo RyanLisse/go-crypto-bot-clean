@@ -1,13 +1,31 @@
-import React from 'react';
+import { vi, describe, it, expect } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { SimpleAccountBalance } from '../SimpleAccountBalance';
 import { ToastProvider } from '@/components/ui/toast';
 
-// Mock the toast hook
-jest.mock('@/hooks/use-toast', () => ({
+// Mock the toast hook using vi.mock instead of jest.mock
+vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({
-    toast: jest.fn(),
-  }),
+    toast: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+  })
+}));
+
+// Mock the queries hook
+vi.mock('@/hooks/queries', () => ({
+  useWalletData: () => ({
+    data: {
+      balance: 1234.56,
+      assets: [
+        { symbol: 'BTC', amount: 0.5, valueUsd: 15000 },
+        { symbol: 'ETH', amount: 10, valueUsd: 20000 }
+      ]
+    },
+    isLoading: false,
+    isError: false,
+    error: null
+  })
 }));
 
 describe('SimpleAccountBalance', () => {
@@ -44,5 +62,12 @@ describe('SimpleAccountBalance', () => {
     
     // Check for last updated text
     expect(screen.getByText(/Last updated:/)).toBeInTheDocument();
+  });
+
+  it('renders the account balance correctly', () => {
+    render(<SimpleAccountBalance />);
+    
+    // We're mocking the data, so we can expect specific values
+    expect(screen.getByText(/\$1,234.56/)).toBeInTheDocument();
   });
 });

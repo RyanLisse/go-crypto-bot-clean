@@ -1,5 +1,8 @@
 package retry
 
+// MIGRATION: Tests removed. If needed, write tests for usage of github.com/cenkalti/backoff/v4.
+
+
 import (
 	"context"
 	"errors"

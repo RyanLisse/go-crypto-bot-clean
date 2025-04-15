@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/apperror"
-	"github.com/neo/crypto-bot/internal/domain/model/market"
-	"github.com/neo/crypto-bot/internal/domain/port"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/apperror"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 )
@@ -17,26 +17,7 @@ import (
 var _ port.MarketRepository = (*MarketRepository)(nil)
 var _ port.SymbolRepository = (*MarketRepository)(nil)
 
-// TickerEntity is the GORM model for market ticker data
-type TickerEntity struct {
-	ID            string `gorm:"primaryKey"`
-	Symbol        string `gorm:"index:idx_ticker_symbol"`
-	Price         float64
-	Volume        float64
-	High24h       float64
-	Low24h        float64
-	PriceChange   float64
-	PercentChange float64
-	LastUpdated   time.Time `gorm:"index:idx_ticker_updated"`
-	Exchange      string    `gorm:"index:idx_ticker_exchange"`
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-}
-
-// TableName sets the table name for TickerEntity
-func (TickerEntity) TableName() string {
-	return "tickers"
-}
+// Ticker entity is defined in entity.go
 
 // CandleEntity is the GORM model for candlestick data
 type CandleEntity struct {
@@ -97,28 +78,7 @@ func (OrderBookEntity) TableName() string {
 	return "orderbooks"
 }
 
-// SymbolEntity is the GORM model for trading pair information
-type SymbolEntity struct {
-	Symbol            string `gorm:"primaryKey"`
-	BaseAsset         string
-	QuoteAsset        string
-	Exchange          string `gorm:"index:idx_symbol_exchange"`
-	Status            string
-	MinPrice          float64
-	MaxPrice          float64
-	PricePrecision    int
-	MinQty            float64
-	MaxQty            float64
-	QtyPrecision      int
-	AllowedOrderTypes string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-// TableName sets the table name for SymbolEntity
-func (SymbolEntity) TableName() string {
-	return "symbols"
-}
+// Symbol entity is defined in entity.go
 
 // MarketRepository implements the port.MarketRepository interface using GORM
 type MarketRepository struct {
@@ -177,8 +137,7 @@ func (r *MarketRepository) GetAllTickers(ctx context.Context, exchange string) (
 	subQuery := r.db.Model(&TickerEntity{}).
 		Select("symbol, MAX(last_updated) as max_updated").
 		Where("exchange = ?", exchange).
-		Group("symbol").
-		Table("sub")
+		Group("symbol")
 
 	result := r.db.WithContext(ctx).
 		Joins("JOIN (?) as sub ON tickers.symbol = sub.symbol AND tickers.last_updated = sub.max_updated", subQuery).
@@ -723,4 +682,59 @@ func (r *MarketRepository) symbolToDomain(entity *SymbolEntity) *market.Symbol {
 		CreatedAt:         entity.CreatedAt,
 		UpdatedAt:         entity.UpdatedAt,
 	}
+}
+
+// GetOrderBook retrieves the latest order book for a symbol from a specific exchange
+func (r *MarketRepository) GetOrderBook(ctx context.Context, symbol, exchange string, depth int) (*market.OrderBook, error) {
+	var entity OrderBookEntity
+
+	result := r.db.WithContext(ctx).
+		Where("symbol = ? AND exchange = ?", symbol, exchange).
+		Order("last_updated DESC").
+		First(&entity)
+
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			r.logger.Info().Str("symbol", symbol).Str("exchange", exchange).Msg("Order book not found")
+			return nil, apperror.ErrNotFound
+		}
+		r.logger.Error().Err(result.Error).Str("symbol", symbol).Msg("Failed to get order book")
+		return nil, fmt.Errorf("failed to get order book: %w", result.Error)
+	}
+
+	// Get order book entries
+	var entries []OrderBookEntryEntity
+
+	// Apply depth limit if provided (greater than 0)
+	query := r.db.WithContext(ctx).Where("order_book_id = ?", entity.ID)
+
+	if depth > 0 {
+		// Get top "depth" bids ordered by price descending (highest first)
+		var bidEntries []OrderBookEntryEntity
+		bidQuery := query.Where("type = ?", "bid").Order("price DESC")
+		if depth > 0 {
+			bidQuery = bidQuery.Limit(depth)
+		}
+		bidQuery.Find(&bidEntries)
+
+		// Get top "depth" asks ordered by price ascending (lowest first)
+		var askEntries []OrderBookEntryEntity
+		askQuery := query.Where("type = ?", "ask").Order("price ASC")
+		if depth > 0 {
+			askQuery = askQuery.Limit(depth)
+		}
+		askQuery.Find(&askEntries)
+
+		// Combine bid and ask entries
+		entries = append(bidEntries, askEntries...)
+	} else {
+		// If depth is 0 or negative, get all entries
+		result = query.Find(&entries)
+		if result.Error != nil {
+			r.logger.Error().Err(result.Error).Str("symbol", symbol).Msg("Failed to get order book entries")
+			return nil, fmt.Errorf("failed to get order book entries: %w", result.Error)
+		}
+	}
+
+	return r.orderBookToDomain(&entity, entries), nil
 }

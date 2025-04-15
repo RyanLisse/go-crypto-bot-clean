@@ -6,13 +6,14 @@ import (
 
 // Ticker represents a market data ticker
 type Ticker struct {
-	Symbol             string    `json:"symbol"`
+	Symbol             string    
+	Exchange           string    `json:"exchange"`
 	LastPrice          float64   `json:"lastPrice"`
 	PriceChange        float64   `json:"priceChange"`
 	PriceChangePercent float64   `json:"priceChangePercent"`
 	HighPrice          float64   `json:"highPrice"`
 	LowPrice           float64   `json:"lowPrice"`
-	Volume             float64   `json:"volume"`
+	Volume             float64   
 	QuoteVolume        float64   `json:"quoteVolume"`
 	OpenPrice          float64   `json:"openPrice"`
 	PrevClosePrice     float64   `json:"prevClosePrice"`
@@ -48,7 +49,7 @@ const (
 
 // Kline represents a candlestick/kline data point
 type Kline struct {
-	Symbol      string        `json:"symbol"`
+	Symbol      string        
 	Interval    KlineInterval `json:"interval"`
 	OpenTime    time.Time     `json:"openTime"`
 	CloseTime   time.Time     `json:"closeTime"`
@@ -56,7 +57,7 @@ type Kline struct {
 	High        float64       `json:"high"`
 	Low         float64       `json:"low"`
 	Close       float64       `json:"close"`
-	Volume      float64       `json:"volume"`
+	Volume      float64       
 	QuoteVolume float64       `json:"quoteVolume"`
 	TradeCount  int64         `json:"tradeCount"`
 	IsClosed    bool          `json:"isClosed"`
@@ -64,7 +65,7 @@ type Kline struct {
 
 // OrderBook represents an order book snapshot
 type OrderBook struct {
-	Symbol       string           `json:"symbol"`
+	Symbol       string           
 	LastUpdateID int64            `json:"lastUpdateId"`
 	Bids         []OrderBookEntry `json:"bids"`
 	Asks         []OrderBookEntry `json:"asks"`
@@ -73,15 +74,15 @@ type OrderBook struct {
 
 // OrderBookEntry represents a single order book entry (price level)
 type OrderBookEntry struct {
-	Price    float64 `json:"price"`
+	Price    float64 
 	Quantity float64 `json:"quantity"`
 }
 
 // MarketTrade represents a public trade reported by the exchange
 type MarketTrade struct {
-	ID            int64     `json:"id"`
-	Symbol        string    `json:"symbol"`
-	Price         float64   `json:"price"`
+	ID            int64     
+	Symbol        string    
+	Price         float64   
 	Quantity      float64   `json:"quantity"`
 	QuoteQuantity float64   `json:"quoteQuantity"`
 	Time          time.Time `json:"time"`
@@ -89,30 +90,14 @@ type MarketTrade struct {
 }
 
 // TickerCache is used to store multiple tickers for quick access
-type TickerCache struct {
-	Tickers    map[string]*Ticker // Symbol -> Ticker
-	LastUpdate time.Time
-}
+// Deprecated: TickerCache is no longer used. All ticker caching is now handled by the standard cache implementation.
 
-// NewTickerCache creates a new ticker cache
-func NewTickerCache() *TickerCache {
-	return &TickerCache{
-		Tickers:    make(map[string]*Ticker),
-		LastUpdate: time.Now(),
-	}
-}
 
-// UpdateTicker updates or adds a ticker to the cache
-func (c *TickerCache) UpdateTicker(ticker *Ticker) {
-	c.Tickers[ticker.Symbol] = ticker
-	c.LastUpdate = time.Now()
-}
+// Deprecated: NewTickerCache is no longer used. Use the standard cache implementation instead.
 
-// GetTicker gets a ticker for a symbol from the cache
-func (c *TickerCache) GetTicker(symbol string) *Ticker {
-	ticker, exists := c.Tickers[symbol]
-	if !exists {
-		return nil
-	}
-	return ticker
-}
+
+// Deprecated: UpdateTicker is no longer used. Use the standard cache implementation instead.
+
+
+// Deprecated: GetTicker is no longer used. Use the standard cache implementation instead.
+

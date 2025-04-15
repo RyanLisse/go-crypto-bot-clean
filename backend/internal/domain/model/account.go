@@ -3,16 +3,16 @@ package model
 import (
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model/market"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 )
 
 // Account represents a user's exchange account information
 type Account struct {
-	UserID      string    `json:"userId"`
-	Exchange    string    `json:"exchange"`
-	Wallet      *Wallet   `json:"wallet"`
-	Permissions []string  `json:"permissions"`
-	LastUpdated time.Time `json:"lastUpdated"`
+	UserID      string    
+	Exchange    string    
+	Wallet      *Wallet   
+	Permissions []string  
+	LastUpdated time.Time 
 }
 
 // MarketData represents aggregated market data for a trading pair
@@ -21,7 +21,7 @@ type MarketData struct {
 	Ticker      *market.Ticker   `json:"ticker"`
 	OrderBook   market.OrderBook `json:"orderBook"`
 	LastTrade   MarketTrade      `json:"lastTrade"`
-	LastUpdated time.Time        `json:"lastUpdated"`
+	LastUpdated time.Time        
 }
 
 // NewAccount creates a new exchange account for a user

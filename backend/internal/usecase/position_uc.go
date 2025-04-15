@@ -5,31 +5,31 @@ import (
 	"errors"
 	"time"
 
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/google/uuid"
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/port"
 	"github.com/rs/zerolog"
 )
 
 // Common errors
 var (
-	ErrPositionNotFound    = errors.New("position not found")
-	ErrInvalidPositionData = errors.New("invalid position data")
-	ErrSymbolNotFound      = errors.New("symbol not found")
+	ErrPositionNotFound       = errors.New("position not found")
+	ErrInvalidPositionData    = errors.New("invalid position data")
+	ErrPositionSymbolNotFound = errors.New("symbol not found")
 )
 
-// PositionUseCase defines methods for position management
 type PositionUseCase interface {
 	// Create operations
 	CreatePosition(ctx context.Context, req model.PositionCreateRequest) (*model.Position, error)
 
 	// Read operations
 	GetPositionByID(ctx context.Context, id string) (*model.Position, error)
-	GetOpenPositions(ctx context.Context) ([]*model.Position, error)
-	GetOpenPositionsBySymbol(ctx context.Context, symbol string) ([]*model.Position, error)
-	GetOpenPositionsByType(ctx context.Context, positionType model.PositionType) ([]*model.Position, error)
+	GetByUserID(ctx context.Context, userID string, limit, offset int) ([]*model.Position, error)
+	GetActiveByUser(ctx context.Context, userID string) ([]*model.Position, error)
 	GetPositionsBySymbol(ctx context.Context, symbol string, limit, offset int) ([]*model.Position, error)
-	GetClosedPositions(ctx context.Context, from, to time.Time, limit, offset int) ([]*model.Position, error)
+	GetOpenPositions(ctx context.Context) ([]*model.Position, error)
+	GetClosedPositions(ctx context.Context, fromTime, toTime time.Time, limit, offset int) ([]*model.Position, error)
+	GetOpenPositionsByType(ctx context.Context, positionType model.PositionType) ([]*model.Position, error)
 
 	// Update operations
 	UpdatePosition(ctx context.Context, id string, req model.PositionUpdateRequest) (*model.Position, error)
@@ -42,12 +42,31 @@ type PositionUseCase interface {
 	DeletePosition(ctx context.Context, id string) error
 }
 
-// positionUseCase implements the PositionUseCase interface
+// Add implementation for GetPositionsBySymbol
+func (uc *positionUseCase) GetPositionsBySymbol(ctx context.Context, symbol string, limit, offset int) ([]*model.Position, error) {
+	positions, err := uc.positionRepo.GetBySymbol(ctx, symbol, limit, offset)
+	if err != nil {
+		uc.logger.Error().Err(err).Str("symbol", symbol).Msg("Failed to get positions by symbol")
+		return nil, err
+	}
+	return positions, nil
+}
+
 type positionUseCase struct {
 	positionRepo port.PositionRepository
 	marketRepo   port.MarketRepository
 	symbolRepo   port.SymbolRepository
 	logger       zerolog.Logger
+}
+
+// Add implementation for GetByUserID
+func (uc *positionUseCase) GetByUserID(ctx context.Context, userID string, limit, offset int) ([]*model.Position, error) {
+	positions, err := uc.positionRepo.GetByUserID(ctx, userID, limit, offset)
+	if err != nil {
+		uc.logger.Error().Err(err).Str("userID", userID).Msg("Failed to get positions by user ID")
+		return nil, err
+	}
+	return positions, nil
 }
 
 // NewPositionUseCase creates a new PositionUseCase
@@ -131,54 +150,132 @@ func (uc *positionUseCase) GetPositionByID(ctx context.Context, id string) (*mod
 	return position, nil
 }
 
-// GetOpenPositions retrieves all open positions
+// Add implementation for GetActiveByUser
+func (uc *positionUseCase) GetActiveByUser(ctx context.Context, userID string) ([]*model.Position, error) {
+	positions, err := uc.positionRepo.GetActiveByUser(ctx, userID)
+	if err != nil {
+		uc.logger.Error().Err(err).Str("userID", userID).Msg("Failed to get active positions by user")
+		return nil, err
+	}
+	return positions, nil
+}
+
+// GetOpenPositions retrieves all currently open positions
 func (uc *positionUseCase) GetOpenPositions(ctx context.Context) ([]*model.Position, error) {
-	positions, err := uc.positionRepo.GetOpenPositions(ctx)
+	// Since we don't have a direct repository method to get all open positions,
+	// we'll need to use a different approach
+
+	// We can use Count to get the total number of positions, then fetch them all
+	// with appropriate filtering
+	filters := map[string]interface{}{
+		"status": model.PositionStatusOpen,
+	}
+
+	total, err := uc.positionRepo.Count(ctx, filters)
 	if err != nil {
-		uc.logger.Error().Err(err).Msg("Failed to get open positions")
+		uc.logger.Error().Err(err).Msg("Failed to get count of open positions")
 		return nil, err
 	}
-	return positions, nil
-}
 
-// GetOpenPositionsBySymbol retrieves all open positions for a specific symbol
-func (uc *positionUseCase) GetOpenPositionsBySymbol(ctx context.Context, symbol string) ([]*model.Position, error) {
-	positions, err := uc.positionRepo.GetOpenPositionsBySymbol(ctx, symbol)
+	// If there are no open positions, return early
+	if total == 0 {
+		return []*model.Position{}, nil
+	}
+
+	// For simplicity in this implementation, we'll get positions by symbol
+	// but without specifying a particular symbol, which should return all positions
+	// Then we'll filter for open ones in memory
+	// This is not optimal but a workaround for the missing repository method
+	allPositions, err := uc.positionRepo.GetBySymbol(ctx, "", 0, int(total))
 	if err != nil {
-		uc.logger.Error().Err(err).Str("symbol", symbol).Msg("Failed to get open positions by symbol")
+		uc.logger.Error().Err(err).Msg("Failed to get positions")
 		return nil, err
 	}
-	return positions, nil
+
+	// Filter for open positions
+	var openPositions []*model.Position
+	for _, pos := range allPositions {
+		if pos.Status == model.PositionStatusOpen {
+			openPositions = append(openPositions, pos)
+		}
+	}
+
+	uc.logger.Debug().Int("count", len(openPositions)).Msg("Retrieved open positions")
+	return openPositions, nil
 }
 
-// GetOpenPositionsByType retrieves all open positions for a specific type
+// GetClosedPositions retrieves closed positions within a given time range with pagination
+func (uc *positionUseCase) GetClosedPositions(ctx context.Context, fromTime, toTime time.Time, limit, offset int) ([]*model.Position, error) {
+	// Since we don't have a direct repository method for this,
+	// we'll implement a similar approach as GetOpenPositions
+	filters := map[string]interface{}{
+		"status": model.PositionStatusClosed,
+	}
+
+	total, err := uc.positionRepo.Count(ctx, filters)
+	if err != nil {
+		uc.logger.Error().Err(err).Msg("Failed to get count of closed positions")
+		return nil, err
+	}
+
+	// If there are no closed positions, return early
+	if total == 0 {
+		return []*model.Position{}, nil
+	}
+
+	// Get all positions and filter in memory
+	// This is not optimal but a workaround for the missing repository method
+	allPositions, err := uc.positionRepo.GetBySymbol(ctx, "", offset, limit)
+	if err != nil {
+		uc.logger.Error().Err(err).Msg("Failed to get positions")
+		return nil, err
+	}
+
+	// Filter for closed positions within the time range
+	var closedPositions []*model.Position
+	for _, pos := range allPositions {
+		if pos.Status == model.PositionStatusClosed &&
+			pos.ClosedAt != nil &&
+			!pos.ClosedAt.Before(fromTime) &&
+			!pos.ClosedAt.After(toTime) {
+			closedPositions = append(closedPositions, pos)
+		}
+	}
+
+	uc.logger.Debug().
+		Int("count", len(closedPositions)).
+		Time("fromTime", fromTime).
+		Time("toTime", toTime).
+		Msg("Retrieved closed positions")
+
+	return closedPositions, nil
+}
+
+// GetOpenPositionsByType retrieves open positions of a specific type
 func (uc *positionUseCase) GetOpenPositionsByType(ctx context.Context, positionType model.PositionType) ([]*model.Position, error) {
-	positions, err := uc.positionRepo.GetOpenPositionsByType(ctx, positionType)
+	// Get all open positions first
+	openPositions, err := uc.GetOpenPositions(ctx)
 	if err != nil {
-		uc.logger.Error().Err(err).Str("type", string(positionType)).Msg("Failed to get open positions by type")
+		uc.logger.Error().Err(err).
+			Str("type", string(positionType)).
+			Msg("Failed to get open positions for filtering by type")
 		return nil, err
 	}
-	return positions, nil
-}
 
-// GetPositionsBySymbol retrieves positions for a specific symbol with pagination
-func (uc *positionUseCase) GetPositionsBySymbol(ctx context.Context, symbol string, limit, offset int) ([]*model.Position, error) {
-	positions, err := uc.positionRepo.GetBySymbol(ctx, symbol, limit, offset)
-	if err != nil {
-		uc.logger.Error().Err(err).Str("symbol", symbol).Msg("Failed to get positions by symbol")
-		return nil, err
+	// Filter by position type
+	var filteredPositions []*model.Position
+	for _, pos := range openPositions {
+		if pos.Type == positionType {
+			filteredPositions = append(filteredPositions, pos)
+		}
 	}
-	return positions, nil
-}
 
-// GetClosedPositions retrieves closed positions within a time range with pagination
-func (uc *positionUseCase) GetClosedPositions(ctx context.Context, from, to time.Time, limit, offset int) ([]*model.Position, error) {
-	positions, err := uc.positionRepo.GetClosedPositions(ctx, from, to, limit, offset)
-	if err != nil {
-		uc.logger.Error().Err(err).Msg("Failed to get closed positions")
-		return nil, err
-	}
-	return positions, nil
+	uc.logger.Debug().
+		Int("count", len(filteredPositions)).
+		Str("type", string(positionType)).
+		Msg("Retrieved open positions by type")
+
+	return filteredPositions, nil
 }
 
 // UpdatePosition updates a position based on the provided request

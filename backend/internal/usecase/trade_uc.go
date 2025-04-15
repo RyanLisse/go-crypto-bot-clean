@@ -3,9 +3,10 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/port"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/rs/zerolog"
 )
 
@@ -14,6 +15,7 @@ var (
 	ErrInvalidOrderData    = errors.New("invalid order data")
 	ErrOrderNotFound       = errors.New("order not found")
 	ErrInsufficientBalance = errors.New("insufficient balance for order")
+	ErrSymbolNotFound      = errors.New("symbol not found")
 )
 
 // TradeUseCase defines methods for trade operations
@@ -34,26 +36,32 @@ type TradeUseCase interface {
 
 // tradeUseCase implements the TradeUseCase interface
 type tradeUseCase struct {
-	mexcAPI      port.MexcAPI
+	mexcClient   port.MEXCClient
 	orderRepo    port.OrderRepository
 	symbolRepo   port.SymbolRepository
 	tradeService port.TradeService
+	riskUC       RiskUseCase
+	txManager    port.TransactionManager
 	logger       zerolog.Logger
 }
 
 // NewTradeUseCase creates a new TradeUseCase
 func NewTradeUseCase(
-	mexcAPI port.MexcAPI,
+	mexcClient port.MEXCClient,
 	orderRepo port.OrderRepository,
 	symbolRepo port.SymbolRepository,
 	tradeService port.TradeService,
+	riskUC RiskUseCase,
+	txManager port.TransactionManager,
 	logger zerolog.Logger,
 ) TradeUseCase {
 	return &tradeUseCase{
-		mexcAPI:      mexcAPI,
+		mexcClient:   mexcClient,
 		orderRepo:    orderRepo,
 		symbolRepo:   symbolRepo,
 		tradeService: tradeService,
+		riskUC:       riskUC,
+		txManager:    txManager,
 		logger:       logger.With().Str("component", "trade_usecase").Logger(),
 	}
 }
@@ -71,17 +79,59 @@ func (uc *tradeUseCase) PlaceOrder(ctx context.Context, req model.OrderRequest) 
 		return nil, ErrSymbolNotFound
 	}
 
-	// Delegate to the trade service
-	response, err := uc.tradeService.PlaceOrder(ctx, &req)
+	// Perform risk assessment before placing the order
+	if uc.riskUC != nil {
+		allowed, assessments, err := uc.riskUC.EvaluateOrderRisk(ctx, req.UserID, req)
+		if err != nil {
+			uc.logger.Error().Err(err).
+				Str("symbol", req.Symbol).
+				Str("side", string(req.Side)).
+				Msg("Failed to evaluate order risk")
+			return nil, fmt.Errorf("failed to evaluate risk: %w", err)
+		}
+
+		if !allowed {
+			// Log risk assessments
+			for _, assessment := range assessments {
+				if assessment.Level == model.RiskLevelHigh || assessment.Level == model.RiskLevelCritical {
+					uc.logger.Warn().
+						Str("riskType", string(assessment.Type)).
+						Str("riskLevel", string(assessment.Level)).
+						Str("message", assessment.Message).
+						Str("recommendation", assessment.Recommendation).
+						Msg("High risk detected")
+				}
+			}
+			return nil, errors.New("order rejected due to risk assessment: " + getHighestRiskMessage(assessments))
+		}
+	}
+
+	// Use transaction manager to ensure atomicity of order placement
+	var response *model.OrderResponse
+	err = uc.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+		// Delegate to the trade service within transaction
+		resp, err := uc.tradeService.PlaceOrder(txCtx, &req)
+		if err != nil {
+			uc.logger.Error().Err(err).
+				Str("symbol", req.Symbol).
+				Str("side", string(req.Side)).
+				Str("type", string(req.Type)).
+				Float64("quantity", req.Quantity).
+				Float64("price", req.Price).
+				Msg("Failed to place order")
+			return err
+		}
+
+		// Save order response to use outside transaction
+		response = resp
+		return nil
+	})
+
 	if err != nil {
-		uc.logger.Error().Err(err).
-			Str("symbol", req.Symbol).
-			Str("side", string(req.Side)).
-			Str("type", string(req.Type)).
-			Float64("quantity", req.Quantity).
-			Float64("price", req.Price).
-			Msg("Failed to place order")
 		return nil, err
+	}
+	if response == nil {
+		return nil, errors.New("order response is nil after transaction")
 	}
 
 	uc.logger.Info().
@@ -94,6 +144,50 @@ func (uc *tradeUseCase) PlaceOrder(ctx context.Context, req model.OrderRequest) 
 		Msg("Order placed successfully")
 
 	return &response.Order, nil
+}
+
+// getHighestRiskMessage returns the message from the highest risk assessment
+func getHighestRiskMessage(assessments []*model.RiskAssessment) string {
+	if len(assessments) == 0 {
+		return "unknown risk"
+	}
+
+	// Priority: CRITICAL > HIGH > MEDIUM > LOW
+	var criticalRisk, highRisk, mediumRisk, lowRisk *model.RiskAssessment
+
+	for _, assessment := range assessments {
+		switch assessment.Level {
+		case model.RiskLevelCritical:
+			criticalRisk = assessment
+		case model.RiskLevelHigh:
+			if highRisk == nil {
+				highRisk = assessment
+			}
+		case model.RiskLevelMedium:
+			if mediumRisk == nil {
+				mediumRisk = assessment
+			}
+		case model.RiskLevelLow:
+			if lowRisk == nil {
+				lowRisk = assessment
+			}
+		}
+	}
+
+	if criticalRisk != nil {
+		return criticalRisk.Message
+	}
+	if highRisk != nil {
+		return highRisk.Message
+	}
+	if mediumRisk != nil {
+		return mediumRisk.Message
+	}
+	if lowRisk != nil {
+		return lowRisk.Message
+	}
+
+	return "unknown risk"
 }
 
 // CancelOrder cancels an existing order

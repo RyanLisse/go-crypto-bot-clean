@@ -13,14 +13,23 @@ import (
 
 // Config holds all configuration settings
 type Config struct {
-	LogLevel string `mapstructure:"log_level"`
-	ENV      string `mapstructure:"env"`
-	Server   struct {
-		Port         int           `mapstructure:"port"`
-		Host         string        `mapstructure:"host"`
-		ReadTimeout  time.Duration `mapstructure:"read_timeout"`
-		WriteTimeout time.Duration `mapstructure:"write_timeout"`
-		IdleTimeout  time.Duration `mapstructure:"idle_timeout"`
+	LogLevel      string              `mapstructure:"log_level"`
+	ENV           string              `mapstructure:"env"`
+	Version       string              `mapstructure:"version"`
+	Notifications Notifications       `mapstructure:"notifications"`
+	Auth          Auth                `mapstructure:"auth"`
+	RateLimit     RateLimitConfig     `mapstructure:"rate_limit"`
+	CSRF          CSRFConfig          `mapstructure:"csrf"`
+	SecureHeaders SecureHeadersConfig `mapstructure:"secure_headers"`
+	InfuraAPIKey  string              `mapstructure:"infura_api_key"`
+	Server        struct {
+		Port               int           `mapstructure:"port"`
+		Host               string        `mapstructure:"host"`
+		ReadTimeout        time.Duration `mapstructure:"read_timeout"`
+		WriteTimeout       time.Duration `mapstructure:"write_timeout"`
+		IdleTimeout        time.Duration `mapstructure:"idle_timeout"`
+		FrontendURL        string        `mapstructure:"frontend_url"`
+		CORSAllowedOrigins []string      `mapstructure:"cors_allowed_origins"`
 	} `mapstructure:"server"`
 	Database struct {
 		Driver   string `mapstructure:"driver"`
@@ -69,6 +78,18 @@ type Config struct {
 	} `mapstructure:"ai"`
 }
 
+// Auth holds authentication configuration
+type Auth struct {
+	Enabled           bool          `mapstructure:"enabled"`
+	Provider          string        `mapstructure:"provider"` // "clerk", "jwt", etc.
+	ClerkAPIKey       string        `mapstructure:"clerk_api_key"`
+	ClerkSecretKey    string        `mapstructure:"clerk_secret_key"`
+	ClerkJWTPublicKey string        `mapstructure:"clerk_jwt_public_key"`
+	ClerkJWTTemplate  string        `mapstructure:"clerk_jwt_template"`
+	JWTSecret         string        `mapstructure:"jwt_secret"`
+	TokenDuration     time.Duration `mapstructure:"token_duration"`
+}
+
 // Load loads configuration from file and environment variables
 func Load() (*Config, error) {
 	// First load .env file if it exists
@@ -110,6 +131,36 @@ func Load() (*Config, error) {
 	return &config, nil
 }
 
+// Notifications holds notification configuration
+type Notifications struct {
+	Email   EmailNotification   `mapstructure:"email"`
+	Webhook WebhookNotification `mapstructure:"webhook"`
+}
+
+// EmailNotification holds email notification configuration
+type EmailNotification struct {
+	Enabled       bool     `mapstructure:"enabled"`
+	SMTPServer    string   `mapstructure:"smtp_server"`
+	SMTPPort      int      `mapstructure:"smtp_port"`
+	Username      string   `mapstructure:"username"`
+	Password      string   `mapstructure:"password"`
+	FromAddress   string   `mapstructure:"from_address"`
+	ToAddresses   []string `mapstructure:"to_addresses"`
+	MinLevel      string   `mapstructure:"min_level"`
+	SubjectPrefix string   `mapstructure:"subject_prefix"`
+}
+
+// WebhookNotification holds webhook notification configuration
+type WebhookNotification struct {
+	Enabled   bool              `mapstructure:"enabled"`
+	URL       string            `mapstructure:"url"`
+	Method    string            `mapstructure:"method"`
+	Headers   map[string]string `mapstructure:"headers"`
+	MinLevel  string            `mapstructure:"min_level"`
+	Timeout   time.Duration     `mapstructure:"timeout"`
+	BatchSize int               `mapstructure:"batch_size"`
+}
+
 // setDefaults sets the default values for configuration
 func setDefaults(v *viper.Viper) {
 	// Server defaults
@@ -118,10 +169,31 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.read_timeout", 30*time.Second)
 	v.SetDefault("server.write_timeout", 30*time.Second)
 	v.SetDefault("server.idle_timeout", 60*time.Second)
+	v.SetDefault("server.frontend_url", "http://localhost:3000")
+	v.SetDefault("server.cors_allowed_origins", []string{"http://localhost:3000"})
 
 	// Environment defaults
 	v.SetDefault("env", "development")
 	v.SetDefault("log_level", "info")
+	v.SetDefault("version", "1.0.0")
+
+	// Auth defaults
+	v.SetDefault("auth.enabled", true)
+	v.SetDefault("auth.provider", "clerk")
+	v.SetDefault("auth.token_duration", 24*time.Hour)
+	v.SetDefault("auth.clerk_jwt_template", "api_auth")
+
+	// Notification defaults
+	v.SetDefault("notifications.email.enabled", false)
+	v.SetDefault("notifications.email.smtp_port", 587)
+	v.SetDefault("notifications.email.min_level", "error")
+	v.SetDefault("notifications.email.subject_prefix", "[CryptoBot]")
+
+	v.SetDefault("notifications.webhook.enabled", false)
+	v.SetDefault("notifications.webhook.method", "POST")
+	v.SetDefault("notifications.webhook.min_level", "warning")
+	v.SetDefault("notifications.webhook.timeout", 10*time.Second)
+	v.SetDefault("notifications.webhook.batch_size", 1)
 
 	// Database defaults
 	v.SetDefault("database.driver", "sqlite")
@@ -144,6 +216,61 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("mexc.rate_limit.requests_per_minute", 1200)
 	v.SetDefault("mexc.rate_limit.burst_size", 10)
 
+	// Rate limiting defaults
+	defaultRateLimit := GetDefaultRateLimitConfig()
+	v.SetDefault("rate_limit.enabled", defaultRateLimit.Enabled)
+	v.SetDefault("rate_limit.default_limit", defaultRateLimit.DefaultLimit)
+	v.SetDefault("rate_limit.default_burst", defaultRateLimit.DefaultBurst)
+	v.SetDefault("rate_limit.ip_limit", defaultRateLimit.IPLimit)
+	v.SetDefault("rate_limit.ip_burst", defaultRateLimit.IPBurst)
+	v.SetDefault("rate_limit.user_limit", defaultRateLimit.UserLimit)
+	v.SetDefault("rate_limit.user_burst", defaultRateLimit.UserBurst)
+	v.SetDefault("rate_limit.auth_user_limit", defaultRateLimit.AuthUserLimit)
+	v.SetDefault("rate_limit.auth_user_burst", defaultRateLimit.AuthUserBurst)
+	v.SetDefault("rate_limit.cleanup_interval", defaultRateLimit.CleanupInterval)
+	v.SetDefault("rate_limit.block_duration", defaultRateLimit.BlockDuration)
+	v.SetDefault("rate_limit.trusted_proxies", defaultRateLimit.TrustedProxies)
+	v.SetDefault("rate_limit.excluded_paths", defaultRateLimit.ExcludedPaths)
+	v.SetDefault("rate_limit.redis_enabled", defaultRateLimit.RedisEnabled)
+	v.SetDefault("rate_limit.redis_key_prefix", defaultRateLimit.RedisKeyPrefix)
+
+	// CSRF defaults
+	defaultCSRF := GetDefaultCSRFConfig()
+	v.SetDefault("csrf.enabled", defaultCSRF.Enabled)
+	v.SetDefault("csrf.token_length", defaultCSRF.TokenLength)
+	v.SetDefault("csrf.cookie_name", defaultCSRF.CookieName)
+	v.SetDefault("csrf.cookie_path", defaultCSRF.CookiePath)
+	v.SetDefault("csrf.cookie_max_age", defaultCSRF.CookieMaxAge)
+	v.SetDefault("csrf.cookie_secure", defaultCSRF.CookieSecure)
+	v.SetDefault("csrf.cookie_http_only", defaultCSRF.CookieHTTPOnly)
+	v.SetDefault("csrf.cookie_same_site", defaultCSRF.CookieSameSite)
+	v.SetDefault("csrf.header_name", defaultCSRF.HeaderName)
+	v.SetDefault("csrf.form_field_name", defaultCSRF.FormFieldName)
+	v.SetDefault("csrf.excluded_paths", defaultCSRF.ExcludedPaths)
+	v.SetDefault("csrf.excluded_methods", defaultCSRF.ExcludedMethods)
+	v.SetDefault("csrf.failure_status_code", defaultCSRF.FailureStatusCode)
+
+	// Secure headers defaults
+	defaultSecureHeaders := GetDefaultSecureHeadersConfig()
+	v.SetDefault("secure_headers.enabled", defaultSecureHeaders.Enabled)
+	v.SetDefault("secure_headers.content_security_policy", defaultSecureHeaders.ContentSecurityPolicy)
+	v.SetDefault("secure_headers.x_content_type_options", defaultSecureHeaders.XContentTypeOptions)
+	v.SetDefault("secure_headers.x_frame_options", defaultSecureHeaders.XFrameOptions)
+	v.SetDefault("secure_headers.x_xss_protection", defaultSecureHeaders.XXSSProtection)
+	v.SetDefault("secure_headers.referrer_policy", defaultSecureHeaders.ReferrerPolicy)
+	v.SetDefault("secure_headers.strict_transport_security", defaultSecureHeaders.StrictTransportSecurity)
+	v.SetDefault("secure_headers.permissions_policy", defaultSecureHeaders.PermissionsPolicy)
+	v.SetDefault("secure_headers.cross_origin_embedder_policy", defaultSecureHeaders.CrossOriginEmbedderPolicy)
+	v.SetDefault("secure_headers.cross_origin_opener_policy", defaultSecureHeaders.CrossOriginOpenerPolicy)
+	v.SetDefault("secure_headers.cross_origin_resource_policy", defaultSecureHeaders.CrossOriginResourcePolicy)
+	v.SetDefault("secure_headers.cache_control", defaultSecureHeaders.CacheControl)
+	v.SetDefault("secure_headers.excluded_paths", defaultSecureHeaders.ExcludedPaths)
+	v.SetDefault("secure_headers.custom_headers", defaultSecureHeaders.CustomHeaders)
+	v.SetDefault("secure_headers.remove_server_header", defaultSecureHeaders.RemoveServerHeader)
+	v.SetDefault("secure_headers.remove_powered_by_header", defaultSecureHeaders.RemovePoweredByHeader)
+	v.SetDefault("secure_headers.content_security_policy_report_only", defaultSecureHeaders.ContentSecurityPolicyReportOnly)
+	v.SetDefault("secure_headers.content_security_policy_report_uri", defaultSecureHeaders.ContentSecurityPolicyReportURI)
+
 	// AI defaults
 	v.SetDefault("ai.provider", "gemini")
 	v.SetDefault("ai.model", "gemini-pro")
@@ -153,6 +280,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("ai.top_p", 0.95)
 	v.SetDefault("ai.top_k", 40)
 	v.SetDefault("ai.max_tokens", 1024)
+
+	// Web3 defaults
+	v.SetDefault("infura_api_key", "")
 }
 
 // validateConfig validates the configuration

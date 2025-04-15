@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/port"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -21,34 +21,7 @@ var (
 // Ensure PositionRepository implements port.PositionRepository
 var _ port.PositionRepository = (*PositionRepository)(nil)
 
-// PositionEntity represents the database model for a position
-type PositionEntity struct {
-	ID              string `gorm:"primaryKey"`
-	Symbol          string `gorm:"index"`
-	Side            string `gorm:"index"`
-	Status          string `gorm:"index"`
-	Type            string `gorm:"index"`
-	EntryPrice      float64
-	Quantity        float64
-	CurrentPrice    float64
-	PnL             float64
-	PnLPercent      float64
-	StopLoss        *float64
-	TakeProfit      *float64
-	StrategyID      *string
-	EntryOrderIDs   string // Stored as JSON array
-	ExitOrderIDs    string // Stored as JSON array
-	OpenOrderIDs    string // Stored as JSON array
-	Notes           string
-	OpenedAt        time.Time
-	ClosedAt        *time.Time
-	LastUpdatedAt   time.Time
-	MaxDrawdown     float64
-	MaxProfit       float64
-	RiskRewardRatio float64
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-}
+// PositionEntity is defined in entity.go
 
 // PositionRepository implements the port.PositionRepository interface using GORM
 type PositionRepository struct {
@@ -194,6 +167,24 @@ func (r *PositionRepository) GetByUserID(ctx context.Context, userID string, lim
 	return []*model.Position{}, nil
 }
 
+// GetActiveByUser retrieves active positions for a specific user
+func (r *PositionRepository) GetActiveByUser(ctx context.Context, userID string) ([]*model.Position, error) {
+	var entities []PositionEntity
+	result := r.db.WithContext(ctx).Where("status = ? AND user_id = ?", string(model.PositionStatusOpen), userID).Find(&entities)
+	if result.Error != nil {
+		log.Error().Err(result.Error).Str("userID", userID).Msg("Failed to get active positions by user")
+		return nil, result.Error
+	}
+
+	positions := make([]*model.Position, len(entities))
+	for i, entity := range entities {
+		positions[i] = r.toDomain(&entity)
+	}
+
+	log.Debug().Str("userID", userID).Int("count", len(positions)).Msg("Retrieved active positions by user")
+	return positions, nil
+}
+
 // GetClosedPositions retrieves closed positions within a time range with pagination
 func (r *PositionRepository) GetClosedPositions(ctx context.Context, from, to time.Time, limit, offset int) ([]*model.Position, error) {
 	var entities []PositionEntity
@@ -251,6 +242,66 @@ func (r *PositionRepository) Delete(ctx context.Context, id string) error {
 
 	log.Debug().Str("positionID", id).Msg("Position deleted successfully")
 	return nil
+}
+
+// GetBySymbolAndUser retrieves positions for a specific symbol and user with pagination
+func (r *PositionRepository) GetBySymbolAndUser(ctx context.Context, symbol, userID string, page, limit int) ([]*model.Position, error) {
+	var entities []PositionEntity
+
+	// Calculate offset from page and limit
+	offset := (page - 1) * limit
+	if offset < 0 {
+		offset = 0
+	}
+
+	result := r.db.WithContext(ctx).
+		Where("symbol = ? AND user_id = ?", symbol, userID).
+		Limit(limit).
+		Offset(offset).
+		Order("opened_at DESC").
+		Find(&entities)
+
+	if result.Error != nil {
+		log.Error().Err(result.Error).
+			Str("symbol", symbol).
+			Str("userID", userID).
+			Int("page", page).
+			Int("limit", limit).
+			Msg("Failed to get positions by symbol and user")
+		return nil, result.Error
+	}
+
+	positions := make([]*model.Position, len(entities))
+	for i, entity := range entities {
+		positions[i] = r.toDomain(&entity)
+	}
+
+	log.Debug().
+		Str("symbol", symbol).
+		Str("userID", userID).
+		Int("page", page).
+		Int("limit", limit).
+		Int("count", len(positions)).
+		Msg("Retrieved positions by symbol and user")
+	return positions, nil
+}
+
+// GetOpenPositionsByUserID retrieves all open positions for a specific user
+func (r *PositionRepository) GetOpenPositionsByUserID(ctx context.Context, userID string) ([]*model.Position, error) {
+	var entities []PositionEntity
+	result := r.db.WithContext(ctx).Where("status = ? AND user_id = ?", string(model.PositionStatusOpen), userID).Find(&entities)
+	if result.Error != nil {
+		log.Error().Err(result.Error).Str("userID", userID).Msg("Failed to get open positions by user ID")
+		return nil, result.Error
+	}
+
+	positions := make([]*model.Position, len(entities))
+	for i, entity := range entities {
+		positions[i] = r.toDomain(&entity)
+	}
+
+	log.Debug().Str("userID", userID).Int("count", len(positions)).Msg("Retrieved open positions by user ID")
+	return positions, nil
 }
 
 // Helper methods for entity conversion

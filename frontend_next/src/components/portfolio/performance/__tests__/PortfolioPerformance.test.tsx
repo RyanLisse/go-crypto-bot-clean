@@ -1,17 +1,18 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { PortfolioPerformance } from '../PortfolioPerformance';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // Create mock hooks
-const mockUsePortfolioData = jest.fn();
-const mockUsePortfolioMetrics = jest.fn();
+const mockUsePortfolioData = vi.fn();
+const mockUsePortfolioMetrics = vi.fn();
 
-// Mock the modules - this has to be at the top level before any imports
-jest.mock('../usePortfolioData', () => ({
+// Mock the modules using Vitest syntax
+vi.mock('../usePortfolioData', () => ({
   usePortfolioData: () => mockUsePortfolioData()
 }));
 
-jest.mock('../usePortfolioMetrics', () => ({
+vi.mock('../usePortfolioMetrics', () => ({
   usePortfolioMetrics: () => mockUsePortfolioMetrics()
 }));
 
@@ -43,7 +44,7 @@ describe('PortfolioPerformance', () => {
       },
       isLoading: false,
       error: null,
-      refetch: jest.fn()
+      refetch: vi.fn()
     });
 
     // Mock implementation for usePortfolioMetrics
@@ -80,7 +81,7 @@ describe('PortfolioPerformance', () => {
       isLoading: false,
       error: null,
       timeframe: '1M',
-      setTimeframe: jest.fn()
+      setTimeframe: vi.fn()
     });
   });
 
@@ -114,7 +115,7 @@ describe('PortfolioPerformance', () => {
       initialValues: {},
       isLoading: true,
       error: null,
-      refetch: jest.fn()
+      refetch: vi.fn()
     });
     
     mockUsePortfolioMetrics.mockReturnValue({
@@ -143,7 +144,7 @@ describe('PortfolioPerformance', () => {
       isLoading: true,
       error: null,
       timeframe: '1M',
-      setTimeframe: jest.fn()
+      setTimeframe: vi.fn()
     });
     
     render(<PortfolioPerformance />);

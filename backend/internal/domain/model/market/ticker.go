@@ -6,16 +6,16 @@ import (
 
 // Ticker represents market data for a symbol
 type Ticker struct {
-	ID            string    `json:"id"`
-	Symbol        string    `json:"symbol"`
-	Price         float64   `json:"price"`
-	Volume        float64   `json:"volume"`
-	High24h       float64   `json:"high24h"`
-	Low24h        float64   `json:"low24h"`
-	PriceChange   float64   `json:"priceChange"`
-	PercentChange float64   `json:"percentChange"`
-	LastUpdated   time.Time `json:"lastUpdated"`
-	Exchange      string    `json:"exchange"`
+	ID            string    
+	Symbol        string    
+	Price         float64   
+	Volume        float64   
+	High24h       float64   
+	Low24h        float64   
+	PriceChange   float64   
+	PercentChange float64   
+	LastUpdated   time.Time 
+	Exchange      string    
 }
 
 // NewTicker creates a new ticker with the current time as LastUpdated

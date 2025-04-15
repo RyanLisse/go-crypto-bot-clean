@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/neo/crypto-bot/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 )
 
 // MockGeminiAIService is a mock implementation of the GeminiAIService for testing

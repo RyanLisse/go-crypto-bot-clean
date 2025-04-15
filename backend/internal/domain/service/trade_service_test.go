@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/model/market"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,6 +17,75 @@ import (
 // MockMexcClient is a mock implementation of the MEXC API client
 type MockMexcClient struct {
 	mock.Mock
+}
+
+// GetExchangeInfo implements the port.MEXCClient interface
+func (m *MockMexcClient) GetExchangeInfo(ctx context.Context) (*model.ExchangeInfo, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.ExchangeInfo), args.Error(1)
+}
+
+// GetSymbolInfo implements the port.MEXCClient interface
+func (m *MockMexcClient) GetSymbolInfo(ctx context.Context, symbol string) (*model.SymbolInfo, error) {
+	args := m.Called(ctx, symbol)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.SymbolInfo), args.Error(1)
+}
+
+// GetSymbolStatus implements the port.MEXCClient interface
+func (m *MockMexcClient) GetSymbolStatus(ctx context.Context, symbol string) (model.Status, error) {
+	args := m.Called(ctx, symbol)
+	return args.Get(0).(model.Status), args.Error(1)
+}
+
+// GetTradingSchedule implements the port.MEXCClient interface
+func (m *MockMexcClient) GetTradingSchedule(ctx context.Context, symbol string) (model.TradingSchedule, error) {
+	args := m.Called(ctx, symbol)
+	if args.Get(0) == nil {
+		return model.TradingSchedule{}, args.Error(1)
+	}
+	return args.Get(0).(model.TradingSchedule), args.Error(1)
+}
+
+// GetSymbolConstraints implements the port.MEXCClient interface
+func (m *MockMexcClient) GetSymbolConstraints(ctx context.Context, symbol string) (*model.SymbolConstraints, error) {
+	args := m.Called(ctx, symbol)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.SymbolConstraints), args.Error(1)
+}
+
+// GetNewListings implements the port.MEXCClient interface
+func (m *MockMexcClient) GetNewListings(ctx context.Context) ([]*model.NewCoin, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.NewCoin), args.Error(1)
+}
+
+// GetOpenOrders implements the port.MEXCClient interface
+func (m *MockMexcClient) GetOpenOrders(ctx context.Context, symbol string) ([]*model.Order, error) {
+	args := m.Called(ctx, symbol)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.Order), args.Error(1)
+}
+
+// GetOrderHistory implements the port.MEXCClient interface
+func (m *MockMexcClient) GetOrderHistory(ctx context.Context, symbol string, limit, offset int) ([]*model.Order, error) {
+	args := m.Called(ctx, symbol, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.Order), args.Error(1)
 }
 
 func (m *MockMexcClient) GetAccount(ctx context.Context) (*model.Wallet, error) {
@@ -587,13 +656,13 @@ func TestCalculateRequiredQuantity(t *testing.T) {
 		marketRepo: &mockMarketRepoWrapper{mockMarketData},
 		symbolRepo: mockSymbolRepo,
 		logger:     &logger,
-		mexcAPI:    mockClient,
+		mexcClient: mockClient,
 		cache:      mockCache,
 	}
 
 	// Setup the trade service
 	service := &MexcTradeService{
-		mexcAPI:       mockClient,
+		mexcClient:    mockClient,
 		marketService: marketService,
 		symbolRepo:    mockSymbolRepo,
 		orderRepo:     mockOrderRepo,
@@ -689,6 +758,15 @@ func (w *mockMarketRepoWrapper) PurgeOldData(ctx context.Context, olderThan time
 
 func (w *mockMarketRepoWrapper) GetLatestTickers(ctx context.Context, limit int) ([]*market.Ticker, error) {
 	return nil, nil
+}
+
+func (w *mockMarketRepoWrapper) GetOrderBook(ctx context.Context, symbol, exchange string, depth int) (*market.OrderBook, error) {
+	return &market.OrderBook{
+		Symbol:   symbol,
+		Exchange: exchange,
+		Bids:     []market.OrderBookEntry{{Price: 49000.0, Quantity: 1.0}},
+		Asks:     []market.OrderBookEntry{{Price: 51000.0, Quantity: 1.0}},
+	}, nil
 }
 
 func (w *mockMarketRepoWrapper) GetTickersBySymbol(ctx context.Context, symbol string, limit int) ([]*market.Ticker, error) {

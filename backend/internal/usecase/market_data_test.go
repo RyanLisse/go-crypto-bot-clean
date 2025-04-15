@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model/market"
-	"github.com/neo/crypto-bot/internal/usecase"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -92,10 +92,16 @@ func (m *MockMarketRepository) GetLatestTickers(ctx context.Context, limit int) 
 
 func (m *MockMarketRepository) GetTickersBySymbol(ctx context.Context, symbol string, limit int) ([]*market.Ticker, error) {
 	args := m.Called(ctx, symbol, limit)
+	return args.Get(0).([]*market.Ticker), args.Error(1)
+}
+
+// GetOrderBook retrieves the order book for a symbol
+func (m *MockMarketRepository) GetOrderBook(ctx context.Context, symbol, exchange string, depth int) (*market.OrderBook, error) {
+	args := m.Called(ctx, symbol, exchange, depth)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*market.Ticker), args.Error(1)
+	return args.Get(0).(*market.OrderBook), args.Error(1)
 }
 
 type MockSymbolRepository struct {

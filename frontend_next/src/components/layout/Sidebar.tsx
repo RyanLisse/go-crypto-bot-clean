@@ -8,6 +8,7 @@ import {
   LineChart, 
   LucideIcon, 
   MessageSquare, 
+  Palette,
   Send,
   Settings, 
   Star 
@@ -49,6 +50,11 @@ const navItems: NavItem[] = [
     name: 'Bot Config',
     path: '/config',
     icon: Settings,
+  },
+  {
+    name: 'Brutalist UI',
+    path: '/examples/brutalist',
+    icon: Palette,
   },
 ];
 

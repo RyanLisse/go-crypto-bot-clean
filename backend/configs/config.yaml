@@ -10,12 +10,22 @@ server:
 env: "development"
 log_level: "info"
 
+# Authentication configuration
+auth:
+  enabled: true
+  provider: "clerk"
+  clerk_api_key: "${CLERK_API_KEY}"
+  clerk_secret_key: "${CLERK_SECRET_KEY}"
+  clerk_jwt_public_key: "${CLERK_JWT_PUBLIC_KEY}"
+  clerk_jwt_template: "${CLERK_JWT_TEMPLATE}"
+  token_duration: 24h
+
 # Database configuration
 database:
   driver: "sqlite"
   path: "./data/crypto_bot.db"
   turso:
-    enabled: true
+    enabled: false
     url: "${TURSO_URL}"
     auth_token: "${TURSO_AUTH_TOKEN}"
 
@@ -30,6 +40,77 @@ mexc:
     requests_per_minute: 1200
     burst_size: 10
 
+# Rate limiting configuration
+rate_limit:
+  enabled: true
+  default_limit: 60   # 1 request per second
+  default_burst: 10   # Allow bursts of 10 requests
+  ip_limit: 300       # 5 requests per second per IP
+  ip_burst: 20        # Allow bursts of 20 requests per IP
+  user_limit: 600     # 10 requests per second per user
+  user_burst: 30      # Allow bursts of 30 requests per user
+  auth_user_limit: 1200  # 20 requests per second for authenticated users
+  auth_user_burst: 60    # Allow bursts of 60 requests for authenticated users
+  cleanup_interval: 5m
+  block_duration: 15m
+  trusted_proxies:
+    - "127.0.0.1"
+    - "::1"
+  excluded_paths:
+    - "/health"
+    - "/metrics"
+    - "/favicon.ico"
+  redis_enabled: false
+  redis_key_prefix: "ratelimit:"
+
+# CSRF protection configuration
+csrf:
+  enabled: true
+  secret: "${CSRF_SECRET}"
+  token_length: 32
+  cookie_name: "csrf_token"
+  cookie_path: "/"
+  cookie_max_age: 24h
+  cookie_secure: true
+  cookie_http_only: true
+  cookie_same_site: "Lax"
+  header_name: "X-CSRF-Token"
+  form_field_name: "csrf_token"
+  excluded_paths:
+    - "/health"
+    - "/metrics"
+    - "/favicon.ico"
+    - "/api/v1/auth/verify"
+  excluded_methods:
+    - "GET"
+    - "HEAD"
+    - "OPTIONS"
+    - "TRACE"
+  failure_status_code: 403
+
+# Secure headers configuration
+secure_headers:
+  enabled: true
+  content_security_policy: "default-src 'self'; script-src 'self'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-src 'none'; connect-src 'self'"
+  x_content_type_options: "nosniff"
+  x_frame_options: "DENY"
+  x_xss_protection: "1; mode=block"
+  referrer_policy: "strict-origin-when-cross-origin"
+  strict_transport_security: "max-age=31536000; includeSubDomains"
+  permissions_policy: "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+  cross_origin_embedder_policy: "require-corp"
+  cross_origin_opener_policy: "same-origin"
+  cross_origin_resource_policy: "same-origin"
+  cache_control: "no-store, max-age=0"
+  excluded_paths:
+    - "/health"
+    - "/metrics"
+    - "/favicon.ico"
+  remove_server_header: true
+  remove_powered_by_header: true
+  content_security_policy_report_only: false
+  content_security_policy_report_uri: ""
+
 # AI configuration
 ai:
   provider: "gemini"
@@ -42,3 +123,6 @@ ai:
   top_p: 0.95
   top_k: 40
   max_tokens: 1024
+
+# Web3 configuration
+infura_api_key: "${INFURA_API_KEY}"

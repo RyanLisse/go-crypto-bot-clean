@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/port"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/rs/zerolog"
 )
 
@@ -21,7 +21,7 @@ var (
 
 // MexcTradeService implements the TradeService interface for the MEXC exchange
 type MexcTradeService struct {
-	mexcAPI       port.MexcAPI
+	mexcClient    port.MEXCClient // Changed from mexcAPI to mexcClient
 	marketService *MarketDataService
 	symbolRepo    port.SymbolRepository
 	orderRepo     port.OrderRepository
@@ -30,14 +30,14 @@ type MexcTradeService struct {
 
 // NewMexcTradeService creates a new MexcTradeService
 func NewMexcTradeService(
-	mexcAPI port.MexcAPI,
+	mexcClient port.MEXCClient, // Changed from mexcAPI to mexcClient
 	marketService *MarketDataService,
 	symbolRepo port.SymbolRepository,
 	orderRepo port.OrderRepository,
 	logger *zerolog.Logger,
 ) *MexcTradeService {
 	return &MexcTradeService{
-		mexcAPI:       mexcAPI,
+		mexcClient:    mexcClient, // Changed from mexcAPI to mexcClient
 		marketService: marketService,
 		symbolRepo:    symbolRepo,
 		orderRepo:     orderRepo,
@@ -71,7 +71,7 @@ func (s *MexcTradeService) PlaceOrder(ctx context.Context, request *model.OrderR
 	}
 
 	// Submit order to exchange
-	order, err := s.mexcAPI.PlaceOrder(
+	order, err := s.mexcClient.PlaceOrder( // Changed from mexcAPI to mexcClient
 		ctx,
 		request.Symbol,
 		request.Side,
@@ -99,8 +99,8 @@ func (s *MexcTradeService) PlaceOrder(ctx context.Context, request *model.OrderR
 
 	// Create and return OrderResponse
 	response := &model.OrderResponse{
-		Order:    *order,
-		AvgPrice: 0, // Will be updated when the order is filled
+		Order:     *order,
+		IsSuccess: true,
 	}
 
 	return response, nil
@@ -122,7 +122,7 @@ func (s *MexcTradeService) CancelOrder(ctx context.Context, symbol, orderID stri
 	}
 
 	// Call exchange API to cancel the order
-	err = s.mexcAPI.CancelOrder(ctx, symbol, orderID)
+	err = s.mexcClient.CancelOrder(ctx, symbol, orderID) // Changed from mexcAPI to mexcClient
 	if err != nil {
 		s.logger.Error().Err(err).Str("symbol", symbol).Str("orderID", orderID).Msg("Failed to cancel order")
 		return fmt.Errorf("failed to cancel order: %w", err)
@@ -150,7 +150,7 @@ func (s *MexcTradeService) GetOrderStatus(ctx context.Context, symbol, orderID s
 	}
 
 	// Get latest status from exchange
-	order, err := s.mexcAPI.GetOrderStatus(ctx, symbol, orderID)
+	order, err := s.mexcClient.GetOrderStatus(ctx, symbol, orderID) // Changed from mexcAPI to mexcClient
 	if err != nil {
 		s.logger.Error().Err(err).Str("symbol", symbol).Str("orderID", orderID).Msg("Failed to get order status")
 		return nil, fmt.Errorf("failed to get order status: %w", err)

@@ -4,33 +4,33 @@ import (
 	"context"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model"
-	"github.com/neo/crypto-bot/internal/domain/port"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/rs/zerolog"
 )
 
 // AccountUsecase defines the interface for account operations
 type AccountUsecase interface {
 	GetWallet(ctx context.Context, userID string) (*model.Wallet, error)
-	GetBalanceHistory(ctx context.Context, userID string, asset model.Asset, days int) ([]*model.BalanceHistory, error)
+	GetBalanceHistory(ctx context.Context, userID string, asset model.Asset, from, to time.Time) ([]*model.BalanceHistory, error)
 	RefreshWallet(ctx context.Context, userID string) error
 }
 
 // accountUsecase implements the AccountUsecase interface
 type accountUsecase struct {
-	mexcAPI    port.MexcAPI
+	mexcClient port.MEXCClient // Changed mexcAPI to mexcClient
 	walletRepo port.WalletRepository
 	logger     zerolog.Logger
 }
 
 // NewAccountUsecase creates a new account usecase
 func NewAccountUsecase(
-	mexcAPI port.MexcAPI,
+	mexcClient port.MEXCClient, // Changed mexcAPI to mexcClient
 	walletRepo port.WalletRepository,
 	logger zerolog.Logger,
 ) AccountUsecase {
 	return &accountUsecase{
-		mexcAPI:    mexcAPI,
+		mexcClient: mexcClient, // Changed mexcAPI to mexcClient
 		walletRepo: walletRepo,
 		logger:     logger.With().Str("component", "account_usecase").Logger(),
 	}
@@ -42,9 +42,12 @@ func (uc *accountUsecase) GetWallet(ctx context.Context, userID string) (*model.
 	wallet, err := uc.walletRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		uc.logger.Error().Err(err).Str("userID", userID).Msg("Failed to get wallet from DB")
+	}
 
-		// If not found or other error, try to get from API
-		wallet, err = uc.mexcAPI.GetAccount(ctx)
+	// If not found or error, get from API
+	if wallet == nil {
+		uc.logger.Debug().Str("userID", userID).Msg("No wallet found in DB, getting from API")
+		wallet, err = uc.mexcClient.GetAccount(ctx) // Changed mexcAPI to mexcClient
 		if err != nil {
 			uc.logger.Error().Err(err).Str("userID", userID).Msg("Failed to get wallet from API")
 			return nil, err
@@ -64,15 +67,11 @@ func (uc *accountUsecase) GetWallet(ctx context.Context, userID string) (*model.
 }
 
 // GetBalanceHistory gets the user's balance history for a specific asset
-func (uc *accountUsecase) GetBalanceHistory(ctx context.Context, userID string, asset model.Asset, days int) ([]*model.BalanceHistory, error) {
-	// Calculate time range
-	endTime := time.Now()
-	startTime := endTime.AddDate(0, 0, -days)
-
+func (uc *accountUsecase) GetBalanceHistory(ctx context.Context, userID string, asset model.Asset, from, to time.Time) ([]*model.BalanceHistory, error) {
 	// Get from repository
-	history, err := uc.walletRepo.GetBalanceHistory(ctx, userID, asset, startTime, endTime)
+	history, err := uc.walletRepo.GetBalanceHistory(ctx, userID, asset, from, to)
 	if err != nil {
-		uc.logger.Error().Err(err).Str("userID", userID).Str("asset", string(asset)).Int("days", days).Msg("Failed to get balance history")
+		uc.logger.Error().Err(err).Str("userID", userID).Str("asset", string(asset)).Time("from", from).Time("to", to).Msg("Failed to get balance history")
 		return nil, err
 	}
 
@@ -82,7 +81,7 @@ func (uc *accountUsecase) GetBalanceHistory(ctx context.Context, userID string, 
 // RefreshWallet refreshes the user's wallet from the exchange
 func (uc *accountUsecase) RefreshWallet(ctx context.Context, userID string) error {
 	// Get from API
-	wallet, err := uc.mexcAPI.GetAccount(ctx)
+	wallet, err := uc.mexcClient.GetAccount(ctx) // Changed mexcAPI to mexcClient
 	if err != nil {
 		uc.logger.Error().Err(err).Str("userID", userID).Msg("Failed to refresh wallet from API")
 		return err

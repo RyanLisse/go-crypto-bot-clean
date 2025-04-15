@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import dateFnsFix from "./src/plugins/date-fns-fix";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -9,17 +10,22 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     hmr: {
-      timeout: 10000
+      timeout: 30000
+    },
+    watch: {
+      usePolling: false
     }
   },
   plugins: [
-    react()
+    react(),
+    dateFnsFix()
   ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@playwright/test": path.resolve(__dirname, "src/__mocks__/@playwright/test.js"),
       "@google/generative-ai": path.resolve(__dirname, "src/__mocks__/@google/generative-ai.js"),
+      "date-fns": path.resolve(__dirname, "node_modules/date-fns"),
       "date-fns/differenceInCalendarISOWeekYears": "date-fns/differenceInCalendarYears"
     },
   },
@@ -41,6 +47,10 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    force: true
+    force: false,
+    esbuildOptions: {
+      target: 'esnext'
+    },
+    exclude: ['date-fns']
   }
 });

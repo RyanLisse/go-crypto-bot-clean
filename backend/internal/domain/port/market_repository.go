@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model/market"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 )
 
 // SymbolRepository handles storage and retrieval of trading pair information
@@ -65,4 +65,7 @@ type MarketRepository interface {
 
 	// GetTickersBySymbol retrieves tickers for a specific symbol with optional time range
 	GetTickersBySymbol(ctx context.Context, symbol string, limit int) ([]*market.Ticker, error)
+
+	// GetOrderBook retrieves the order book for a symbol
+	GetOrderBook(ctx context.Context, symbol, exchange string, depth int) (*market.OrderBook, error)
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/neo/crypto-bot/internal/domain/model/market"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 )
 
 // MarketCache defines the interface for market data caching
@@ -30,6 +30,29 @@ type MarketCache interface {
 	SetCandleExpiry(d time.Duration)
 	SetOrderbookExpiry(d time.Duration)
 	StartCleanupTask(ctx context.Context, interval time.Duration)
+}
+
+// ExtendedMarketCache extends MarketCache with error-returning methods
+type ExtendedMarketCache interface {
+	MarketCache
+
+	// Error-returning ticker operations
+	GetTickerWithError(ctx context.Context, exchange, symbol string) (*market.Ticker, error)
+	GetAllTickersWithError(ctx context.Context, exchange string) ([]*market.Ticker, error)
+	GetLatestTickersWithError(ctx context.Context) ([]*market.Ticker, error)
+
+	// Error-returning candle operations
+	GetCandleWithError(ctx context.Context, exchange, symbol string, interval market.Interval, openTime time.Time) (*market.Candle, error)
+	GetLatestCandleWithError(ctx context.Context, exchange, symbol string, interval market.Interval) (*market.Candle, error)
+
+	// Error-returning OrderBook operations
+	GetOrderBookWithError(ctx context.Context, exchange, symbol string) (*market.OrderBook, error)
+
+	// Cache operations with custom TTL
+	CacheTickerWithCustomTTL(ticker *market.Ticker, ttl time.Duration)
+
+	// Helper methods
+	IsExpired(cache interface{}, key string) bool
 }
 
 // Cache provides a generic caching interface for any type

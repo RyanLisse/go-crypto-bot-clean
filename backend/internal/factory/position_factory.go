@@ -1,24 +1,31 @@
 package factory
 
 import (
-	"github.com/neo/crypto-bot/internal/adapter/persistence/gorm"
-	"github.com/neo/crypto-bot/internal/config"
-	"github.com/neo/crypto-bot/internal/domain/port"
-	"github.com/neo/crypto-bot/internal/domain/service"
-	"github.com/neo/crypto-bot/internal/usecase"
+	"time"
+
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/handler"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/service"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 	"github.com/rs/zerolog"
 	gormdb "gorm.io/gorm"
 )
 
-// PositionFactory creates position management related components
+// PositionFactory creates position-related components
 type PositionFactory struct {
-	cfg    *config.Config
+	cfg    *PositionFactoryConfig
 	logger *zerolog.Logger
 	db     *gormdb.DB
 }
 
-// NewPositionFactory creates a new PositionFactory
-func NewPositionFactory(cfg *config.Config, logger *zerolog.Logger, db *gormdb.DB) *PositionFactory {
+// PositionFactoryConfig provides configuration for the position factory
+type PositionFactoryConfig struct {
+	MonitorInterval int // seconds
+}
+
+// NewPositionFactory creates a new position factory
+func NewPositionFactory(cfg *PositionFactoryConfig, logger *zerolog.Logger, db *gormdb.DB) *PositionFactory {
 	return &PositionFactory{
 		cfg:    cfg,
 		logger: logger,
@@ -31,33 +38,47 @@ func (f *PositionFactory) CreatePositionRepository() port.PositionRepository {
 	return gorm.NewPositionRepository(f.db)
 }
 
-// CreatePositionUseCase creates the position use case
-func (f *PositionFactory) CreatePositionUseCase(
-	marketRepo port.MarketRepository,
-	symbolRepo port.SymbolRepository,
-) (usecase.PositionUseCase, error) {
-	positionRepo := f.CreatePositionRepository()
-
-	uc := usecase.NewPositionUseCase(
-		positionRepo,
-		marketRepo,
-		symbolRepo,
-		*f.logger,
-	)
-
-	return uc, nil
+// CreateMarketRepository creates a market repository
+func (f *PositionFactory) CreateMarketRepository() port.MarketRepository {
+	return gorm.NewMarketRepository(f.db, f.logger)
 }
 
-// CreatePositionMonitor creates the position monitor service
+// CreateSymbolRepository creates a symbol repository
+func (f *PositionFactory) CreateSymbolRepository() port.SymbolRepository {
+	return gorm.NewSymbolRepository(f.db, f.logger)
+}
+
+// CreatePositionUseCase creates a position use case
+func (f *PositionFactory) CreatePositionUseCase(repo port.PositionRepository) usecase.PositionUseCase {
+	marketRepo := f.CreateMarketRepository()
+	symbolRepo := f.CreateSymbolRepository()
+	return usecase.NewPositionUseCase(repo, marketRepo, symbolRepo, *f.logger)
+}
+
+// CreatePositionMonitor creates a position monitor service
 func (f *PositionFactory) CreatePositionMonitor(
 	positionUC usecase.PositionUseCase,
-	marketService *service.MarketDataService,
+	marketDataService port.MarketDataService,
 	tradeUC usecase.TradeUseCase,
 ) *service.PositionMonitor {
-	return service.NewPositionMonitor(
+	// Create an adapter that converts port.MarketDataService to service.MarketDataServiceInterface
+	marketDataAdapter := service.NewMarketDataServiceAdapter(marketDataService, f.logger)
+
+	monitor := service.NewPositionMonitor(
 		positionUC,
-		marketService,
+		marketDataAdapter,
 		tradeUC,
 		f.logger,
 	)
+
+	if f.cfg.MonitorInterval > 0 {
+		monitor.SetInterval(time.Duration(f.cfg.MonitorInterval) * time.Second)
+	}
+
+	return monitor
+}
+
+// CreatePositionHandler creates a position handler for HTTP API
+func (f *PositionFactory) CreatePositionHandler(positionUC usecase.PositionUseCase) *handler.PositionHandler {
+	return handler.NewPositionHandler(positionUC, f.logger)
 }

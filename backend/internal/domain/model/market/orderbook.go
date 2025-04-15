@@ -4,8 +4,8 @@ import "time"
 
 // OrderBookEntry represents a single price level in the order book
 type OrderBookEntry struct {
-	Price    float64 `json:"price"`
-	Quantity float64 `json:"quantity"`
+	Price    float64 
+	Quantity float64 
 }
 
 // OrderBook represents the market depth for a trading pair

@@ -163,5 +163,3 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ metrics 
     </div>
   );
 };
-
-export { PerformanceMetrics };

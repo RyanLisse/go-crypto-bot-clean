@@ -1,0 +1,539 @@
+/* Brutalist Design System - Foundation Styles */
+
+:root {
+  /* Color Palette */
+  --brutalist-black: #000000;
+  --brutalist-white: #ffffff;
+  --brutalist-gray-50: #f8f8f8;
+  --brutalist-gray-100: #e0e0e0;
+  --brutalist-gray-200: #c0c0c0;
+  --brutalist-gray-300: #a0a0a0;
+  --brutalist-gray-400: #808080;
+  --brutalist-gray-500: #606060;
+  --brutalist-gray-600: #404040;
+  --brutalist-gray-700: #303030;
+  --brutalist-gray-800: #202020;
+  --brutalist-gray-900: #101010;
+
+  /* Functional Colors */
+  --brutalist-primary: #008dd3;
+  --brutalist-primary-hover: #0079b3;
+  --brutalist-primary-active: #0066a3;
+  
+  --brutalist-secondary: #444444;
+  --brutalist-secondary-hover: #333333;
+  --brutalist-secondary-active: #222222;
+  
+  --brutalist-success: #00c853;
+  --brutalist-success-hover: #00b548;
+  --brutalist-success-active: #00a340;
+  
+  --brutalist-warning: #ffa000;
+  --brutalist-warning-hover: #ff8f00;
+  --brutalist-warning-active: #ff6f00;
+  
+  --brutalist-danger: #f44336;
+  --brutalist-danger-hover: #e53935;
+  --brutalist-danger-active: #d32f2f;
+
+  /* Borders */
+  --brutalist-border-width: 3px;
+  --brutalist-border-color: var(--brutalist-black);
+  
+  /* Shadows */
+  --brutalist-shadow-offset-x: 4px;
+  --brutalist-shadow-offset-y: 4px;
+  --brutalist-shadow-blur: 0px;
+  --brutalist-shadow-color: var(--brutalist-black);
+  
+  /* Typography */
+  --brutalist-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --brutalist-font-weight-normal: 500;
+  --brutalist-font-weight-bold: 700;
+  
+  /* Animation */
+  --brutalist-transition-duration: 100ms;
+  --brutalist-transform-amount: -3px;
+
+  /* Brutalist Theme */
+  --brutalist-background: #ffffff;
+  --brutalist-foreground: #000000;
+  --brutalist-primary: #3354FF;
+  --brutalist-primary-foreground: #ffffff;
+  --brutalist-secondary: #f1f5f9;
+  --brutalist-secondary-foreground: #0f172a;
+  --brutalist-accent: #FFC700;
+  --brutalist-accent-foreground: #000000;
+  --brutalist-destructive: #ff3333;
+  --brutalist-destructive-foreground: #ffffff;
+  --brutalist-border: #000000;
+  --brutalist-muted: #f1f5f9;
+  --brutalist-muted-foreground: #64748b;
+}
+
+/* Dark Mode Overrides */
+.dark {
+  /* Adjust colors for dark mode if needed */
+  --brutalist-border-color: var(--brutalist-white);
+  --brutalist-shadow-color: rgba(255, 255, 255, 0.8);
+  
+  /* Functional colors may need adjustment */
+  --brutalist-primary: #42a5f5;
+  --brutalist-primary-hover: #64b5f6;
+  --brutalist-primary-active: #90caf9;
+  
+  --brutalist-secondary: #9e9e9e;
+  --brutalist-secondary-hover: #bdbdbd;
+  --brutalist-secondary-active: #e0e0e0;
+
+  /* Brutalist Theme */
+  --brutalist-background: #000000;
+  --brutalist-foreground: #ffffff;
+  --brutalist-primary: #3354FF;
+  --brutalist-primary-foreground: #ffffff;
+  --brutalist-secondary: #1e293b;
+  --brutalist-secondary-foreground: #f8fafc;
+  --brutalist-accent: #FFC700;
+  --brutalist-accent-foreground: #000000;
+  --brutalist-destructive: #ff3333;
+  --brutalist-destructive-foreground: #ffffff;
+  --brutalist-border: #ffffff;
+  --brutalist-muted: #1e293b;
+  --brutalist-muted-foreground: #94a3b8;
+}
+
+/* Global Brutalist Elements */
+.brutalist-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: var(--brutalist-white);
+  border: var(--brutalist-border-width) solid var(--brutalist-border-color);
+}
+
+.brutalist-heading {
+  font-family: var(--brutalist-font-family);
+  font-weight: var(--brutalist-font-weight-bold);
+  letter-spacing: -0.05em;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.brutalist-card {
+  border: var(--brutalist-border-width) solid var(--brutalist-border-color);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 
+    var(--brutalist-shadow-offset-x) 
+    var(--brutalist-shadow-offset-y) 
+    var(--brutalist-shadow-blur) 
+    var(--brutalist-shadow-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  :root {
+    --brutalist-border-width: 2px;
+    --brutalist-shadow-offset-x: 3px;
+    --brutalist-shadow-offset-y: 3px;
+  }
+  
+  .brutalist-container {
+    padding: 1rem;
+  }
+}
+
+/* Global styles */
+.brutalist-element {
+  font-family: var(--brutalist-font-family);
+  border-radius: var(--brutalist-border-radius);
+  transition: var(--brutalist-transition);
+}
+
+/* Brutalist shadows */
+.brutalist-shadow {
+  box-shadow: var(--brutalist-shadow-offset) var(--brutalist-shadow-offset) 0 var(--brutalist-black);
+}
+
+.brutalist-shadow-sm {
+  box-shadow: 2px 2px 0 var(--brutalist-black);
+}
+
+.brutalist-shadow-lg {
+  box-shadow: 6px 6px 0 var(--brutalist-black);
+}
+
+/* Active state for interaction */
+.brutalist-element:active {
+  transform: translate(var(--brutalist-shadow-offset), var(--brutalist-shadow-offset));
+  box-shadow: 0 0 0 var(--brutalist-black);
+}
+
+/* Focus styles */
+.brutalist-element:focus {
+  outline: var(--brutalist-border-width) dotted var(--brutalist-black);
+  outline-offset: 2px;
+}
+
+.dark .brutalist-element:focus {
+  outline-color: var(--brutalist-white);
+}
+
+/* Base Components */
+
+.brutalist-card {
+  background-color: var(--brutal-background);
+  color: var(--brutal-text);
+  border: 2px solid var(--brutal-border);
+  box-shadow: 4px 4px 0 var(--brutal-shadow);
+  padding: 1rem;
+  margin: 1rem 0;
+  transition: all 0.2s ease;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.brutalist-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--brutal-shadow);
+}
+
+.brutalist-card.danger {
+  border-color: var(--brutal-danger);
+  box-shadow: 4px 4px 0 rgba(255, 77, 77, 0.2);
+}
+
+.brutalist-card.danger:hover {
+  box-shadow: 6px 6px 0 rgba(255, 77, 77, 0.2);
+}
+
+.brutalist-card.success {
+  border-color: var(--brutal-success);
+  box-shadow: 4px 4px 0 rgba(76, 175, 80, 0.2);
+}
+
+.brutalist-card.success:hover {
+  box-shadow: 6px 6px 0 rgba(76, 175, 80, 0.2);
+}
+
+.brutalist-card.warning {
+  border-color: var(--brutal-warning);
+  box-shadow: 4px 4px 0 rgba(255, 152, 0, 0.2);
+}
+
+.brutalist-card.warning:hover {
+  box-shadow: 6px 6px 0 rgba(255, 152, 0, 0.2);
+}
+
+.brutalist-button {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: var(--brutal-background);
+  color: var(--brutal-text);
+  border: 2px solid var(--brutal-border);
+  box-shadow: 3px 3px 0 var(--brutal-shadow);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  font-weight: 500;
+}
+
+.brutalist-button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--brutal-shadow);
+}
+
+.brutalist-button:active {
+  transform: translate(0, 0);
+  box-shadow: 0 0 0 var(--brutal-shadow);
+}
+
+.brutalist-button.danger {
+  border-color: var(--brutal-danger);
+  color: var(--brutal-danger);
+}
+
+.brutalist-button.success {
+  border-color: var(--brutal-success);
+  color: var(--brutal-success);
+}
+
+.brutalist-button.warning {
+  border-color: var(--brutal-warning);
+  color: var(--brutal-warning);
+}
+
+.brutalist-input {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: var(--brutal-background);
+  color: var(--brutal-text);
+  border: 2px solid var(--brutal-border);
+  box-shadow: 3px 3px 0 var(--brutal-shadow);
+  padding: 0.5rem;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.brutalist-input:focus {
+  outline: none;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--brutal-shadow);
+}
+
+.brutalist-select {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: var(--brutal-background);
+  color: var(--brutal-text);
+  border: 2px solid var(--brutal-border);
+  box-shadow: 3px 3px 0 var(--brutal-shadow);
+  padding: 0.5rem;
+  transition: all 0.2s ease;
+  width: 100%;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1rem;
+}
+
+.brutalist-select:focus {
+  outline: none;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--brutal-shadow);
+}
+
+.brutalist-radio,
+.brutalist-checkbox {
+  appearance: none;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 2px solid var(--brutal-border);
+  background-color: var(--brutal-background);
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  position: relative;
+  cursor: pointer;
+}
+
+.brutalist-radio {
+  border-radius: 50%;
+}
+
+.brutalist-radio:checked::after,
+.brutalist-checkbox:checked::after {
+  content: "";
+  position: absolute;
+  display: block;
+}
+
+.brutalist-radio:checked::after {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background-color: var(--brutal-text);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.brutalist-checkbox:checked::after {
+  width: 0.3rem;
+  height: 0.6rem;
+  border-bottom: 2px solid var(--brutal-text);
+  border-right: 2px solid var(--brutal-text);
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* Card Component Styles */
+.brutalist-card-header {
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--brutal-border);
+  margin-bottom: 1rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.brutalist-card-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+  color: var(--brutal-text);
+}
+
+.brutalist-card-description {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.brutalist-card-content {
+  padding: 0.5rem 0;
+  color: var(--brutal-text);
+}
+
+.brutalist-card-footer {
+  padding-top: 1rem;
+  margin-top: 1rem;
+  border-top: 2px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Typewriter Text */
+.typewriter {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.5px;
+}
+
+/* Button Styles */
+.brutal-btn {
+  background-color: var(--brutal-background);
+  border: 2px solid var(--brutal-border);
+  border-radius: 0;
+  box-shadow: 4px 4px 0 var(--brutal-shadow);
+  padding: 8px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  color: var(--brutal-text);
+}
+
+.brutal-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--brutal-shadow);
+}
+
+.brutal-btn:active {
+  transform: translate(0, 0);
+  box-shadow: 2px 2px 0 var(--brutal-shadow);
+}
+
+.brutal-border {
+  border: 2px solid var(--brutal-border);
+}
+
+/* Dark theme overrides are now handled by CSS variables */
+.dark .brutalist-card-description {
+  color: #aaa;
+}
+
+.dark .brutalist-card-footer {
+  border-top-color: #333;
+}
+
+/* Brutalist Components */
+
+/* Brutalist Button */
+.brutalist-button {
+  @apply font-bold border-2 border-black rounded-none transition-all;
+  box-shadow: 4px 4px 0 0 black;
+}
+
+.brutalist-button:hover {
+  @apply -translate-y-1;
+}
+
+.brutalist-button:active {
+  @apply translate-y-0 translate-x-0;
+  box-shadow: 0 0 0 0 black;
+}
+
+/* Brutalist Card */
+.brutalist-card {
+  @apply border-2 border-black rounded-none bg-white p-6;
+  box-shadow: 6px 6px 0 0 black;
+}
+
+.brutalist-card.danger {
+  border-color: var(--brutalist-destructive);
+  box-shadow: 6px 6px 0 0 var(--brutalist-destructive);
+}
+
+.brutalist-card.success {
+  border-color: green;
+  box-shadow: 6px 6px 0 0 green;
+}
+
+.brutalist-card.warning {
+  border-color: var(--brutalist-accent);
+  box-shadow: 6px 6px 0 0 var(--brutalist-accent);
+}
+
+/* Brutalist Input */
+.brutalist-input {
+  @apply border-2 border-black rounded-none bg-white p-2 w-full;
+  box-shadow: 3px 3px 0 0 black;
+}
+
+.brutalist-input:focus {
+  @apply outline-none -translate-y-0.5;
+  box-shadow: 4px 4px 0 0 black;
+}
+
+/* Brutalist Select */
+.brutalist-select {
+  @apply border-2 border-black rounded-none bg-white p-2;
+  box-shadow: 3px 3px 0 0 black;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 32px;
+}
+
+.brutalist-select:focus {
+  @apply outline-none -translate-y-0.5;
+  box-shadow: 4px 4px 0 0 black;
+}
+
+/* Brutalist Table */
+.brutalist-table {
+  @apply border-2 border-black w-full;
+}
+
+.brutalist-table th {
+  @apply bg-black text-white p-3 font-bold text-left border-b-2 border-black;
+}
+
+.brutalist-table td {
+  @apply p-3 border-b-2 border-black;
+}
+
+.brutalist-table tr:last-child td {
+  @apply border-b-0;
+}
+
+/* Brutalist Dialog */
+.brutalist-dialog {
+  @apply border-4 border-black rounded-none bg-white;
+  box-shadow: 8px 8px 0 0 black;
+}
+
+.brutalist-dialog-title {
+  @apply text-xl font-bold py-2 px-4 bg-black text-white;
+}
+
+.brutalist-dialog-content {
+  @apply p-4;
+}
+
+.brutalist-dialog-close {
+  @apply absolute top-2 right-2 font-bold text-white;
+}
+
+/* Utility classes */
+.brutalist-shadow-sm {
+  box-shadow: 2px 2px 0 0 black;
+}
+
+.brutalist-shadow {
+  box-shadow: 4px 4px 0 0 black;
+}
+
+.brutalist-shadow-lg {
+  box-shadow: 6px 6px 0 0 black;
+}
+
+.brutalist-shadow-xl {
+  box-shadow: 8px 8px 0 0 black;
+} 

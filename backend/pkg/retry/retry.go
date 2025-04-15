@@ -1,5 +1,9 @@
 package retry
 
+// MIGRATION: This package has been replaced by github.com/cenkalti/backoff/v4.
+// Use backoff.Retry and related types for all retry logic.
+
+
 import (
 	"context"
 	"errors"

@@ -1,6 +1,7 @@
 package apperror
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -163,6 +164,43 @@ func NewExternalService(service string, msg string, err error) *AppError {
 	}
 }
 
+// NewRateLimit creates a new rate limit error
+func NewRateLimit(reason string, err error) *AppError {
+	msg := "Rate limit exceeded"
+	code := "RATE_LIMIT"
+
+	switch reason {
+	case "ip_blocked":
+		msg = "IP address is temporarily blocked due to rate limit violations"
+		code = "IP_BLOCKED"
+	case "ip_rate_limit_exceeded":
+		msg = "IP address rate limit exceeded"
+		code = "IP_RATE_LIMIT_EXCEEDED"
+	case "user_blocked":
+		msg = "User is temporarily blocked due to rate limit violations"
+		code = "USER_BLOCKED"
+	case "user_rate_limit_exceeded":
+		msg = "User rate limit exceeded"
+		code = "USER_RATE_LIMIT_EXCEEDED"
+	case "endpoint_rate_limit_exceeded":
+		msg = "Endpoint rate limit exceeded"
+		code = "ENDPOINT_RATE_LIMIT_EXCEEDED"
+	case "user_endpoint_rate_limit_exceeded":
+		msg = "User endpoint rate limit exceeded"
+		code = "USER_ENDPOINT_RATE_LIMIT_EXCEEDED"
+	case "global_rate_limit_exceeded":
+		msg = "Global rate limit exceeded"
+		code = "GLOBAL_RATE_LIMIT_EXCEEDED"
+	}
+
+	return &AppError{
+		StatusCode: http.StatusTooManyRequests,
+		Code:       code,
+		Message:    msg,
+		Err:        err,
+	}
+}
+
 // As is a wrapper for errors.As
 func As(err error, target interface{}) bool {
 	return errors.As(err, target)
@@ -171,4 +209,16 @@ func As(err error, target interface{}) bool {
 // Is is a wrapper for errors.Is
 func Is(err, target error) bool {
 	return errors.Is(err, target)
+}
+
+// WriteError writes an error response to the http.ResponseWriter
+func WriteError(w http.ResponseWriter, err *AppError) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(err.StatusCode)
+
+	if encodeErr := json.NewEncoder(w).Encode(err.ToResponse()); encodeErr != nil {
+		// If encoding fails, write a simple error message
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":{"code":"encoding_error","message":"Failed to encode error response"}}`))
+	}
 }

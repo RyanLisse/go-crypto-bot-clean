@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/neo/crypto-bot/internal/config"
-	"github.com/neo/crypto-bot/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/rs/zerolog"
 )
 

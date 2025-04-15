@@ -57,6 +57,8 @@ type Position struct {
 	MaxDrawdown     float64        `json:"maxDrawdown"`
 	MaxProfit       float64        `json:"maxProfit"`
 	RiskRewardRatio float64        `json:"riskRewardRatio,omitempty"`
+	CreatedAt       time.Time      `json:"createdAt"`
+	UpdatedAt       time.Time      `json:"updatedAt"`
 }
 
 // PositionCreateRequest represents data needed to create a position
