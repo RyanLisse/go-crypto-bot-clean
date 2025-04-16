@@ -2,22 +2,20 @@ package server
 
 import (
 	"context"
-	"github.com/rs/zerolog"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
-	gormrepo "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm"
-	
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/controller"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm/repo"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	
+	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 )
 
@@ -49,7 +47,7 @@ func NewServer(db *gorm.DB, cfg *config.Config, authConfig *config.AuthConfig, l
 func (s *Server) SetupRoutes() error {
 	// Create wallet service/controller
 	mexcClient := factory.NewMEXCClient(s.config, s.logger)
-	walletRepo := gormrepo.NewWalletRepository(s.db, s.logger)
+	walletRepo := repo.NewConsolidatedWalletRepository(s.db, s.logger)
 	walletService := usecase.NewWalletService(walletRepo, mexcClient, s.logger)
 	walletController := controller.NewWalletController(walletService, s.logger)
 

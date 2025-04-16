@@ -44,14 +44,20 @@ func (r *APICredentialRepository) ListAll(ctx context.Context) ([]*model.APICred
 			continue
 		}
 		out = append(out, &model.APICredential{
-			ID:        entity.ID,
-			UserID:    entity.UserID,
-			Exchange:  entity.Exchange,
-			APIKey:    entity.APIKey,
-			APISecret: apiSecret,
-			Label:     entity.Label,
-			CreatedAt: entity.CreatedAt,
-			UpdatedAt: entity.UpdatedAt,
+			ID:           entity.ID,
+			UserID:       entity.UserID,
+			Exchange:     entity.Exchange,
+			APIKey:       entity.APIKey,
+			APISecret:    apiSecret,
+			Label:        entity.Label,
+			Status:       model.APICredentialStatus(entity.Status),
+			FailureCount: entity.FailureCount,
+			LastUsed:     entity.LastUsed,
+			LastVerified: entity.LastVerified,
+			ExpiresAt:    entity.ExpiresAt,
+			RotationDue:  entity.RotationDue,
+			CreatedAt:    entity.CreatedAt,
+			UpdatedAt:    entity.UpdatedAt,
 		})
 	}
 	return out, nil
@@ -68,14 +74,20 @@ func (r *APICredentialRepository) Save(ctx context.Context, credential *model.AP
 
 	// Create entity
 	entity := &entity.APICredentialEntity{
-		ID:        credential.ID,
-		UserID:    credential.UserID,
-		Exchange:  credential.Exchange,
-		APIKey:    credential.APIKey,
-		APISecret: encryptedSecret,
-		Label:     credential.Label,
-		CreatedAt: credential.CreatedAt,
-		UpdatedAt: credential.UpdatedAt,
+		ID:           credential.ID,
+		UserID:       credential.UserID,
+		Exchange:     credential.Exchange,
+		APIKey:       credential.APIKey,
+		APISecret:    encryptedSecret,
+		Label:        credential.Label,
+		Status:       string(credential.Status),
+		FailureCount: credential.FailureCount,
+		LastUsed:     credential.LastUsed,
+		LastVerified: credential.LastVerified,
+		ExpiresAt:    credential.ExpiresAt,
+		RotationDue:  credential.RotationDue,
+		CreatedAt:    credential.CreatedAt,
+		UpdatedAt:    credential.UpdatedAt,
 	}
 
 	// Save to database
@@ -107,14 +119,20 @@ func (r *APICredentialRepository) GetByUserIDAndExchange(ctx context.Context, us
 
 	// Create model
 	credential := &model.APICredential{
-		ID:        entity.ID,
-		UserID:    entity.UserID,
-		Exchange:  entity.Exchange,
-		APIKey:    entity.APIKey,
-		APISecret: apiSecret,
-		Label:     entity.Label,
-		CreatedAt: entity.CreatedAt,
-		UpdatedAt: entity.UpdatedAt,
+		ID:           entity.ID,
+		UserID:       entity.UserID,
+		Exchange:     entity.Exchange,
+		APIKey:       entity.APIKey,
+		APISecret:    apiSecret,
+		Label:        entity.Label,
+		Status:       model.APICredentialStatus(entity.Status),
+		FailureCount: entity.FailureCount,
+		LastUsed:     entity.LastUsed,
+		LastVerified: entity.LastVerified,
+		ExpiresAt:    entity.ExpiresAt,
+		RotationDue:  entity.RotationDue,
+		CreatedAt:    entity.CreatedAt,
+		UpdatedAt:    entity.UpdatedAt,
 	}
 
 	return credential, nil
@@ -140,14 +158,20 @@ func (r *APICredentialRepository) GetByUserIDAndLabel(ctx context.Context, userI
 
 	// Create model
 	credential := &model.APICredential{
-		ID:        entity.ID,
-		UserID:    entity.UserID,
-		Exchange:  entity.Exchange,
-		APIKey:    entity.APIKey,
-		APISecret: apiSecret,
-		Label:     entity.Label,
-		CreatedAt: entity.CreatedAt,
-		UpdatedAt: entity.UpdatedAt,
+		ID:           entity.ID,
+		UserID:       entity.UserID,
+		Exchange:     entity.Exchange,
+		APIKey:       entity.APIKey,
+		APISecret:    apiSecret,
+		Label:        entity.Label,
+		Status:       model.APICredentialStatus(entity.Status),
+		FailureCount: entity.FailureCount,
+		LastUsed:     entity.LastUsed,
+		LastVerified: entity.LastVerified,
+		ExpiresAt:    entity.ExpiresAt,
+		RotationDue:  entity.RotationDue,
+		CreatedAt:    entity.CreatedAt,
+		UpdatedAt:    entity.UpdatedAt,
 	}
 
 	return credential, nil
@@ -173,14 +197,20 @@ func (r *APICredentialRepository) GetByID(ctx context.Context, id string) (*mode
 
 	// Create model
 	credential := &model.APICredential{
-		ID:        entity.ID,
-		UserID:    entity.UserID,
-		Exchange:  entity.Exchange,
-		APIKey:    entity.APIKey,
-		APISecret: apiSecret,
-		Label:     entity.Label,
-		CreatedAt: entity.CreatedAt,
-		UpdatedAt: entity.UpdatedAt,
+		ID:           entity.ID,
+		UserID:       entity.UserID,
+		Exchange:     entity.Exchange,
+		APIKey:       entity.APIKey,
+		APISecret:    apiSecret,
+		Label:        entity.Label,
+		Status:       model.APICredentialStatus(entity.Status),
+		FailureCount: entity.FailureCount,
+		LastUsed:     entity.LastUsed,
+		LastVerified: entity.LastVerified,
+		ExpiresAt:    entity.ExpiresAt,
+		RotationDue:  entity.RotationDue,
+		CreatedAt:    entity.CreatedAt,
+		UpdatedAt:    entity.UpdatedAt,
 	}
 
 	return credential, nil
@@ -216,14 +246,20 @@ func (r *APICredentialRepository) ListByUserID(ctx context.Context, userID strin
 
 		// Create model
 		credential := &model.APICredential{
-			ID:        entity.ID,
-			UserID:    entity.UserID,
-			Exchange:  entity.Exchange,
-			APIKey:    entity.APIKey,
-			APISecret: apiSecret,
-			Label:     entity.Label,
-			CreatedAt: entity.CreatedAt,
-			UpdatedAt: entity.UpdatedAt,
+			ID:           entity.ID,
+			UserID:       entity.UserID,
+			Exchange:     entity.Exchange,
+			APIKey:       entity.APIKey,
+			APISecret:    apiSecret,
+			Label:        entity.Label,
+			Status:       model.APICredentialStatus(entity.Status),
+			FailureCount: entity.FailureCount,
+			LastUsed:     entity.LastUsed,
+			LastVerified: entity.LastVerified,
+			ExpiresAt:    entity.ExpiresAt,
+			RotationDue:  entity.RotationDue,
+			CreatedAt:    entity.CreatedAt,
+			UpdatedAt:    entity.UpdatedAt,
 		}
 
 		credentials = append(credentials, credential)

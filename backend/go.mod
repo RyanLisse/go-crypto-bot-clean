@@ -6,7 +6,7 @@ toolchain go1.24.2
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
-	github.com/clerk/clerk-sdk-go/v2 v2.3.0
+	github.com/clerk/clerk-sdk-go/v2 v2.3.1
 	github.com/ethereum/go-ethereum v1.15.8
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/cors v1.2.1

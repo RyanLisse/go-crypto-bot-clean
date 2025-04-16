@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -192,7 +191,14 @@ func TestWeb3WalletService_ConnectWallet(t *testing.T) {
 	mockRepo := new(MockWeb3WalletRepository)
 	realRegistry := wallet.NewProviderRegistry()
 	mockProvider := new(MockWeb3WalletProvider)
+
+	// Setup mock provider
+	mockProvider.On("GetName").Return("Ethereum")
+
+	// Register mock provider with real registry
 	realRegistry.RegisterProvider(mockProvider)
+
+	// Create service with real registry
 	service := NewWeb3WalletService(mockRepo, realRegistry, &logger)
 
 	// Test data
@@ -201,10 +207,10 @@ func TestWeb3WalletService_ConnectWallet(t *testing.T) {
 	address := "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
 	walletID := "wallet123"
 	wallet := &model.Wallet{
-		ID:       walletID,
-		UserID:   userID,
-		Type:     model.WalletTypeWeb3,
-		Status:   model.WalletStatusActive,
+		ID:     walletID,
+		UserID: userID,
+		Type:   model.WalletTypeWeb3,
+		Status: model.WalletStatusActive,
 		Metadata: &model.WalletMetadata{
 			Network: network,
 			Address: address,
@@ -213,10 +219,8 @@ func TestWeb3WalletService_ConnectWallet(t *testing.T) {
 	}
 
 	// Setup expectations
-	mockRegistry := new(MockWeb3ProviderRegistry)
-	mockRegistry.On("GetWeb3Provider", network).Return(mockProvider, nil)
 	mockProvider.On("IsValidAddress", ctx, address).Return(true, nil)
-	mockRepo.On("GetWalletsByUserID", ctx, "").Return([]*model.Wallet{}, nil)
+	mockRepo.On("GetWalletsByUserID", ctx, userID).Return([]*model.Wallet{}, nil)
 	mockProvider.On("Connect", ctx, mock.Anything).Return(wallet, nil)
 	mockRepo.On("Save", ctx, wallet).Return(nil)
 
@@ -231,7 +235,7 @@ func TestWeb3WalletService_ConnectWallet(t *testing.T) {
 	assert.Equal(t, model.WalletTypeWeb3, result.Type)
 	assert.Equal(t, network, result.Metadata.Network)
 	assert.Equal(t, address, result.Metadata.Address)
-	
+
 	mockProvider.AssertExpectations(t)
 	mockRepo.AssertExpectations(t)
 }
@@ -243,7 +247,14 @@ func TestWeb3WalletService_ConnectWallet_InvalidAddress(t *testing.T) {
 	mockRepo := new(MockWeb3WalletRepository)
 	realRegistry := wallet.NewProviderRegistry()
 	mockProvider := new(MockWeb3WalletProvider)
+
+	// Setup mock provider
+	mockProvider.On("GetName").Return("Ethereum")
+
+	// Register mock provider with real registry
 	realRegistry.RegisterProvider(mockProvider)
+
+	// Create service with real registry
 	service := NewWeb3WalletService(mockRepo, realRegistry, &logger)
 
 	// Test data
@@ -252,8 +263,6 @@ func TestWeb3WalletService_ConnectWallet_InvalidAddress(t *testing.T) {
 	address := "invalid_address"
 
 	// Setup expectations
-	mockRegistry := new(MockWeb3ProviderRegistry)
-	mockRegistry.On("GetWeb3Provider", network).Return(mockProvider, nil)
 	mockProvider.On("IsValidAddress", ctx, address).Return(false, nil)
 
 	// Call the method
@@ -263,7 +272,7 @@ func TestWeb3WalletService_ConnectWallet_InvalidAddress(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Equal(t, "invalid address", err.Error())
-	
+
 	mockProvider.AssertExpectations(t)
 }
 
@@ -274,7 +283,14 @@ func TestWeb3WalletService_ConnectWallet_UnsupportedNetwork(t *testing.T) {
 	mockRepo := new(MockWeb3WalletRepository)
 	realRegistry := wallet.NewProviderRegistry()
 	mockProvider := new(MockWeb3WalletProvider)
+
+	// Setup mock provider
+	mockProvider.On("GetName").Return("Ethereum")
+
+	// Register mock provider with real registry
 	realRegistry.RegisterProvider(mockProvider)
+
+	// Create service with real registry
 	service := NewWeb3WalletService(mockRepo, realRegistry, &logger)
 
 	// Test data
@@ -282,9 +298,8 @@ func TestWeb3WalletService_ConnectWallet_UnsupportedNetwork(t *testing.T) {
 	network := "UnsupportedNetwork"
 	address := "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
 
-	// Setup expectations
-	mockRegistry := new(MockWeb3ProviderRegistry)
-	mockRegistry.On("GetWeb3Provider", network).Return(nil, errors.New("unsupported network"))
+	// No need to set up expectations for this test - it will fail naturally
+	// because the real registry doesn't have a provider for UnsupportedNetwork
 
 	// Call the method
 	result, err := service.ConnectWallet(ctx, userID, network, address)
@@ -293,7 +308,7 @@ func TestWeb3WalletService_ConnectWallet_UnsupportedNetwork(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Equal(t, "unsupported network: UnsupportedNetwork", err.Error())
-	
+
 }
 
 func TestWeb3WalletService_DisconnectWallet(t *testing.T) {
@@ -303,7 +318,14 @@ func TestWeb3WalletService_DisconnectWallet(t *testing.T) {
 	mockRepo := new(MockWeb3WalletRepository)
 	realRegistry := wallet.NewProviderRegistry()
 	mockProvider := new(MockWeb3WalletProvider)
+
+	// Setup mock provider
+	mockProvider.On("GetName").Return("Ethereum")
+
+	// Register mock provider with real registry
 	realRegistry.RegisterProvider(mockProvider)
+
+	// Create service with real registry
 	service := NewWeb3WalletService(mockRepo, realRegistry, &logger)
 
 	// Test data
@@ -312,10 +334,10 @@ func TestWeb3WalletService_DisconnectWallet(t *testing.T) {
 	network := "Ethereum"
 	address := "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
 	wallet := &model.Wallet{
-		ID:       walletID,
-		UserID:   userID,
-		Type:     model.WalletTypeWeb3,
-		Status:   model.WalletStatusActive,
+		ID:     walletID,
+		UserID: userID,
+		Type:   model.WalletTypeWeb3,
+		Status: model.WalletStatusActive,
 		Metadata: &model.WalletMetadata{
 			Network: network,
 			Address: address,
@@ -325,8 +347,6 @@ func TestWeb3WalletService_DisconnectWallet(t *testing.T) {
 
 	// Setup expectations
 	mockRepo.On("GetByID", ctx, walletID).Return(wallet, nil)
-	mockRegistry := new(MockWeb3ProviderRegistry)
-	mockRegistry.On("GetWeb3Provider", network).Return(mockProvider, nil)
 	mockProvider.On("Disconnect", ctx, walletID).Return(nil)
 	mockRepo.On("DeleteWallet", ctx, walletID).Return(nil)
 
@@ -336,7 +356,7 @@ func TestWeb3WalletService_DisconnectWallet(t *testing.T) {
 	// Assertions
 	require.NoError(t, err)
 	mockRepo.AssertExpectations(t)
-	
+
 	mockProvider.AssertExpectations(t)
 }
 
@@ -347,7 +367,14 @@ func TestWeb3WalletService_GetWalletBalance(t *testing.T) {
 	mockRepo := new(MockWeb3WalletRepository)
 	realRegistry := wallet.NewProviderRegistry()
 	mockProvider := new(MockWeb3WalletProvider)
+
+	// Setup mock provider
+	mockProvider.On("GetName").Return("Ethereum")
+
+	// Register mock provider with real registry
 	realRegistry.RegisterProvider(mockProvider)
+
+	// Create service with real registry
 	service := NewWeb3WalletService(mockRepo, realRegistry, &logger)
 
 	// Test data
@@ -356,10 +383,10 @@ func TestWeb3WalletService_GetWalletBalance(t *testing.T) {
 	network := "Ethereum"
 	address := "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
 	wallet := &model.Wallet{
-		ID:       walletID,
-		UserID:   userID,
-		Type:     model.WalletTypeWeb3,
-		Status:   model.WalletStatusActive,
+		ID:     walletID,
+		UserID: userID,
+		Type:   model.WalletTypeWeb3,
+		Status: model.WalletStatusActive,
 		Metadata: &model.WalletMetadata{
 			Network: network,
 			Address: address,
@@ -368,10 +395,10 @@ func TestWeb3WalletService_GetWalletBalance(t *testing.T) {
 		Balances: make(map[model.Asset]*model.Balance),
 	}
 	updatedWallet := &model.Wallet{
-		ID:       walletID,
-		UserID:   userID,
-		Type:     model.WalletTypeWeb3,
-		Status:   model.WalletStatusActive,
+		ID:     walletID,
+		UserID: userID,
+		Type:   model.WalletTypeWeb3,
+		Status: model.WalletStatusActive,
 		Metadata: &model.WalletMetadata{
 			Network: network,
 			Address: address,
@@ -391,8 +418,6 @@ func TestWeb3WalletService_GetWalletBalance(t *testing.T) {
 
 	// Setup expectations
 	mockRepo.On("GetByID", ctx, walletID).Return(wallet, nil)
-	mockRegistry := new(MockWeb3ProviderRegistry)
-	mockRegistry.On("GetWeb3Provider", network).Return(mockProvider, nil)
 	mockProvider.On("GetBalance", ctx, wallet).Return(updatedWallet, nil)
 	mockRepo.On("Save", ctx, mock.AnythingOfType("*model.Wallet")).Return(nil)
 
@@ -411,7 +436,7 @@ func TestWeb3WalletService_GetWalletBalance(t *testing.T) {
 	assert.NotNil(t, result.Balances[model.AssetETH])
 	assert.Equal(t, 1.0, result.Balances[model.AssetETH].Total)
 	mockRepo.AssertExpectations(t)
-	
+
 	mockProvider.AssertExpectations(t)
 }
 
@@ -422,7 +447,14 @@ func TestWeb3WalletService_IsValidAddress(t *testing.T) {
 	mockRepo := new(MockWeb3WalletRepository)
 	realRegistry := wallet.NewProviderRegistry()
 	mockProvider := new(MockWeb3WalletProvider)
+
+	// Setup mock provider
+	mockProvider.On("GetName").Return("Ethereum")
+
+	// Register mock provider with real registry
 	realRegistry.RegisterProvider(mockProvider)
+
+	// Create service with real registry
 	service := NewWeb3WalletService(mockRepo, realRegistry, &logger)
 
 	// Test data
@@ -444,7 +476,6 @@ func TestWeb3WalletService_IsValidAddress(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, valid)
 
-	
 	mockProvider.AssertExpectations(t)
 }
 
@@ -453,16 +484,20 @@ func TestWeb3WalletService_GetSupportedNetworks(t *testing.T) {
 	ctx := context.Background()
 	logger := zerolog.New(zerolog.NewTestWriter(t))
 	mockRepo := new(MockWeb3WalletRepository)
-	realRegistry := wallet.NewProviderRegistry()
+	mockRegistry := new(MockWeb3ProviderRegistry)
 	mockProvider1 := new(MockWeb3WalletProvider)
 	mockProvider2 := new(MockWeb3WalletProvider)
-	realRegistry.RegisterProvider(mockProvider1)
-	realRegistry.RegisterProvider(mockProvider2)
-	service := NewWeb3WalletService(mockRepo, realRegistry, &logger)
+
+	// Use mock registry instead of real registry
+	service := NewWeb3WalletService(mockRepo, mockRegistry, &logger)
 
 	// Test data
 	mockProvider1.On("GetName").Return("Ethereum")
 	mockProvider2.On("GetName").Return("Polygon")
+
+	// Setup mock registry to return our mock providers
+	mockProviders := []port.Web3WalletProvider{mockProvider1, mockProvider2}
+	mockRegistry.On("GetAllWeb3Providers").Return(mockProviders)
 
 	// Call the method
 	networks, err := service.GetSupportedNetworks(ctx)
@@ -472,7 +507,7 @@ func TestWeb3WalletService_GetSupportedNetworks(t *testing.T) {
 	assert.Len(t, networks, 2)
 	assert.Contains(t, networks, "Ethereum")
 	assert.Contains(t, networks, "Polygon")
-	
+
 	mockProvider1.AssertExpectations(t)
 	mockProvider2.AssertExpectations(t)
 }

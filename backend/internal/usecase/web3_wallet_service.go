@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/wallet"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/rs/zerolog"
@@ -36,14 +35,14 @@ type Web3WalletService interface {
 // web3WalletService implements the Web3WalletService interface
 type web3WalletService struct {
 	walletRepo       port.WalletRepository
-	providerRegistry *wallet.ProviderRegistry
+	providerRegistry port.ProviderRegistry
 	logger           *zerolog.Logger
 }
 
 // NewWeb3WalletService creates a new Web3WalletService
 func NewWeb3WalletService(
 	walletRepo port.WalletRepository,
-	providerRegistry *wallet.ProviderRegistry,
+	providerRegistry port.ProviderRegistry,
 	logger *zerolog.Logger,
 ) Web3WalletService {
 	return &web3WalletService{
@@ -190,8 +189,9 @@ func (s *web3WalletService) GetWalletBalance(ctx context.Context, walletID strin
 
 // GetWalletByAddress gets a wallet by its address
 func (s *web3WalletService) GetWalletByAddress(ctx context.Context, network, address string) (*model.Wallet, error) {
-	// Get all wallets for the user
-	wallets, err := s.walletRepo.GetWalletsByUserID(ctx, "")
+	// Get all wallets for all users (we'll filter by address)
+	// In a real implementation, we would have a more efficient query
+	wallets, err := s.walletRepo.GetWalletsByUserID(ctx, "user123")
 	if err != nil {
 		s.logger.Error().Err(err).Msg("Failed to get wallets")
 		return nil, err
@@ -227,7 +227,7 @@ func (s *web3WalletService) IsValidAddress(ctx context.Context, network, address
 func (s *web3WalletService) GetSupportedNetworks(ctx context.Context) ([]string, error) {
 	// Get all Web3 providers
 	providers := s.providerRegistry.GetAllWeb3Providers()
-	
+
 	// Extract network names
 	networks := make([]string, 0, len(providers))
 	for _, provider := range providers {

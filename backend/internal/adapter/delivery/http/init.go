@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/middleware"
 	httpmiddleware "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
@@ -30,11 +29,9 @@ func NewRouter(cfg *config.Config, logger *zerolog.Logger, db *gorm.DB) *chi.Mux
 	// Use CORS middleware from consolidated factory
 	r.Use(httpmiddleware.CORSMiddleware(cfg, logger))
 
-	// Add standardized error handling middleware
-	errorHandler := middleware.NewStandardizedErrorHandler(logger)
-	r.Use(errorHandler.RecoverMiddleware())
-	r.Use(errorHandler.LoggingMiddleware())
-	r.Use(errorHandler.ErrorResponseMiddleware())
+	// Add unified error handling middleware
+	errorMiddleware := httpmiddleware.NewUnifiedErrorMiddleware(logger)
+	r.Use(errorMiddleware.Middleware())
 
 	// Add security middlewares from consolidated factory
 	rateLimiterMiddleware := consolidatedFactory.GetRateLimiterMiddleware()

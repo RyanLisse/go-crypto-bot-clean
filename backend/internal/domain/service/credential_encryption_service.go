@@ -104,7 +104,9 @@ func (s *CredentialEncryptionService) GetDecryptedCredential(ctx context.Context
 	}
 
 	// Update last used timestamp
-	go s.updateLastUsed(context.Background(), id)
+	if err := s.credentialRepo.UpdateLastUsed(ctx, id, time.Now()); err != nil {
+		s.logger.Error().Err(err).Str("id", id).Msg("Failed to update last used timestamp")
+	}
 
 	return decryptedCredential, nil
 }
@@ -145,7 +147,9 @@ func (s *CredentialEncryptionService) GetDecryptedCredentialByUserAndExchange(ct
 	}
 
 	// Update last used timestamp
-	go s.updateLastUsed(context.Background(), encryptedCredential.ID)
+	if err := s.credentialRepo.UpdateLastUsed(ctx, encryptedCredential.ID, time.Now()); err != nil {
+		s.logger.Error().Err(err).Str("id", encryptedCredential.ID).Msg("Failed to update last used timestamp")
+	}
 
 	return decryptedCredential, nil
 }
@@ -186,7 +190,9 @@ func (s *CredentialEncryptionService) GetDecryptedCredentialByUserAndLabel(ctx c
 	}
 
 	// Update last used timestamp
-	go s.updateLastUsed(context.Background(), encryptedCredential.ID)
+	if err := s.credentialRepo.UpdateLastUsed(ctx, encryptedCredential.ID, time.Now()); err != nil {
+		s.logger.Error().Err(err).Str("id", encryptedCredential.ID).Msg("Failed to update last used timestamp")
+	}
 
 	return decryptedCredential, nil
 }
@@ -260,19 +266,19 @@ func (s *CredentialEncryptionService) VerifyCredential(ctx context.Context, id s
 	_, err = s.decryptAPISecret(encryptedCredential.APISecret)
 	if err != nil {
 		s.logger.Error().Err(err).Str("id", id).Msg("Failed to decrypt API secret")
-		
+
 		// Increment failure count
 		if err := s.credentialRepo.IncrementFailureCount(ctx, id); err != nil {
 			s.logger.Error().Err(err).Str("id", id).Msg("Failed to increment failure count")
 		}
-		
+
 		// Update status to failed if failure count exceeds threshold
 		if encryptedCredential.FailureCount >= 5 {
 			if err := s.credentialRepo.UpdateStatus(ctx, id, model.APICredentialStatusFailed); err != nil {
 				s.logger.Error().Err(err).Str("id", id).Msg("Failed to update credential status")
 			}
 		}
-		
+
 		return fmt.Errorf("failed to decrypt API secret: %w", err)
 	}
 
@@ -281,7 +287,7 @@ func (s *CredentialEncryptionService) VerifyCredential(ctx context.Context, id s
 	if err := s.credentialRepo.UpdateLastVerified(ctx, id, now); err != nil {
 		s.logger.Error().Err(err).Str("id", id).Msg("Failed to update last verified timestamp")
 	}
-	
+
 	if err := s.credentialRepo.ResetFailureCount(ctx, id); err != nil {
 		s.logger.Error().Err(err).Str("id", id).Msg("Failed to reset failure count")
 	}

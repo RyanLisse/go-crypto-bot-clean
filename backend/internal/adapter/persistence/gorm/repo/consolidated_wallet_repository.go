@@ -362,51 +362,44 @@ func (r *ConsolidatedWalletRepository) GetBalanceHistory(ctx context.Context, us
 	}
 
 	// Convert to domain models
-	history := make([]*model.BalanceHistory, len(historyEntities))
-	for i, entity := range historyEntities {
+	var filteredHistory []*model.BalanceHistory
+	for _, entity := range historyEntities {
 		// Unmarshal balances JSON
-		var balancesMap map[string]map[string]interface{}
+		var balancesMap map[model.Asset]*model.Balance
 		if err := json.Unmarshal(entity.BalancesJSON, &balancesMap); err != nil {
 			r.logger.Error().Err(err).Str("id", entity.ID).Msg("Failed to unmarshal balances JSON")
-			balancesMap = make(map[string]map[string]interface{})
+			balancesMap = make(map[model.Asset]*model.Balance)
 		}
 
-		// Convert to map[model.Asset]*model.Balance
-		balances := make(map[model.Asset]*model.Balance)
-		for assetStr, balanceData := range balancesMap {
-			asset := model.Asset(assetStr)
-			balance := &model.Balance{
-				Asset: asset,
+		// Filter balances by asset if needed
+		filtered := make(map[model.Asset]*model.Balance)
+		for currentAsset, balance := range balancesMap {
+			// Skip if we're filtering by asset and this isn't the one we want
+			if asset != "" && currentAsset != asset {
+				continue
 			}
 
-			// Extract values from the map
-			if free, ok := balanceData["Free"].(float64); ok {
-				balance.Free = free
-			}
-			if locked, ok := balanceData["Locked"].(float64); ok {
-				balance.Locked = locked
-			}
-			if total, ok := balanceData["Total"].(float64); ok {
-				balance.Total = total
-			}
-			if usdValue, ok := balanceData["USDValue"].(float64); ok {
-				balance.USDValue = usdValue
-			}
-
-			balances[asset] = balance
+			filtered[currentAsset] = balance
 		}
 
-		history[i] = &model.BalanceHistory{
+		// Skip this history record if we're filtering by asset and it doesn't have that asset
+		if asset != "" && len(filtered) == 0 {
+			continue
+		}
+
+		historyRecord := &model.BalanceHistory{
 			ID:            entity.ID,
 			UserID:        entity.UserID,
 			WalletID:      entity.WalletID,
-			Balances:      balances,
+			Balances:      filtered,
 			TotalUSDValue: entity.TotalUSDValue,
 			Timestamp:     entity.Timestamp,
 		}
+
+		filteredHistory = append(filteredHistory, historyRecord)
 	}
 
-	return history, nil
+	return filteredHistory, nil
 }
 
 // toDomain converts database entities to a domain wallet

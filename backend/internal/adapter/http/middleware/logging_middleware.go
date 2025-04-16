@@ -67,3 +67,29 @@ func (m *LoggingMiddleware) Middleware() func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// captureResponseWriter wraps http.ResponseWriter to capture status codes
+// for logging purposes.
+type captureResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+// WriteHeader captures the status code and forwards to the underlying writer.
+func (crw *captureResponseWriter) WriteHeader(code int) {
+	crw.statusCode = code
+	crw.ResponseWriter.WriteHeader(code)
+}
+
+// Write ensures a default status code is set and writes the body.
+func (crw *captureResponseWriter) Write(b []byte) (int, error) {
+	if crw.statusCode == 0 {
+		crw.statusCode = http.StatusOK
+	}
+	return crw.ResponseWriter.Write(b)
+}
+
+// Status returns the captured status code.
+func (crw *captureResponseWriter) Status() int {
+	return crw.statusCode
+}

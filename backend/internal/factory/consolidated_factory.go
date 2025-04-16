@@ -203,3 +203,14 @@ func (f *ConsolidatedFactory) GetSecureHeadersHandler() func(http.Handler) http.
 	secureHeadersMiddleware := f.GetSecureHeadersMiddleware()
 	return secureHeadersMiddleware.Middleware()
 }
+
+// GetUnifiedErrorMiddleware returns the unified error middleware
+func (f *ConsolidatedFactory) GetUnifiedErrorMiddleware() *middleware.UnifiedErrorMiddleware {
+	return middleware.NewUnifiedErrorMiddleware(f.logger)
+}
+
+// GetUnifiedErrorHandler returns the unified error handler middleware function
+func (f *ConsolidatedFactory) GetUnifiedErrorHandler() func(http.Handler) http.Handler {
+	errorMiddleware := f.GetUnifiedErrorMiddleware()
+	return errorMiddleware.Middleware()
+}
