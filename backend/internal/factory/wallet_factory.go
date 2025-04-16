@@ -37,6 +37,15 @@ func (f *WalletFactory) CreateWalletService(mexcClient port.MEXCClient) usecase.
 	return usecase.NewWalletService(walletRepo, mexcClient, f.logger)
 }
 
+// CreateWalletServiceWithClient creates a wallet service with the provided MEXC client
+func (f *WalletFactory) CreateWalletServiceWithClient() usecase.WalletService {
+	// Create MEXC client
+	mexcClient := NewMEXCClient(f.cfg, f.logger)
+
+	// Create wallet service
+	return f.CreateWalletService(mexcClient)
+}
+
 // CreateWalletHandler creates a wallet handler
 func (f *WalletFactory) CreateWalletHandler(walletService usecase.WalletService) *handler.WalletHandler {
 	return handler.NewWalletHandler(walletService, f.logger)

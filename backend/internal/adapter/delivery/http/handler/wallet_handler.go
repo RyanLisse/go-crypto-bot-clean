@@ -50,7 +50,7 @@ func (h *WalletHandler) RegisterRoutes(r chi.Router, authMiddleware middleware.A
 // GetWallets handles the get wallets endpoint
 func (h *WalletHandler) GetWallets(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -73,7 +73,7 @@ func (h *WalletHandler) GetWallets(w http.ResponseWriter, r *http.Request) {
 // CreateWallet handles the create wallet endpoint
 func (h *WalletHandler) CreateWallet(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -106,7 +106,7 @@ func (h *WalletHandler) CreateWallet(w http.ResponseWriter, r *http.Request) {
 // GetWallet handles the get wallet endpoint
 func (h *WalletHandler) GetWallet(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -146,7 +146,7 @@ func (h *WalletHandler) GetWallet(w http.ResponseWriter, r *http.Request) {
 // DeleteWallet handles the delete wallet endpoint
 func (h *WalletHandler) DeleteWallet(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -191,7 +191,7 @@ func (h *WalletHandler) DeleteWallet(w http.ResponseWriter, r *http.Request) {
 // UpdateWalletMetadata handles the update wallet metadata endpoint
 func (h *WalletHandler) UpdateWalletMetadata(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -257,7 +257,7 @@ func (h *WalletHandler) UpdateWalletMetadata(w http.ResponseWriter, r *http.Requ
 // SetPrimaryWallet handles the set primary wallet endpoint
 func (h *WalletHandler) SetPrimaryWallet(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -312,7 +312,7 @@ func (h *WalletHandler) SetPrimaryWallet(w http.ResponseWriter, r *http.Request)
 // GetBalance handles the get balance endpoint
 func (h *WalletHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -368,7 +368,7 @@ func (h *WalletHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 // RefreshWallet handles the refresh wallet endpoint
 func (h *WalletHandler) RefreshWallet(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -423,7 +423,7 @@ func (h *WalletHandler) RefreshWallet(w http.ResponseWriter, r *http.Request) {
 // GetBalanceHistory handles the get balance history endpoint
 func (h *WalletHandler) GetBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return

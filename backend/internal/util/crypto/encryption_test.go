@@ -153,10 +153,17 @@ func TestKeyRotation(t *testing.T) {
 }
 
 func TestEncryptionTypes(t *testing.T) {
-	// Set up test key
+	// Set up test keys
+	keyID := "test-key-1"
 	testKey := "Wn3PvhLOYk0QpFdod9qUDRRik9cI8jD3noi0TgrTJ1M="
+	os.Setenv("ENCRYPTION_CURRENT_KEY_ID", keyID)
+	os.Setenv("ENCRYPTION_KEYS", keyID+":"+testKey)
 	os.Setenv("ENCRYPTION_KEY", testKey)
-	defer os.Unsetenv("ENCRYPTION_KEY")
+	defer func() {
+		os.Unsetenv("ENCRYPTION_CURRENT_KEY_ID")
+		os.Unsetenv("ENCRYPTION_KEYS")
+		os.Unsetenv("ENCRYPTION_KEY")
+	}()
 
 	// Create encryption service
 	factory, err := NewEncryptionServiceFactory()

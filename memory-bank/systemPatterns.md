@@ -117,31 +117,106 @@ The system follows a modern full-stack architecture with clear separation betwee
    - Caching strategies
    - Batch operations
 
+## Standardized Repository Pattern
+
+1. **Repository Interface Design**:
+   - All interfaces defined in `internal/domain/port`
+   - Focus on domain operations, not persistence details
+   - Domain models as parameters and return values
+   - Context for cancellation and tracing
+
+2. **Base Repository Implementation**:
+   - Common base repository for each persistence mechanism
+   - Consistent error handling and mapping
+   - Shared database connection management
+   - Transaction support
+
+3. **Specific Repository Implementations**:
+   - Embed base repository
+   - Implement domain interfaces
+   - Map between entity and domain models
+   - Use consistent error handling
+
+4. **Entity-Model Mapping**:
+   - Entities in `internal/adapter/repository/{orm}/entity`
+   - ORM-specific tags and hooks
+   - Bidirectional conversion methods (ToModel/FromModel)
+   - Preserve data integrity during conversions
+
+5. **Transaction Management**:
+   - Transaction manager implementation using GORM
+   - Transaction context propagation
+   - Consistent transaction handling across repositories
+   - Error handling and rollback
+
+6. **Repository Factory**:
+   - Centralized factory for repository creation
+   - Dependency injection for database connections
+   - Caching of repository instances
+   - Type-safe repository access
+
+7. **Mock Repositories**:
+   - In-memory implementations for testing
+   - Configurable error injection
+   - Thread-safe operation
+   - Test behavior controllers
+
+## Unified Factory Pattern
+
+1. **AppFactory Structure**:
+   - Single entry point for creating all application components
+   - Centralized dependency management
+   - Composable initialization
+   - Type-safe component access
+
+2. **Component Creation Patterns**:
+   - Lazy initialization with caching
+   - Safe creation with error handling
+   - Consistent naming conventions
+   - Interface-based returns for abstraction
+
+3. **Mock/Real Implementation Switching**:
+   - Configuration-based component selection
+   - Environment-aware mock detection
+   - Production safeguards
+   - Centralized logging of mock usage
+
+4. **Integration with Application Startup**:
+   - Simplified bootstrapping process 
+   - Controlled component initialization order
+   - Graceful error handling
+   - Resource cleanup management
+
 ## Cross-Cutting Concerns
 
 1. **Authentication & Security**:
-   - Clerk for user management
-   - JWT token validation
-   - CORS configuration
-   - Rate limiting
+   - ConsolidatedAuthMiddleware as the standard authentication middleware
+   - JWT token validation with proper error handling
+   - Environment-aware test middleware with production safeguards
+   - CORS configuration with secure defaults
+   - Rate limiting with tiered strategies
 
 2. **Error Handling**:
-   - Consistent error responses
-   - Error tracking and logging
-   - Graceful degradation
-   - User-friendly messages
+   - Standardized AppError structure with HTTP status mapping
+   - Centralized error middleware for consistent response formatting
+   - Type-safe error context passing through request lifecycle
+   - Domain-specific error types with validation
+   - Consistent error logging and monitoring
+   - Clear separation between user-facing and internal error details
 
 3. **Logging & Monitoring**:
-   - Structured logging
-   - Performance metrics
-   - Error tracking
+   - Structured logging with request tracking
+   - Performance metrics collection
+   - Error tracking and correlation
    - System health monitoring
+   - Context-aware log enrichment
 
 4. **Testing Strategy**:
-   - Unit tests with Vitest
-   - Integration tests
+   - Unit tests with Vitest/Go testing
+   - Integration tests with repository mocking
    - E2E tests with Playwright
    - Performance testing
+   - Standardized mock implementations for testing
 
 ## Real-Time Features
 

@@ -26,14 +26,8 @@ func NewAIFactory(config *config.Config, logger zerolog.Logger) *AIFactory {
 
 // CreateAIService creates an AIService based on the configuration
 func (f *AIFactory) CreateAIService() (port.AIService, error) {
-	// Create AI service based on provider
-	switch f.config.AI.Provider {
-	case "gemini":
-		return ai.NewGeminiAIService(f.config, f.logger)
-	default:
-		f.logger.Warn().Str("provider", f.config.AI.Provider).Msg("Unknown AI provider, using Gemini")
-		return ai.NewGeminiAIService(f.config, f.logger)
-	}
+	// Always use stub service for now until we fix the Gemini service
+	return ai.NewStubAIService(f.config, f.logger)
 }
 
 // CreateConversationMemoryRepository creates a ConversationMemoryRepository

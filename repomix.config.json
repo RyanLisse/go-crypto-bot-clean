@@ -1,0 +1,48 @@
+{
+  "output": {
+    "filePath": "backend-audit.xml",
+    "style": "xml",
+    "compress": true,
+    "headerText": "Go Crypto Bot Backend Audit",
+    "instructionFilePath": "repomix-instruction.md",
+    "fileSummary": true,
+    "directoryStructure": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "showLineNumbers": false,
+    "copyToClipboard": false,
+    "topFilesLength": 10,
+    "includeEmptyDirectories": false,
+    "git": {
+      "sortByChanges": true
+    }
+  },
+  "include": [
+    "backend/internal/**/*.go",
+    "backend/cmd/**/*.go",
+    "backend/pkg/**/*.go",
+    "backend/api/**/*.go",
+    "backend/config/**/*.go",
+    "backend/scripts/**/*.go",
+    "backend/go.mod",
+    "backend/go.sum"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "**/*_test.go",
+      "**/mocks/**",
+      "**/vendor/**",
+      "**/tmp/**",
+      "**/dist/**",
+      "**/node_modules/**"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}

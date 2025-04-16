@@ -9,6 +9,13 @@ export default defineConfig({
     host: "localhost",
     port: 5173,
     strictPort: false,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/api'),
+      },
+    },
     hmr: {
       timeout: 30000
     },

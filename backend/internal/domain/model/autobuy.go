@@ -5,24 +5,27 @@ import (
 	"time"
 )
 
-// TriggerType defines the condition that triggers an auto-buy rule
+// TriggerType defines the different conditions that can trigger an AutoBuyRule
 type TriggerType string
 
+// Available trigger types
 const (
-	TriggerTypePriceBelow  TriggerType = "price_below"
-	TriggerTypePriceAbove  TriggerType = "price_above"
-	TriggerTypePercentDrop TriggerType = "percent_drop" // Drop over a certain period (e.g., 24h)
-	TriggerTypePercentRise TriggerType = "percent_rise" // Rise over a certain period (e.g., 24h)
-	TriggerTypeVolumeSurge TriggerType = "volume_surge" // Volume exceeds a threshold
-	TriggerTypeNewListing  TriggerType = "new_listing"  // Trigger immediately when a new coin becomes tradable
+	TriggerTypeNewListing    TriggerType = "NEW_LISTING"
+	TriggerTypePriceIncrease TriggerType = "PRICE_INCREASE"
+	TriggerTypePriceDecrease TriggerType = "PRICE_DECREASE"
+	TriggerTypeVolumeSurge   TriggerType = "VOLUME_SURGE"
+	TriggerTypePriceBelow    TriggerType = "PRICE_BELOW"
+	TriggerTypePriceAbove    TriggerType = "PRICE_ABOVE"
+	TriggerTypePercentDrop   TriggerType = "PERCENT_DROP"
+	TriggerTypePercentRise   TriggerType = "PERCENT_RISE"
 )
 
-// AutoBuyRule defines the criteria for automatically buying a coin
+// AutoBuyRule defines a rule for automatic buying based on specific conditions
 type AutoBuyRule struct {
-	ID                  string      
-	UserID              string                 // ID of the user who owns the rule
-	Name                string      `json:"name"`              // User-defined name for the rule
-	Symbol              string                  // Trading symbol (e.g., BTCUSDT) or "*" for any new listing
+	ID                  string
+	UserID              string      // ID of the user who owns the rule
+	Name                string      `json:"name"` // User-defined name for the rule
+	Symbol              string      // Trading symbol (e.g., BTCUSDT) or "*" for any new listing
 	IsEnabled           bool        `json:"is_enabled"`        // Whether the rule is active (renamed from IsActive for consistency)
 	TriggerType         TriggerType `json:"trigger_type"`      // Condition to trigger the buy
 	TriggerValue        float64     `json:"trigger_value"`     // Value associated with the trigger type (price, percentage, volume)
@@ -40,25 +43,19 @@ type AutoBuyRule struct {
 	LastPrice           float64     `json:"last_price"`        // Price at the time of the last trigger
 	CreatedAt           time.Time   `json:"created_at"`
 	UpdatedAt           time.Time   `json:"updated_at"`
-
-	// Deprecated fields (kept for potential migration, use BuyAmountQuote instead)
-	UsePercentage    *bool    `json:"use_percentage,omitempty"`    // Deprecated: Use BuyAmountQuote
-	PercentageAmount *float64 `json:"percentage_amount,omitempty"` // Deprecated: Use BuyAmountQuote
-	FixedAmount      *float64 `json:"fixed_amount,omitempty"`      // Deprecated: Use BuyAmountQuote
-	MinOrderAmount   *float64 `json:"min_order_amount,omitempty"`  // Deprecated: Use BuyAmountQuote and exchange min order size
 }
 
 // AutoBuyExecution records an instance where an AutoBuyRule was triggered and an order placed
 type AutoBuyExecution struct {
-	ID        string    
-	RuleID    string    
-	UserID    string    
-	Symbol    string    
-	OrderID   string     // The ID of the order placed by the trade service
-	Price     float64       // Execution price
-	Quantity  float64    // Executed quantity
-	Amount    float64      // Total amount in quote currency
-	Timestamp time.Time 
+	ID        string
+	RuleID    string
+	UserID    string
+	Symbol    string
+	OrderID   string  // The ID of the order placed by the trade service
+	Price     float64 // Execution price
+	Quantity  float64 // Executed quantity
+	Amount    float64 // Total amount in quote currency
+	Timestamp time.Time
 }
 
 // AutoBuyRuleRepository defines the interface for AutoBuyRule persistence

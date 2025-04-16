@@ -179,7 +179,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	t.Run("User-Specific CSRF Token", func(t *testing.T) {
 		// Create a GET request with a user ID in the context
 		getReq := httptest.NewRequest("GET", "/api/test", nil)
-		ctx := context.WithValue(getReq.Context(), UserIDKey, "test-user")
+		ctx := context.WithValue(getReq.Context(), "userID", "test-user")
 		getReq = getReq.WithContext(ctx)
 		getRes := httptest.NewRecorder()
 		middleware(testHandler).ServeHTTP(getRes, getReq)
@@ -197,7 +197,7 @@ func TestCSRFMiddleware(t *testing.T) {
 		// Create a POST request with the CSRF token and the same user ID
 		postReq := httptest.NewRequest("POST", "/api/test", nil)
 		postReq.Header.Set(cfg.HeaderName, csrfToken)
-		postCtx := context.WithValue(postReq.Context(), UserIDKey, "test-user")
+		postCtx := context.WithValue(postReq.Context(), "userID", "test-user")
 		postReq = postReq.WithContext(postCtx)
 		postRes := httptest.NewRecorder()
 
@@ -210,7 +210,7 @@ func TestCSRFMiddleware(t *testing.T) {
 		// Create a POST request with the CSRF token but a different user ID
 		postReq2 := httptest.NewRequest("POST", "/api/test", nil)
 		postReq2.Header.Set(cfg.HeaderName, csrfToken)
-		postCtx2 := context.WithValue(postReq2.Context(), UserIDKey, "different-user")
+		postCtx2 := context.WithValue(postReq2.Context(), "userID", "different-user")
 		postReq2 = postReq2.WithContext(postCtx2)
 		postRes2 := httptest.NewRecorder()
 

@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
@@ -65,7 +65,7 @@ func (s *GeminiAIService) Chat(ctx context.Context, message string, conversation
 }
 
 // ChatWithHistory sends a message with conversation history to the AI
-func (s *GeminiAIService) ChatWithHistory(ctx context.Context, messages []model.AIMessage) (*model.AIMessage, error) {
+func (s *GeminiAIService) ChatWithHistory(ctx context.Context, messages []model.AIMessage, tradingContext map[string]interface{}) (*model.AIMessage, error) {
 	// This is a mock implementation for development purposes
 	s.logger.Info().Int("messageCount", len(messages)).Msg("Received chat with history")
 
@@ -95,7 +95,8 @@ func (s *GeminiAIService) ChatWithHistory(ctx context.Context, messages []model.
 		Content:        responseText,
 		Timestamp:      time.Now(),
 		Metadata: map[string]interface{}{
-			"model": s.config.AI.GeminiModel,
+			"model":          s.config.AI.GeminiModel,
+			"tradingContext": tradingContext,
 		},
 	}
 

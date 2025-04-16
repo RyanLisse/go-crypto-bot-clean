@@ -1,0 +1,111 @@
+{
+  "symbol": "SOLUSDT",
+  "ticker": {
+    "symbol": "SOLUSDT",
+    "exchange": "",
+    "lastPrice": 127.4,
+    "priceChange": -2.65,
+    "priceChangePercent": -0.0203,
+    "highPrice": 130.31,
+    "lowPrice": 123.5,
+    "volume": 645366.74,
+    "quoteVolume": 0,
+    "openPrice": 0,
+    "prevClosePrice": 0,
+    "bidPrice": 0,
+    "bidQty": 0,
+    "askPrice": 0,
+    "askQty": 0,
+    "count": 0,
+    "timestamp": "0001-01-01T00:00:00Z"
+  },
+  "orderBook": {
+    "symbol": "SOLUSDT",
+    "lastUpdateId": 5577935023,
+    "bids": [
+      {
+        "price": 127.37,
+        "quantity": 1348.97
+      },
+      {
+        "price": 127.36,
+        "quantity": 665.74
+      },
+      {
+        "price": 127.35,
+        "quantity": 1014.11
+      },
+      {
+        "price": 127.34,
+        "quantity": 0.3
+      },
+      {
+        "price": 127.33,
+        "quantity": 659.26
+      },
+      {
+        "price": 127.32,
+        "quantity": 376.54
+      },
+      {
+        "price": 127.31,
+        "quantity": 330.39
+      },
+      {
+        "price": 127.3,
+        "quantity": 238.47
+      },
+      {
+        "price": 127.29,
+        "quantity": 514.88
+      },
+      {
+        "price": 127.28,
+        "quantity": 476.94
+      }
+    ],
+    "asks": [
+      {
+        "price": 127.38,
+        "quantity": 857.69
+      },
+      {
+        "price": 127.39,
+        "quantity": 11.64
+      },
+      {
+        "price": 127.4,
+        "quantity": 1127.51
+      },
+      {
+        "price": 127.42,
+        "quantity": 280.28
+      },
+      {
+        "price": 127.43,
+        "quantity": 10.99
+      },
+      {
+        "price": 127.44,
+        "quantity": 413.35
+      },
+      {
+        "price": 127.45,
+        "quantity": 318.03
+      },
+      {
+        "price": 127.46,
+        "quantity": 874.2
+      },
+      {
+        "price": 127.47,
+        "quantity": 592.55
+      },
+      {
+        "price": 127.48,
+        "quantity": 750.78
+      }
+    ],
+    "timestamp": "0001-01-01T00:00:00Z"
+  }
+}

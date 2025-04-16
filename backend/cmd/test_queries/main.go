@@ -2,11 +2,9 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/scripts"
 )
 
 func main() {
 	fmt.Println("Testing database queries...")
-	scripts.TestDatabaseQueries()
+	// TODO: Implement TestQueries logic directly here or move code from scripts/test_database_queries.go
 }

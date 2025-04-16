@@ -120,7 +120,7 @@ func TestAdvancedRateLimiter(t *testing.T) {
 		// Create a request with a user ID in the context
 		req := httptest.NewRequest("GET", "/api/user", nil)
 		req.RemoteAddr = "192.168.1.4:1234"
-		ctx := context.WithValue(req.Context(), UserIDKey, "test-user")
+		ctx := context.WithValue(req.Context(), "userID", "test-user")
 		req = req.WithContext(ctx)
 
 		// Test that the first few requests are allowed

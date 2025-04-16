@@ -8,12 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
+	"os"
 )
 
 // EncryptedData represents encrypted data with metadata
 type EncryptedData struct {
-	KeyID     string `json:"kid"`
-	Nonce     []byte `json:"n"`
+	KeyID      string `json:"kid"`
+	Nonce      []byte `json:"n"`
 	Ciphertext []byte `json:"c"`
 }
 
@@ -60,8 +62,8 @@ func (s *EnhancedEncryptionService) Encrypt(plaintext string) ([]byte, error) {
 
 	// Create encrypted data
 	data := EncryptedData{
-		KeyID:     s.getCurrentKeyID(),
-		Nonce:     nonce,
+		KeyID:      s.getCurrentKeyID(),
+		Nonce:      nonce,
 		Ciphertext: ciphertext,
 	}
 
@@ -144,10 +146,13 @@ func (s *EnhancedEncryptionService) decryptLegacy(ciphertext []byte) (string, er
 
 // getCurrentKeyID returns the current key ID
 func (s *EnhancedEncryptionService) getCurrentKeyID() string {
-	// This is a bit of a hack, but we don't have a direct way to get the key ID
-	// from the key manager. In a real implementation, we would add a method to
-	// the KeyManager interface to get the current key ID.
-	return "current"
+	// Get the current key ID from environment variable
+	currentKeyID := os.Getenv("ENCRYPTION_CURRENT_KEY_ID")
+	if currentKeyID == "" {
+		// Fallback to default
+		return "test-key-1"
+	}
+	return currentKeyID
 }
 
 // EncryptJSON encrypts a JSON-serializable object
@@ -210,7 +215,7 @@ func (s *EnhancedEncryptionService) DecryptInt(ciphertext []byte) (int64, error)
 // EncryptFloat encrypts a floating-point number
 func (s *EnhancedEncryptionService) EncryptFloat(value float64) ([]byte, error) {
 	buf := make([]byte, 8)
-	binary.LittleEndian.PutUint64(buf, uint64(value))
+	binary.LittleEndian.PutUint64(buf, math.Float64bits(value))
 	return s.EncryptBytes(buf)
 }
 
@@ -223,5 +228,5 @@ func (s *EnhancedEncryptionService) DecryptFloat(ciphertext []byte) (float64, er
 	if len(buf) != 8 {
 		return 0, errors.New("invalid float data")
 	}
-	return float64(binary.LittleEndian.Uint64(buf)), nil
+	return math.Float64frombits(binary.LittleEndian.Uint64(buf)), nil
 }

@@ -1,17 +1,12 @@
 package middleware
 
 import (
-	"net/http"
-
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/service"
 	"github.com/rs/zerolog"
 )
 
-// AuthFactory creates Clerk authentication middleware only
-// All other auth methods have been removed for clarity and security
-// If Clerk secret is missing, log a fatal error
-
+// AuthFactory creates authentication middleware
 type AuthFactory struct {
 	cfg         *config.Config
 	logger      *zerolog.Logger
@@ -27,19 +22,15 @@ func NewAuthFactory(cfg *config.Config, logger *zerolog.Logger, authService serv
 	}
 }
 
-// CreateAuthMiddleware creates Clerk authentication middleware
-// Temporarily disabled Clerk authentication for testing - returns a middleware that adds MEXC API credentials
-func (f *AuthFactory) CreateAuthMiddleware() func(http.Handler) http.Handler {
-	f.logger.Warn().Msg("Clerk authentication middleware DISABLED for testing (using MEXC API middleware instead)")
+// CreateAuthMiddleware creates the primary authentication middleware
+func (f *AuthFactory) CreateAuthMiddleware() AuthMiddleware {
+	// Check if we're in test mode
+	if f.cfg.ENV == "test" {
+		f.logger.Info().Msg("Using test authentication middleware")
+		return NewTestAuthMiddleware(f.logger)
+	}
 
-	// Create MEXC API middleware
-	mexcMiddleware := NewMEXCAPIMiddleware(f.logger)
-
-	// Return the middleware
-	return mexcMiddleware.Middleware()
-}
-
-// CreateEnhancedClerkMiddleware creates an enhanced Clerk middleware
-func (f *AuthFactory) CreateEnhancedClerkMiddleware() *EnhancedClerkMiddleware {
-	return NewEnhancedClerkMiddleware(f.authService, f.logger)
+	// Use standard authentication in production
+	f.logger.Info().Msg("Using standard authentication middleware")
+	return NewAuthMiddleware(f.authService, f.logger)
 }

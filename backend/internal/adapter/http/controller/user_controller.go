@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/util"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/apperror"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/service"
 	"github.com/go-chi/chi/v5"
@@ -28,7 +28,7 @@ func NewUserController(userService service.UserServiceInterface, authService ser
 }
 
 // RegisterRoutes registers the user routes
-func (c *UserController) RegisterRoutes(r chi.Router, authMiddleware *middleware.EnhancedClerkMiddleware) {
+func (c *UserController) RegisterRoutes(r chi.Router, authMiddleware middleware.AuthMiddleware) {
 	r.Route("/users", func(r chi.Router) {
 		// Public routes
 		r.Get("/health", c.HealthCheck)
@@ -57,13 +57,13 @@ func (c *UserController) RegisterRoutes(r chi.Router, authMiddleware *middleware
 func (c *UserController) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	util.WriteJSONResponse(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // GetCurrentUser handles the get current user endpoint
 func (c *UserController) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -94,15 +94,13 @@ func (c *UserController) GetCurrentUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Write response
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	util.WriteJSONResponse(w, http.StatusOK, response)
 }
 
 // UpdateCurrentUser handles the update current user endpoint
 func (c *UserController) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -112,8 +110,13 @@ func (c *UserController) UpdateCurrentUser(w http.ResponseWriter, r *http.Reques
 	var request struct {
 		Name string `json:"name"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		apperror.WriteError(w, apperror.NewInvalid("Invalid request body", nil, err))
+	// Use standardized JSON body parsing utility for better error handling
+	if err := util.ParseJSONBody(r, &request); err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			apperror.WriteError(w, appErr)
+		} else {
+			apperror.WriteError(w, apperror.NewInternal(err))
+		}
 		return
 	}
 
@@ -142,9 +145,7 @@ func (c *UserController) UpdateCurrentUser(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Write response
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	util.WriteJSONResponse(w, http.StatusOK, response)
 }
 
 // ListUsers handles the list users endpoint
@@ -168,9 +169,7 @@ func (c *UserController) ListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Write response
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	util.WriteJSONResponse(w, http.StatusOK, response)
 }
 
 // GetUserByID handles the get user by ID endpoint
@@ -207,9 +206,7 @@ func (c *UserController) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Write response
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	util.WriteJSONResponse(w, http.StatusOK, response)
 }
 
 // DeleteUser handles the delete user endpoint

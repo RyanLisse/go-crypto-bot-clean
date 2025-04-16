@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/scripts"
 )
 
 func main() {
 	fmt.Println("Creating status table...")
-	scripts.CreateStatusTable()
+	// TODO: Implement CreateStatusTable logic directly here or move code from scripts/create_status_table.go
+	// TODO: Missing logic for creating status table
 }

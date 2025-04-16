@@ -1,0 +1,54 @@
+# Ignore test files
+**/*_test.go
+
+# Ignore mocks
+**/mocks/**
+
+# Ignore build artifacts
+**/bin/**
+**/build/**
+**/dist/**
+
+# Ignore temporary files
+**/tmp/**
+**/temp/**
+
+# Ignore logs
+**/*.log
+
+# Ignore vendor directory
+**/vendor/**
+
+# Ignore node modules
+**/node_modules/**
+
+# Ignore frontend code
+frontend/**
+frontend_next/**
+
+# Ignore documentation
+**/docs/**
+**/*.md
+!README.md
+
+# Ignore IDE files
+**/.idea/**
+**/.vscode/**
+**/.vs/**
+**/.DS_Store
+
+# Ignore git files
+**/.git/**
+**/.gitignore
+**/.gitattributes
+
+# Ignore database files
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# Ignore binary files
+**/*.exe
+**/*.dll
+**/*.so
+**/*.dylib

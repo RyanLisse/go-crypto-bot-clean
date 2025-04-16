@@ -1,0 +1,185 @@
+package main
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/joho/godotenv"
+)
+
+func main() {
+	// Load environment variables from .env file
+	err := godotenv.Load()
+	if err != nil {
+		// Try parent directory
+		err = godotenv.Load("../.env")
+		if err != nil {
+			fmt.Println("Error loading .env file:", err)
+			return
+		}
+	}
+
+	// Get API credentials from environment variables
+	apiKey := os.Getenv("MEXC_API_KEY")
+	apiSecret := os.Getenv("MEXC_SECRET_KEY")
+
+	if apiKey == "" || apiSecret == "" {
+		fmt.Println("MEXC_API_KEY and MEXC_SECRET_KEY environment variables must be set")
+		return
+	}
+
+	fmt.Printf("Using API Key: %s...\n", apiKey[:5]+"...")
+	fmt.Printf("Using API Secret: %s...\n", apiSecret[:5]+"...")
+
+	// Try a public endpoint first to test connectivity
+	fmt.Println("\n=== Testing public endpoint ===")
+	testPublicEndpoint()
+
+	// Try the account endpoint with different header formats
+	fmt.Println("\n=== Testing account endpoint with X-MBX-APIKEY header ===")
+	testAccountEndpoint(apiKey, apiSecret, "X-MBX-APIKEY")
+
+	fmt.Println("\n=== Testing account endpoint with APIKEY header ===")
+	testAccountEndpoint(apiKey, apiSecret, "APIKEY")
+
+	fmt.Println("\n=== Testing account endpoint with API-KEY header ===")
+	testAccountEndpoint(apiKey, apiSecret, "API-KEY")
+
+	fmt.Println("\n=== Testing account endpoint with Authorization header ===")
+	testAccountEndpointWithAuth(apiKey, apiSecret)
+}
+
+func testPublicEndpoint() {
+	// Create request to a public endpoint
+	url := "https://api.mexc.com/api/v3/exchangeInfo"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+	
+	// Send request
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error sending request:", err)
+		return
+	}
+	defer resp.Body.Close()
+	
+	// Print response status
+	fmt.Println("Response status:", resp.Status)
+	
+	// Read first 100 characters of response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error reading response body:", err)
+		return
+	}
+	
+	if len(body) > 100 {
+		fmt.Println("Response body (first 100 chars):", string(body[:100])+"...")
+	} else {
+		fmt.Println("Response body:", string(body))
+	}
+}
+
+func testAccountEndpoint(apiKey, apiSecret, headerName string) {
+	// Create timestamp for the request
+	timestamp := time.Now().UnixMilli()
+	
+	// Create query parameters
+	params := fmt.Sprintf("timestamp=%d", timestamp)
+	
+	// Generate signature
+	h := hmac.New(sha256.New, []byte(apiSecret))
+	h.Write([]byte(params))
+	signature := hex.EncodeToString(h.Sum(nil))
+	
+	// Add signature to parameters
+	url := fmt.Sprintf("https://api.mexc.com/api/v3/account?%s&signature=%s", params, signature)
+	
+	// Create request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+	
+	// Add API key header
+	req.Header.Set(headerName, apiKey)
+	fmt.Println("Set header", headerName+":", apiKey)
+	
+	// Send request
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error sending request:", err)
+		return
+	}
+	defer resp.Body.Close()
+	
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error reading response body:", err)
+		return
+	}
+	
+	// Print response
+	fmt.Println("Response status:", resp.Status)
+	fmt.Println("Response body:", string(body))
+}
+
+func testAccountEndpointWithAuth(apiKey, apiSecret string) {
+	// Create timestamp for the request
+	timestamp := time.Now().UnixMilli()
+	
+	// Create query parameters
+	params := fmt.Sprintf("timestamp=%d", timestamp)
+	
+	// Generate signature
+	h := hmac.New(sha256.New, []byte(apiSecret))
+	h.Write([]byte(params))
+	signature := hex.EncodeToString(h.Sum(nil))
+	
+	// Add signature to parameters
+	url := fmt.Sprintf("https://api.mexc.com/api/v3/account?%s&signature=%s", params, signature)
+	
+	// Create request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+	
+	// Add API key as Authorization header
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	fmt.Println("Set header Authorization: Bearer", apiKey)
+	
+	// Send request
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error sending request:", err)
+		return
+	}
+	defer resp.Body.Close()
+	
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error reading response body:", err)
+		return
+	}
+	
+	// Print response
+	fmt.Println("Response status:", resp.Status)
+	fmt.Println("Response body:", string(body))
+}

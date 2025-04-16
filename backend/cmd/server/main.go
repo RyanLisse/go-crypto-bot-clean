@@ -9,58 +9,27 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	adapterhttp "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/handler"
-	adapterfactory "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/factory"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/wallet"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/di"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/logger"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/util/crypto"
 	"github.com/go-chi/chi/v5"
 )
 
-// MockAuthService is a mock implementation of the AuthServiceInterface
-type MockAuthService struct{}
-
-// VerifyToken verifies a token and returns the user ID
-func (m *MockAuthService) VerifyToken(ctx context.Context, token string) (string, error) {
-	return "user123", nil
-}
-
-// GetUserFromToken returns a mock user from a token
-func (m *MockAuthService) GetUserFromToken(ctx context.Context, token string) (*model.User, error) {
-	return &model.User{
-		ID:    "user123",
-		Email: "test@example.com",
-		Name:  "Test User",
-	}, nil
-}
-
-// GetUserRoles returns mock roles for a user
-func (m *MockAuthService) GetUserRoles(ctx context.Context, userID string) ([]string, error) {
-	return []string{"user", "admin"}, nil
-}
-
-// GetUserByID returns a mock user by ID
-func (m *MockAuthService) GetUserByID(ctx context.Context, id string) (*model.User, error) {
-	return &model.User{
-		ID:    id,
-		Email: "test@example.com",
-		Name:  "Test User",
-	}, nil
-}
-
-// GetUserByEmail returns a mock user by email
-func (m *MockAuthService) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
-	return &model.User{
-		ID:    "user123",
-		Email: email,
-		Name:  "Test User",
-	}, nil
+func init() {
+	// Load .env file if it exists
+	var err error
+	if err = godotenv.Load(); err != nil {
+		// It's okay if .env doesn't exist in production
+		fmt.Println("Warning: .env file not found, using environment variables")
+	}
 }
 
 func main() {
@@ -89,7 +58,7 @@ func main() {
 	marketFactory := factory.NewMarketFactory(cfg, logger, db)
 	statusFactory := factory.NewStatusFactory(cfg, logger, db)
 	accountFactory := factory.NewAccountFactory(cfg, logger, db)
-	apiCredentialFactory := adapterfactory.NewAPICredentialFactory(db, logger)
+	apiCredentialFactory := factory.NewAPICredentialFactory(db, logger)
 	web3WalletFactory := factory.NewWeb3WalletFactory(cfg, logger, db)
 	addressValidatorFactory := factory.NewAddressValidatorFactory(cfg, logger, db)
 	apiCredentialManagerFactory := factory.NewAPICredentialManagerFactory(cfg, logger, db)
@@ -199,8 +168,24 @@ func main() {
 	// Use the wallet data sync service
 	_ = walletDataSyncService // Will be used by wallet service
 
+	// Create AI factory and handler
+	aiFactory := factory.NewAIFactory(cfg, *logger)
+	aiHandler, err := aiFactory.CreateAIHandler()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create AI handler")
+	}
+	logger.Info().Msg("Created AI handler")
+
+	// Log the AI handler details
+	logger.Debug().Interface("aiHandler", aiHandler).Msg("AI handler details")
+
 	// Initialize router (now modular)
-	r := adapterhttp.NewRouter(cfg, logger)
+	r := adapterhttp.NewRouter(cfg, logger, db)
+
+	// Create MEXC handler
+	// mexcClient is already defined above
+	mexcHandler := handler.NewMEXCHandler(mexcClient, logger)
+	logger.Info().Msg("Created MEXC handler")
 
 	// API v1 routes
 	r.Route("/api/v1", func(r chi.Router) {
@@ -208,6 +193,19 @@ func main() {
 		r.Group(func(r chi.Router) {
 			statusHandler.RegisterRoutes(r)
 			authHandler.RegisterRoutes(r)
+
+			// Register AI routes without authentication for testing
+			logger.Info().Msg("Registering AI routes without authentication for testing")
+			// Create a dummy auth middleware that doesn't actually require authentication
+			dummyAuthMiddleware := func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					// Set a dummy user ID in the context
+					ctx := context.WithValue(r.Context(), "user_id", "test_user_id")
+					next.ServeHTTP(w, r.WithContext(ctx))
+				})
+			}
+			aiHandler.RegisterRoutes(r, dummyAuthMiddleware)
+			logger.Info().Msg("Registered AI routes at /api/v1/ai/* without authentication")
 		})
 
 		// Conditionally register test/dev endpoints
@@ -224,10 +222,21 @@ func main() {
 			})
 		}
 
+		// Register MEXC routes without authentication for direct API access
+		r.Group(func(r chi.Router) {
+			mexcHandler.RegisterRoutes(r)
+			logger.Info().Msg("Registered MEXC routes at /api/v1/mexc/* without authentication")
+		})
+
 		// Protected routes (require authentication)
 		r.Group(func(r chi.Router) {
-			// Create a simple auth middleware for testing
-			authMiddleware := adapterhttp.NewSimpleAuthMiddleware(logger)
+			// Use the auth middleware
+			authMiddleware, err := adapterhttp.GetAuthMiddleware(cfg, logger, db)
+			if err != nil {
+				logger.Error().Err(err).Msg("Failed to create auth middleware, falling back to test auth")
+				// Fallback to test auth middleware
+				authMiddleware = adapterhttp.GetTestAuthMiddleware(cfg, logger, db)
+			}
 
 			// Use the middleware's RequireAuthentication method
 			r.Use(authMiddleware.RequireAuthentication)

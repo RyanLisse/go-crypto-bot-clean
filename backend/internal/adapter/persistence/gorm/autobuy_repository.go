@@ -245,10 +245,6 @@ func autoBuyRuleToEntity(rule *model.AutoBuyRule) *entity.AutoBuyRuleEntity {
 		LastPrice:           rule.LastPrice,
 		CreatedAt:           rule.CreatedAt,
 		UpdatedAt:           rule.UpdatedAt,
-		UsePercentage:       rule.UsePercentage,
-		PercentageAmount:    rule.PercentageAmount,
-		FixedAmount:         rule.FixedAmount,
-		MinOrderAmount:      rule.MinOrderAmount,
 	}
 }
 
@@ -275,10 +271,6 @@ func autoBuyRuleFromEntity(entity *entity.AutoBuyRuleEntity) *model.AutoBuyRule 
 		LastPrice:           entity.LastPrice,
 		CreatedAt:           entity.CreatedAt,
 		UpdatedAt:           entity.UpdatedAt,
-		UsePercentage:       entity.UsePercentage,
-		PercentageAmount:    entity.PercentageAmount,
-		FixedAmount:         entity.FixedAmount,
-		MinOrderAmount:      entity.MinOrderAmount,
 	}
 }
 

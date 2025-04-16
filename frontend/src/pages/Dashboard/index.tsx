@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useGetStatusQuery } from '@/services/api';
 import { usePortfolioQuery } from '@/hooks/queries/usePortfolioQueries';
 import { useTradeHistoryQuery } from '@/hooks/queries/useTradeQueries';
-import { Loader2, AlertCircle, RefreshCw, LayoutDashboard, LineChart, BarChart4, History } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, LayoutDashboard, LineChart, BarChart4, History, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Import our new components
@@ -14,6 +14,7 @@ import SalesHistory from '@/components/dashboard/SalesHistory';
 import AIInsights from '@/components/dashboard/AIInsights';
 import AccountBalance from '@/components/dashboard/AccountBalance';
 import TradeHistory from '@/components/trading/TradeHistory';
+import { ApiConnectionStatus } from '@/components/dashboard/ApiConnectionStatus';
 
 const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -86,7 +87,7 @@ const Dashboard: React.FC = () => {
 
       {/* Main Dashboard Tabs */}
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-5 mb-6">
           <TabsTrigger value="overview" className="flex items-center">
             <LayoutDashboard className="h-4 w-4 mr-2" />
             Overview
@@ -103,13 +104,20 @@ const Dashboard: React.FC = () => {
             <LineChart className="h-4 w-4 mr-2" />
             AI Insights
           </TabsTrigger>
+          <TabsTrigger value="connection" className="flex items-center">
+            <Activity className="h-4 w-4 mr-2" />
+            Connection
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <PortfolioOverview />
-            <AIInsights />
+            <div className="grid grid-cols-1 gap-6">
+              <AccountBalance />
+              <ApiConnectionStatus />
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-6">
             <SalesHistory />
@@ -165,6 +173,18 @@ const Dashboard: React.FC = () => {
         <TabsContent value="insights" className="space-y-6">
           <div className="grid grid-cols-1 gap-6">
             <AIInsights />
+          </div>
+        </TabsContent>
+        
+        {/* Connection Status Tab */}
+        <TabsContent value="connection" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <ApiConnectionStatus />
+            </div>
+            <div>
+              <AccountBalance />
+            </div>
           </div>
         </TabsContent>
       </Tabs>

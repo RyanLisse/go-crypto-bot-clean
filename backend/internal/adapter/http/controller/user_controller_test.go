@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware"
+
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/service"
 	"github.com/go-chi/chi/v5"
@@ -140,7 +140,7 @@ func TestUserController_GetCurrentUser(t *testing.T) {
 
 	// Create request with user ID in context
 	req := httptest.NewRequest("GET", "/users/me", nil)
-	ctx := context.WithValue(req.Context(), middleware.UserIDKey, testUser.ID)
+	ctx := context.WithValue(req.Context(), "userID", testUser.ID)
 	req = req.WithContext(ctx)
 	res := httptest.NewRecorder()
 
@@ -190,7 +190,6 @@ func TestUserController_UpdateCurrentUser(t *testing.T) {
 		Email:     testUser.Email,
 		Name:      "Updated User",
 		CreatedAt: testUser.CreatedAt,
-		UpdatedAt: time.Now(),
 	}
 
 	// Create test roles
@@ -205,7 +204,7 @@ func TestUserController_UpdateCurrentUser(t *testing.T) {
 	// Create request with user ID in context
 	requestBody := `{"name":"Updated User"}`
 	req := httptest.NewRequest("PUT", "/users/me", strings.NewReader(requestBody))
-	ctx := context.WithValue(req.Context(), middleware.UserIDKey, testUser.ID)
+	ctx := context.WithValue(req.Context(), "userID", testUser.ID)
 	req = req.WithContext(ctx)
 	res := httptest.NewRecorder()
 

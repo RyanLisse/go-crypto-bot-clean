@@ -1,0 +1,89 @@
+{
+  "symbol": "BTCUSDT",
+  "lastUpdateId": 41247233768,
+  "bids": [
+    {
+      "price": 84739.13,
+      "quantity": 2.41758
+    },
+    {
+      "price": 84739.12,
+      "quantity": 0.26591744
+    },
+    {
+      "price": 84739.11,
+      "quantity": 0.28235907
+    },
+    {
+      "price": 84739,
+      "quantity": 1.10283778
+    },
+    {
+      "price": 84738.99,
+      "quantity": 0.96821247
+    },
+    {
+      "price": 84738.98,
+      "quantity": 1.0920391
+    },
+    {
+      "price": 84738.97,
+      "quantity": 0.27277598
+    },
+    {
+      "price": 84738.93,
+      "quantity": 0.24845958
+    },
+    {
+      "price": 84738.84,
+      "quantity": 1.02197085
+    },
+    {
+      "price": 84738.8,
+      "quantity": 1.0258172
+    }
+  ],
+  "asks": [
+    {
+      "price": 84739.14,
+      "quantity": 7.70655
+    },
+    {
+      "price": 84739.15,
+      "quantity": 0.27513365
+    },
+    {
+      "price": 84739.18,
+      "quantity": 0.25457478
+    },
+    {
+      "price": 84739.24,
+      "quantity": 0.24876883
+    },
+    {
+      "price": 84739.25,
+      "quantity": 0.2949
+    },
+    {
+      "price": 84739.27,
+      "quantity": 7.15389
+    },
+    {
+      "price": 84739.28,
+      "quantity": 1.07530742
+    },
+    {
+      "price": 84739.31,
+      "quantity": 0.98847952
+    },
+    {
+      "price": 84739.37,
+      "quantity": 0.94800702
+    },
+    {
+      "price": 84739.38,
+      "quantity": 1.0107859
+    }
+  ],
+  "timestamp": "0001-01-01T00:00:00Z"
+}

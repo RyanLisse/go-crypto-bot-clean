@@ -1,0 +1,19 @@
+{
+  "symbol": "BTCUSDT",
+  "exchange": "",
+  "lastPrice": 84764.6,
+  "priceChange": -149.85,
+  "priceChangePercent": -0.0017,
+  "highPrice": 85270.27,
+  "lowPrice": 83111.64,
+  "volume": 1594.44868667,
+  "quoteVolume": 0,
+  "openPrice": 0,
+  "prevClosePrice": 0,
+  "bidPrice": 0,
+  "bidQty": 0,
+  "askPrice": 0,
+  "askQty": 0,
+  "count": 0,
+  "timestamp": "0001-01-01T00:00:00Z"
+}

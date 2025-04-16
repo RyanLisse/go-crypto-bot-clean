@@ -16,7 +16,7 @@ import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
 import { format } from 'date-fns';
 
 // API client for backend communication
-const API_URL = 'http://localhost:8080';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 interface ChatInterfaceProps {
   initialConversationId?: string;
@@ -29,10 +29,10 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   // Get auth context
   const { user } = useAuth();
-  
+
   // Get conversation hooks
   const {
     messages,
@@ -44,7 +44,7 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
     updateTitle,
     deleteConversation
   } = useConversation(activeConversationId);
-  
+
   // Get conversation list hook
   const {
     conversations,
@@ -53,25 +53,25 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
     refreshConversations,
     deleteConversation: deleteConversationFromList
   } = useConversationList();
-  
+
   // Get portfolio and market data to provide context to the AI
   const { data: portfolioData } = usePortfolioData();
   const { data: marketData } = useMarketData();
-  
+
   // Scroll to bottom when messages change
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
-  
+
   // Focus input on mount
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
   }, [activeConversationId]);
-  
+
   // Show error toast if there's an error
   useEffect(() => {
     if (conversationError) {
@@ -81,24 +81,24 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
       toast.error(conversationsError);
     }
   }, [conversationError, conversationsError]);
-  
+
   // Create a new conversation
   const handleNewConversation = async () => {
     if (!user) {
       toast.error('You must be logged in to create a conversation');
       return;
     }
-    
+
     const title = `New Conversation ${new Date().toLocaleString()}`;
     const conversationId = await createConversation(title);
-    
+
     if (conversationId) {
       setActiveConversationId(conversationId);
       await refreshConversations();
       toast.success('New conversation created');
     }
   };
-  
+
   // Send a message to the AI
   const handleSendMessage = async () => {
     if (!input.trim()) return;
@@ -106,7 +106,7 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
       toast.error('You must be logged in to send messages');
       return;
     }
-    
+
     // Create or get conversation ID
     let conversationId = activeConversationId;
     if (!conversationId) {
@@ -118,7 +118,7 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
       setActiveConversationId(conversationId);
       await refreshConversations();
     }
-    
+
     // Add user message to the conversation
     const userMessage: Message = {
       role: 'user',
@@ -127,11 +127,11 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
         timestamp: new Date().toISOString()
       }
     };
-    
+
     await addMessage(userMessage);
     setInput('');
     setIsLoading(true);
-    
+
     try {
       // Prepare trading context
       const tradingContext = {
@@ -154,7 +154,7 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
           })),
         } : undefined,
       };
-      
+
       // Send message to backend API
       const response = await fetch(`${API_URL}/api/ai/chat`, {
         method: 'POST',
@@ -169,25 +169,25 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
           trading_context: tradingContext
         })
       });
-      
+
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       // Add assistant message to the conversation
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.response,
+        content: data.data.response,
         metadata: {
           timestamp: new Date().toISOString(),
-          function_calls: data.function_calls
+          function_calls: data.data.function_calls
         }
       };
-      
+
       await addMessage(assistantMessage);
-      
+
       // Update conversation title if it's the first message
       if (messages.length <= 1 && conversation?.title.startsWith('Conversation ')) {
         const newTitle = input.length > 30 ? `${input.substring(0, 30)}...` : input;
@@ -197,7 +197,7 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to get a response from the AI assistant');
-      
+
       // Add error message
       const errorMessage: Message = {
         role: 'assistant',
@@ -207,25 +207,25 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
           error: true
         }
       };
-      
+
       await addMessage(errorMessage);
     } finally {
       setIsLoading(false);
-      
+
       // Focus input after sending
       if (inputRef.current) {
         inputRef.current.focus();
       }
     }
   };
-  
+
   // Handle key down event
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !isLoading) {
       handleSendMessage();
     }
   };
-  
+
   // Handle conversation deletion
   const handleDeleteConversation = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this conversation?')) {
@@ -238,13 +238,13 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
       }
     }
   };
-  
+
   // Switch to a different conversation
   const handleSwitchConversation = (id: string) => {
     setActiveConversationId(id);
     setIsDrawerOpen(false);
   };
-  
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-4">
@@ -265,7 +265,7 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
                   New Chat
                 </Button>
               </div>
-              
+
               {conversationsLoading ? (
                 <div className="flex justify-center p-4">
                   <Loader2 className="h-6 w-6 animate-spin" />
@@ -309,14 +309,14 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
               )}
             </DrawerContent>
           </Drawer>
-          
+
           <Button onClick={handleNewConversation} className="bg-black text-white border-2 border-black">
             <Plus className="h-4 w-4 mr-2" />
             New Chat
           </Button>
         </div>
       </div>
-      
+
       <Card className="flex flex-col h-full border-2 border-black">
         <CardHeader className="border-b-2 border-black px-4 py-2">
           <div className="flex justify-between items-center">
@@ -335,7 +335,7 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
             )}
           </div>
         </CardHeader>
-        
+
         <CardContent className="flex-1 p-0">
           {conversationLoading ? (
             <div className="flex justify-center items-center h-full">
@@ -376,8 +376,8 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
                       <div>
                         <div className="font-mono whitespace-pre-wrap">{message.content}</div>
                         <div className="text-xs opacity-50 mt-1 font-mono">
-                          {message.metadata?.timestamp 
-                            ? new Date(message.metadata.timestamp).toLocaleTimeString() 
+                          {message.metadata?.timestamp
+                            ? new Date(message.metadata.timestamp).toLocaleTimeString()
                             : new Date().toLocaleTimeString()}
                         </div>
                       </div>
@@ -397,7 +397,7 @@ export function ChatInterface({ initialConversationId }: ChatInterfaceProps) {
             </ScrollArea>
           )}
         </CardContent>
-        
+
         <CardFooter className="border-t-2 border-black p-4">
           <div className="flex w-full items-center space-x-2">
             <Input

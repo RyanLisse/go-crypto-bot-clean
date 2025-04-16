@@ -48,7 +48,7 @@ func (h *Web3WalletHandler) RegisterRoutes(r chi.Router, authMiddleware middlewa
 // ConnectWallet handles the connect wallet endpoint
 func (h *Web3WalletHandler) ConnectWallet(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -91,7 +91,7 @@ func (h *Web3WalletHandler) ConnectWallet(w http.ResponseWriter, r *http.Request
 // DisconnectWallet handles the disconnect wallet endpoint
 func (h *Web3WalletHandler) DisconnectWallet(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	_, ok := middleware.GetUserIDFromContext(r.Context())
+	_, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -119,7 +119,7 @@ func (h *Web3WalletHandler) DisconnectWallet(w http.ResponseWriter, r *http.Requ
 // GetWalletBalance handles the get wallet balance endpoint
 func (h *Web3WalletHandler) GetWalletBalance(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	_, ok := middleware.GetUserIDFromContext(r.Context())
+	_, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return

@@ -17,6 +17,7 @@ import BotConfig from "./pages/BotConfig";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ChatPage from "./pages/ChatPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -110,6 +111,16 @@ const App = () => {
                 <>
                   <SignedIn>
                     <Settings />
+                  </SignedIn>
+                  <SignedOut>
+                    <RedirectToSignIn />
+                  </SignedOut>
+                </>
+              } />
+              <Route path="/chat" element={
+                <>
+                  <SignedIn>
+                    <ChatPage />
                   </SignedIn>
                   <SignedOut>
                     <RedirectToSignIn />

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 )
 
 // OrderRepository defines the interface for order persistence operations
@@ -83,4 +84,25 @@ type AnalyticsRepository interface {
 	SaveMetrics(ctx context.Context, metrics map[string]interface{}) error
 	GetMetrics(ctx context.Context, from, to time.Time) ([]map[string]interface{}, error)
 	GetPerformanceByStrategy(ctx context.Context, strategyID string, from, to time.Time) (map[string]interface{}, error)
+}
+
+// MarketDataRepository defines the interface for market data persistence operations
+type MarketDataRepository interface {
+	// Ticker operations
+	SaveTicker(ctx context.Context, ticker market.Ticker) error
+	GetTicker(ctx context.Context, exchange, symbol string) (*market.Ticker, error)
+	GetAllTickers(ctx context.Context, exchange string) ([]market.Ticker, error)
+
+	// Candle operations
+	SaveCandle(ctx context.Context, candle market.Candle) error
+	GetCandles(ctx context.Context, exchange, symbol string, interval string, from, to time.Time, limit int) ([]market.Candle, error)
+
+	// Order book operations
+	SaveOrderBook(ctx context.Context, orderBook market.OrderBook) error
+	GetOrderBook(ctx context.Context, exchange, symbol string) (*market.OrderBook, error)
+
+	// Symbol operations
+	SaveSymbol(ctx context.Context, symbol market.Symbol) error
+	GetSymbol(ctx context.Context, exchange, symbol string) (*market.Symbol, error)
+	GetAllSymbols(ctx context.Context, exchange string) ([]market.Symbol, error)
 }

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useWebSocket } from '@/hooks/use-websocket';
-import { useWalletQuery } from '@/hooks/queries/useAccountQueries';
+import { useWalletQuery } from '../../../../frontend/src/hooks/queries/useAccountQueries';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { API_CONFIG } from '@/config';
@@ -26,9 +26,8 @@ export function AccountBalance() {
     if (error) {
       console.error('Failed to fetch wallet data:', error);
       toast({
-        title: 'Error',
-        description: `Failed to fetch account balance data: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: 'destructive',
+        type: 'error',
+        message: `Failed to fetch account balance data: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     }
   }, [error, toast]);
@@ -45,7 +44,7 @@ export function AccountBalance() {
   // Get total balance
   const totalBalance = Object.values(balances).reduce((sum, balance: any) => {
     // Multiply the token amount by its price
-    return sum + ((balance.total || 0) * (balance.price || 0));
+    return (sum as number) + ((balance.total || 0) * (balance.price || 0));
   }, 0);
 
   if (isLoading) {
@@ -76,7 +75,7 @@ export function AccountBalance() {
       </div>
 
       <div className="text-2xl font-bold text-brutal-text mb-4">
-        ${totalBalance.toFixed(2)}
+        ${(totalBalance as number).toFixed(2)}
       </div>
 
       <div className="space-y-3 max-h-[200px] overflow-y-auto">

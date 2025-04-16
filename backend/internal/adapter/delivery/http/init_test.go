@@ -14,9 +14,9 @@ import (
 func TestNewRouter_HealthAndRootEndpoints(t *testing.T) {
 	logger := zerolog.Nop()
 	cfg := &config.Config{Version: "test-version"}
-	r := NewRouter(cfg, &logger)
+	router := NewRouter(cfg, &logger, nil)
 
-	ts := httptest.NewServer(r)
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	// Health endpoint

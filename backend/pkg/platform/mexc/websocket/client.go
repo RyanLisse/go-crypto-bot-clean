@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
-	"golang.org/x/time/rate"
 	"github.com/gorilla/websocket"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -46,7 +46,6 @@ type Client struct {
 }
 
 // NewClient creates a new WebSocket client
-// Updated: TickerCache is deprecated and no longer required for the client.
 func NewClient(ctx context.Context) *Client {
 	// Create a rate limiter with MEXC's WebSocket API limits (10 requests per second)
 	limiter := rate.NewLimiter(rate.Limit(10), 20) // 10 requests/sec, burst 20

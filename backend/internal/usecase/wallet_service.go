@@ -12,6 +12,8 @@ import (
 
 // WalletService defines the interface for wallet operations
 type WalletService interface {
+	// Fetch real account data from the exchange
+	GetRealAccountData(ctx context.Context) (*model.Wallet, error)
 	// Core wallet operations
 	CreateWallet(ctx context.Context, userID, exchange string, walletType model.WalletType) (*model.Wallet, error)
 	GetWallet(ctx context.Context, id string) (*model.Wallet, error)
@@ -277,6 +279,11 @@ func (s *walletService) GetBalanceHistory(ctx context.Context, userID string, as
 		Msg("Getting balance history")
 
 	return s.walletRepo.GetBalanceHistory(ctx, userID, asset, from, to)
+}
+
+// GetRealAccountData fetches the real account data from the exchange via MEXCClient
+func (s *walletService) GetRealAccountData(ctx context.Context) (*model.Wallet, error) {
+	return s.mexcClient.GetAccount(ctx)
 }
 
 // RefreshWallet refreshes a wallet from the exchange

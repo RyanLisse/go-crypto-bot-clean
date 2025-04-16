@@ -30,7 +30,7 @@ func NewSignatureVerificationHandler(
 }
 
 // RegisterRoutes registers the signature verification routes
-func (h *SignatureVerificationHandler) RegisterRoutes(r chi.Router, authMiddleware *middleware.EnhancedClerkMiddleware) {
+func (h *SignatureVerificationHandler) RegisterRoutes(r chi.Router, authMiddleware middleware.AuthMiddleware) {
 	r.Route("/wallet-verification", func(r chi.Router) {
 		// Protected routes
 		r.Group(func(r chi.Router) {
@@ -103,7 +103,7 @@ func (h *SignatureVerificationHandler) VerifySignature(w http.ResponseWriter, r 
 // GetWalletStatus handles the get wallet status endpoint
 func (h *SignatureVerificationHandler) GetWalletStatus(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	_, ok := middleware.GetUserIDFromContext(r.Context())
+	_, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -133,7 +133,7 @@ func (h *SignatureVerificationHandler) GetWalletStatus(w http.ResponseWriter, r 
 // SetWalletStatus handles the set wallet status endpoint
 func (h *SignatureVerificationHandler) SetWalletStatus(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	_, ok := middleware.GetUserIDFromContext(r.Context())
+	_, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return

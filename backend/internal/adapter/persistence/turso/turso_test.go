@@ -20,7 +20,9 @@ func TestTursoIntegration(t *testing.T) {
 
 	// Load environment variables
 	err := godotenv.Load()
-	require.NoError(t, err, "Failed to load .env file")
+	if err != nil {
+		t.Skip("Skipping test: .env file not found")
+	}
 
 	// Get Turso database configuration
 	primaryUrl := os.Getenv("TURSO_DATABASE_URL")

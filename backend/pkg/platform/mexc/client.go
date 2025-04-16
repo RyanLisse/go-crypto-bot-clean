@@ -21,6 +21,7 @@ const (
 )
 
 // Client implements port.MEXCClient interface
+// Note: MEXC API requires the APIKEY header (not X-MBX-APIKEY) for authentication
 type Client struct {
 	httpClient *http.Client
 	apiKey     string
@@ -279,7 +280,8 @@ func (c *Client) sendRequest(ctx context.Context, method, endpoint string, body 
 
 	req.Header.Set("Content-Type", "application/json")
 	if c.apiKey != "" {
-		req.Header.Set("X-MEXC-APIKEY", c.apiKey)
+		// MEXC API requires the APIKEY header, not X-MBX-APIKEY
+		req.Header.Set("APIKEY", c.apiKey)
 	}
 
 	resp, err := c.httpClient.Do(req)
@@ -306,153 +308,104 @@ func (c *Client) sendRequest(ctx context.Context, method, endpoint string, body 
 func (c *Client) GetAccount(ctx context.Context) (*model.Wallet, error) {
 	c.logger.Debug().Msg("Fetching account information from MEXC")
 
-	// For testing, let's use a real wallet with SOL balance
-	c.logger.Debug().Msg("Using real wallet data for testing")
+	// Create timestamp for the request
+	timestamp := time.Now().UnixMilli()
 
-	// Create a wallet with real data
+	// Create query parameters
+	params := fmt.Sprintf("timestamp=%d", timestamp)
+
+	// Generate signature
+	signature := c.generateSignature(params)
+
+	// Add signature to parameters
+	endpoint := fmt.Sprintf("/api/v3/account?%s&signature=%s", params, signature)
+
+	// Create request
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Add API key header
+	c.logger.Debug().Str("APIKEY", c.apiKey).Msg("Setting API key header")
+	req.Header.Set("APIKEY", c.apiKey)
+
+	// Send request
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		c.logger.Error().Err(err).Msg("Failed to send request to MEXC API")
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check response status
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Code    int    `json:"code"`
+			Message string `json:"msg"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
+			c.logger.Error().Err(err).Int("status", resp.StatusCode).Msg("Failed to decode error response")
+			return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
+		}
+		c.logger.Error().Int("code", errResp.Code).Str("message", errResp.Message).Msg("MEXC API error")
+		return nil, fmt.Errorf("API error %d: %s", errResp.Code, errResp.Message)
+	}
+
+	// Parse response
+	var accountInfo struct {
+		MakerCommission  int    `json:"makerCommission"`
+		TakerCommission  int    `json:"takerCommission"`
+		BuyerCommission  int    `json:"buyerCommission"`
+		SellerCommission int    `json:"sellerCommission"`
+		CanTrade         bool   `json:"canTrade"`
+		CanWithdraw      bool   `json:"canWithdraw"`
+		CanDeposit       bool   `json:"canDeposit"`
+		UpdateTime       int64  `json:"updateTime"`
+		AccountType      string `json:"accountType"`
+		Balances         []struct {
+			Asset  string `json:"asset"`
+			Free   string `json:"free"`
+			Locked string `json:"locked"`
+		} `json:"balances"`
+		Permissions []string `json:"permissions"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&accountInfo); err != nil {
+		c.logger.Error().Err(err).Msg("Failed to decode account response")
+		return nil, fmt.Errorf("failed to decode account response: %w", err)
+	}
+
+	// Convert to model.Wallet
 	wallet := &model.Wallet{
-		UserID:      "MEXC_USER",
+		UserID:      "MEXC_USER", // Default user ID
 		Exchange:    "MEXC",
 		Balances:    make(map[model.Asset]*model.Balance),
 		LastUpdated: time.Now(),
+		LastSyncAt:  time.Now(),
 	}
 
-	// Add real SOL balance
-	wallet.Balances[model.Asset("SOL")] = &model.Balance{
-		Asset:    model.Asset("SOL"),
-		Free:     0.04913839,
-		Locked:   0.0,
-		Total:    0.04913839,
-		USDValue: 0.04913839 * 150.0, // Assuming SOL price is $150
+	// Add balances
+	for _, b := range accountInfo.Balances {
+		// Skip zero balances
+		if b.Free == "0" && b.Locked == "0" {
+			continue
+		}
+
+		free, _ := strconv.ParseFloat(b.Free, 64)
+		locked, _ := strconv.ParseFloat(b.Locked, 64)
+		total := free + locked
+
+		wallet.Balances[model.Asset(b.Asset)] = &model.Balance{
+			Asset:  model.Asset(b.Asset),
+			Free:   free,
+			Locked: locked,
+			Total:  total,
+			// Note: USDValue will be calculated later when we have price data
+		}
 	}
 
-	// Add real BTC balance
-	wallet.Balances[model.Asset("BTC")] = &model.Balance{
-		Asset:    model.Asset("BTC"),
-		Free:     0.00123456,
-		Locked:   0.0,
-		Total:    0.00123456,
-		USDValue: 0.00123456 * 60000.0, // Assuming BTC price is $60,000
-	}
-
-	// Add real ETH balance
-	wallet.Balances[model.Asset("ETH")] = &model.Balance{
-		Asset:    model.Asset("ETH"),
-		Free:     0.05678901,
-		Locked:   0.0,
-		Total:    0.05678901,
-		USDValue: 0.05678901 * 3000.0, // Assuming ETH price is $3,000
-	}
-
-	// Add real USDT balance
-	wallet.Balances[model.Asset("USDT")] = &model.Balance{
-		Asset:    model.Asset("USDT"),
-		Free:     123.45,
-		Locked:   0.0,
-		Total:    123.45,
-		USDValue: 123.45, // USDT is pegged to USD
-	}
-
-	// Calculate total USD value
-	wallet.TotalUSDValue = 0
-	for _, balance := range wallet.Balances {
-		wallet.TotalUSDValue += balance.USDValue
-	}
-
-	c.logger.Info().Int("balances_count", len(wallet.Balances)).Msg("Successfully created wallet with real data")
-
-	// Note: The original implementation with API calls is commented out below
-	/*
-		// Create timestamp for the request
-		timestamp := time.Now().UnixMilli()
-
-		// Create query parameters
-		params := fmt.Sprintf("timestamp=%d", timestamp)
-
-		// Generate signature
-		signature := c.generateSignature(params)
-
-		// Add signature to parameters
-		endpoint := fmt.Sprintf("/api/v3/account?%s&signature=%s", params, signature)
-
-		// Create request
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+endpoint, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %w", err)
-		}
-
-		// Add API key header
-		req.Header.Set("X-MEXC-APIKEY", c.apiKey)
-
-		// Send request
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to send request: %w", err)
-		}
-		defer resp.Body.Close()
-
-		// Check response status
-		if resp.StatusCode != http.StatusOK {
-			var errResp struct {
-				Code    int    `json:"code"`
-				Message string `json:"msg"`
-			}
-			if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
-				return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
-			}
-			return nil, fmt.Errorf("API error %d: %s", errResp.Code, errResp.Message)
-		}
-
-		// Parse response
-		var accountInfo struct {
-			MakerCommission  int    `json:"makerCommission"`
-			TakerCommission  int    `json:"takerCommission"`
-			BuyerCommission  int    `json:"buyerCommission"`
-			SellerCommission int    `json:"sellerCommission"`
-			CanTrade         bool   `json:"canTrade"`
-			CanWithdraw      bool   `json:"canWithdraw"`
-			CanDeposit       bool   `json:"canDeposit"`
-			UpdateTime       int64  `json:"updateTime"`
-			AccountType      string `json:"accountType"`
-			Balances         []struct {
-				Asset  string `json:"asset"`
-				Free   string `json:"free"`
-				Locked string `json:"locked"`
-			} `json:"balances"`
-			Permissions []string `json:"permissions"`
-		}
-
-		if err := json.NewDecoder(resp.Body).Decode(&accountInfo); err != nil {
-			return nil, fmt.Errorf("failed to decode account response: %w", err)
-		}
-
-		// Convert to model.Wallet
-		wallet := &model.Wallet{
-			UserID:      "MEXC_USER", // Default user ID
-			Exchange:    "MEXC",
-			Balances:    make(map[model.Asset]*model.Balance),
-			LastUpdated: time.Now(),
-		}
-
-		// Add balances
-		for _, b := range accountInfo.Balances {
-			// Skip zero balances
-			if b.Free == "0" && b.Locked == "0" {
-				continue
-			}
-
-			free, _ := strconv.ParseFloat(b.Free, 64)
-			locked, _ := strconv.ParseFloat(b.Locked, 64)
-
-			wallet.Balances[model.Asset(b.Asset)] = &model.Balance{
-				Asset:  model.Asset(b.Asset),
-				Free:   free,
-				Locked: locked,
-			}
-		}
-
-		c.logger.Info().Int("balances_count", len(wallet.Balances)).Msg("Successfully fetched account information")
-	*/
+	c.logger.Info().Int("balances_count", len(wallet.Balances)).Msg("Successfully fetched account information")
 	return wallet, nil
 }
 

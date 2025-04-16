@@ -16,11 +16,16 @@ import (
 
 // MockAPICredentialRepository is a mock implementation of port.APICredentialRepository
 type MockAPICredentialRepository struct {
+	mock.Mock
 	// ... existing fields
 }
 
-
-	mock.Mock
+func (m *MockAPICredentialRepository) ListAll(ctx context.Context) ([]*model.APICredential, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.APICredential), args.Error(1)
 }
 
 func (m *MockAPICredentialRepository) Save(ctx context.Context, credential *model.APICredential) error {

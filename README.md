@@ -2,6 +2,10 @@
 
 A Go-based automated cryptocurrency trading bot designed primarily for the MEXC exchange. This bot provides automated execution based on predefined strategies, real-time market data analysis, and robust risk management.
 
+## Current Status
+
+**June 2024**: Major architectural refactoring has been completed! The codebase now fully adheres to Clean Architecture principles. Current development focus is on implementing the Risk Management System.
+
 ## Features
 
 - MEXC Exchange Integration via REST API and WebSocket
@@ -10,7 +14,7 @@ A Go-based automated cryptocurrency trading bot designed primarily for the MEXC 
 - Trade Execution & Order Management
 - Position Management
 - Strategy Engine
-- Risk Management
+- Risk Management (In Progress)
 - New Coin Detection & AutoBuy
 - AI Assistant (Gemini Integration)
 - Notifications
@@ -66,7 +70,7 @@ Configuration is loaded from environment variables and/or a config file. See `.e
 
 ## Development
 
-This project follows Clean Architecture principles with a clear separation of concerns between domain, use cases, and adapters.
+This project follows Clean Architecture principles with a clear separation of concerns between domain, use cases, and adapters. See `docs/` directory for architecture documentation and guides.
 
 ## License
 

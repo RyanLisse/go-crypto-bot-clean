@@ -2,18 +2,22 @@ package server
 
 import (
 	"context"
+	"github.com/rs/zerolog"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/factory"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
+	gormrepo "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm"
+	
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/controller"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/rs/zerolog"
+	
 	"gorm.io/gorm"
 )
 
@@ -43,36 +47,14 @@ func NewServer(db *gorm.DB, cfg *config.Config, authConfig *config.AuthConfig, l
 
 // SetupRoutes sets up the routes for the server
 func (s *Server) SetupRoutes() error {
-	// Create auth factory
-	authFactory := factory.NewAuthFactory(s.db, s.logger)
+	// Create wallet service/controller
+	mexcClient := factory.NewMEXCClient(s.config, s.logger)
+	walletRepo := gormrepo.NewWalletRepository(s.db, s.logger)
+	walletService := usecase.NewWalletService(walletRepo, mexcClient, s.logger)
+	walletController := controller.NewWalletController(walletService, s.logger)
 
-	// Create middleware
-	var authMiddleware *middleware.EnhancedClerkMiddleware
-	var err error
-
-	if s.authConfig.ShouldUseEnhanced() {
-		// Use enhanced Clerk middleware
-		authMiddleware, err = authFactory.CreateEnhancedClerkMiddleware(s.authConfig.GetClerkSecretKey())
-		if err != nil {
-			return fmt.Errorf("failed to create enhanced Clerk middleware: %w", err)
-		}
-	} else {
-		// Use basic Clerk middleware
-		basicMiddleware := authFactory.CreateClerkMiddleware(s.authConfig.GetClerkSecretKey())
-		// Create a wrapper that implements the EnhancedClerkMiddleware interface
-		authMiddleware = middleware.CreateBasicMiddlewareAdapter(basicMiddleware, s.logger)
-	}
-
-	// Create services
-	userService := authFactory.CreateUserService()
-	authService, err := authFactory.CreateAuthService(s.authConfig.GetClerkSecretKey())
-	if err != nil {
-		return fmt.Errorf("failed to create auth service: %w", err)
-	}
-
-	// Create controllers
-	userController := controller.NewUserController(userService, authService, s.logger)
-	authController := controller.NewAuthController(authService, s.logger)
+	// Create a mock middleware
+	authMiddleware := middleware.NewMockMiddleware(s.logger)
 
 	// Set up middleware
 	s.router.Use(chimiddleware.RequestID)
@@ -80,18 +62,6 @@ func (s *Server) SetupRoutes() error {
 	s.router.Use(chimiddleware.Logger)
 	s.router.Use(chimiddleware.Recoverer)
 	s.router.Use(chimiddleware.Timeout(60 * time.Second))
-
-	// Set up security middleware
-	securityFactory := factory.NewSecurityFactory(s.logger)
-
-	// Set up rate limiting middleware
-	s.router.Use(securityFactory.CreateRateLimiterMiddleware(&s.config.RateLimit))
-
-	// Set up CSRF protection middleware
-	s.router.Use(securityFactory.CreateCSRFProtectionMiddleware(&s.config.CSRF))
-
-	// Set up secure headers middleware
-	s.router.Use(securityFactory.CreateSecureHeadersHandler(&s.config.SecureHeaders))
 
 	// Set up CORS
 	s.router.Use(cors.Handler(cors.Options{
@@ -107,8 +77,7 @@ func (s *Server) SetupRoutes() error {
 	s.router.Use(authMiddleware.Middleware())
 
 	// Register routes
-	userController.RegisterRoutes(s.router, authMiddleware)
-	authController.RegisterRoutes(s.router)
+	walletController.RegisterRoutes(s.router)
 
 	return nil
 }

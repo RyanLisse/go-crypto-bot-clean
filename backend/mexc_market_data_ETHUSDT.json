@@ -1,0 +1,111 @@
+{
+  "symbol": "ETHUSDT",
+  "ticker": {
+    "symbol": "ETHUSDT",
+    "exchange": "",
+    "lastPrice": 1578.45,
+    "priceChange": -44.78,
+    "priceChangePercent": -0.0275,
+    "highPrice": 1627.99,
+    "lowPrice": 1552.66,
+    "volume": 58182.64094,
+    "quoteVolume": 0,
+    "openPrice": 0,
+    "prevClosePrice": 0,
+    "bidPrice": 0,
+    "bidQty": 0,
+    "askPrice": 0,
+    "askQty": 0,
+    "count": 0,
+    "timestamp": "0001-01-01T00:00:00Z"
+  },
+  "orderBook": {
+    "symbol": "ETHUSDT",
+    "lastUpdateId": 32865638168,
+    "bids": [
+      {
+        "price": 1577.86,
+        "quantity": 44.28765
+      },
+      {
+        "price": 1577.85,
+        "quantity": 14.08799
+      },
+      {
+        "price": 1577.84,
+        "quantity": 13.39461
+      },
+      {
+        "price": 1577.82,
+        "quantity": 14.90201
+      },
+      {
+        "price": 1577.81,
+        "quantity": 14.71478
+      },
+      {
+        "price": 1577.8,
+        "quantity": 14.45623
+      },
+      {
+        "price": 1577.79,
+        "quantity": 44.28765
+      },
+      {
+        "price": 1577.78,
+        "quantity": 30.57817
+      },
+      {
+        "price": 1577.77,
+        "quantity": 0.0057
+      },
+      {
+        "price": 1577.76,
+        "quantity": 13.63873
+      }
+    ],
+    "asks": [
+      {
+        "price": 1577.87,
+        "quantity": 47.0061
+      },
+      {
+        "price": 1577.88,
+        "quantity": 14.28255
+      },
+      {
+        "price": 1577.89,
+        "quantity": 14.80643
+      },
+      {
+        "price": 1577.9,
+        "quantity": 14.11809
+      },
+      {
+        "price": 1577.91,
+        "quantity": 13.31269
+      },
+      {
+        "price": 1577.94,
+        "quantity": 63.64815
+      },
+      {
+        "price": 1577.95,
+        "quantity": 17.63865
+      },
+      {
+        "price": 1577.96,
+        "quantity": 21.99105
+      },
+      {
+        "price": 1577.97,
+        "quantity": 14.75894
+      },
+      {
+        "price": 1577.98,
+        "quantity": 24.39553
+      }
+    ],
+    "timestamp": "0001-01-01T00:00:00Z"
+  }
+}

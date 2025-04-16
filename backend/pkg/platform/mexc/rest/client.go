@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/pkg/platform/mexc/apikeystore"
-	"golang.org/x/time/rate"
 	"github.com/cenkalti/backoff/v4"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -71,6 +71,7 @@ func (e *APIError) IsRetryable() bool {
 }
 
 // Client implements the MEXC REST API client
+// Note: MEXC API requires the APIKEY header (not X-MBX-APIKEY) for authentication
 type Client struct {
 	httpClient         *http.Client
 	baseURL            string
@@ -139,7 +140,6 @@ func NewClientWithKeyStore(keyStore apikeystore.KeyStore, keyID string, options 
 		// Use exponential backoff as default
 		backoffStrategy: backoff.NewExponentialBackOff(),
 	}
-
 
 	// Apply options
 	for _, option := range options {
@@ -328,7 +328,7 @@ func (c *Client) doPrivateAPICall(ctx context.Context, method, path string, para
 	req.URL.RawQuery = q.Encode()
 
 	// Set headers
-	req.Header.Set("X-MBX-APIKEY", creds.APIKey)
+	req.Header.Set("APIKEY", creds.APIKey)
 	if reqBody != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

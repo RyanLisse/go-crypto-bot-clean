@@ -249,6 +249,20 @@
 .brutalist-button.danger {
   border-color: var(--brutal-danger);
   color: var(--brutal-danger);
+  /*
+  Utility classes removed:
+  - .text-success
+  - .text-error
+  - .text-warning
+  - .text-info
+  - .clickable
+  Use TailwindCSS equivalents instead:
+  - .text-success      => text-green-500
+  - .text-error        => text-red-500
+  - .text-warning      => text-yellow-500 or text-orange-500
+  - .text-info         => text-blue-500
+  - .clickable         => cursor-pointer
+*/
 }
 
 .brutalist-button.success {

@@ -30,12 +30,6 @@ type AutoBuyRuleEntity struct {
 	CreatedAt           time.Time  `gorm:"not null;autoCreateTime"`
 	UpdatedAt           time.Time  `gorm:"not null;autoUpdateTime"`
 	DeletedAt           *time.Time `gorm:"index"`
-
-	// Deprecated fields (for migration purposes)
-	UsePercentage    *bool
-	PercentageAmount *float64
-	FixedAmount      *float64
-	MinOrderAmount   *float64
 }
 
 // TableName specifies the table name for the AutoBuyRuleEntity

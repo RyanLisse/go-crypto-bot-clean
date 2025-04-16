@@ -5,18 +5,18 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
 // AIUsecase handles AI-related operations
 type AIUsecase struct {
-	aiService                port.AIService
-	conversationMemoryRepo   port.ConversationMemoryRepository
-	embeddingRepo            port.EmbeddingRepository
-	logger                   zerolog.Logger
+	aiService              port.AIService
+	conversationMemoryRepo port.ConversationMemoryRepository
+	embeddingRepo          port.EmbeddingRepository
+	logger                 zerolog.Logger
 }
 
 // NewAIUsecase creates a new AIUsecase
@@ -35,7 +35,7 @@ func NewAIUsecase(
 }
 
 // Chat sends a message to the AI and returns a response
-func (uc *AIUsecase) Chat(ctx context.Context, userID, message, conversationID string) (*model.AIMessage, error) {
+func (uc *AIUsecase) Chat(ctx context.Context, userID, message, conversationID string, tradingContext map[string]interface{}) (*model.AIMessage, error) {
 	// Create a new conversation if conversationID is empty
 	if conversationID == "" {
 		conversation := &model.AIConversation{
@@ -45,56 +45,56 @@ func (uc *AIUsecase) Chat(ctx context.Context, userID, message, conversationID s
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
-		
+
 		if err := uc.conversationMemoryRepo.SaveConversation(ctx, conversation); err != nil {
 			uc.logger.Error().Err(err).Msg("Failed to save new conversation")
 			return nil, err
 		}
-		
+
 		conversationID = conversation.ID
 	}
-	
+
 	// Create user message
 	userMessage := &model.AIMessage{
-		ID:            uuid.New().String(),
+		ID:             uuid.New().String(),
 		ConversationID: conversationID,
-		Role:          "user",
-		Content:       message,
-		Timestamp:     time.Now(),
+		Role:           "user",
+		Content:        message,
+		Timestamp:      time.Now(),
 	}
-	
+
 	// Save user message
 	if err := uc.conversationMemoryRepo.SaveMessage(ctx, userMessage); err != nil {
 		uc.logger.Error().Err(err).Msg("Failed to save user message")
 		return nil, err
 	}
-	
+
 	// Get conversation history
 	messages, err := uc.conversationMemoryRepo.GetMessages(ctx, conversationID, 10, 0)
 	if err != nil {
 		uc.logger.Error().Err(err).Msg("Failed to get conversation history")
 		return nil, err
 	}
-	
+
 	// Convert messages to AIMessage slice
 	aiMessages := make([]model.AIMessage, len(messages))
 	for i, msg := range messages {
 		aiMessages[i] = *msg
 	}
-	
-	// Send message to AI with history
-	response, err := uc.aiService.ChatWithHistory(ctx, aiMessages)
+
+	// Send message to AI with history and trading context
+	response, err := uc.aiService.ChatWithHistory(ctx, aiMessages, tradingContext)
 	if err != nil {
 		uc.logger.Error().Err(err).Msg("Failed to get AI response")
 		return nil, err
 	}
-	
+
 	// Save AI response
 	if err := uc.conversationMemoryRepo.SaveMessage(ctx, response); err != nil {
 		uc.logger.Error().Err(err).Msg("Failed to save AI response")
 		// Don't return error here, we still want to return the response to the user
 	}
-	
+
 	// Update conversation title if it's the first message
 	if len(aiMessages) <= 2 {
 		conversation, err := uc.conversationMemoryRepo.GetConversation(ctx, conversationID)
@@ -103,7 +103,7 @@ func (uc *AIUsecase) Chat(ctx context.Context, userID, message, conversationID s
 			_ = uc.conversationMemoryRepo.SaveConversation(ctx, conversation)
 		}
 	}
-	
+
 	return response, nil
 }
 
@@ -113,12 +113,12 @@ func (uc *AIUsecase) GetConversation(ctx context.Context, userID, conversationID
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Check if the conversation belongs to the user
 	if conversation.UserID != userID {
 		return nil, errors.New("unauthorized access to conversation")
 	}
-	
+
 	return conversation, nil
 }
 
@@ -134,26 +134,31 @@ func (uc *AIUsecase) DeleteConversation(ctx context.Context, userID, conversatio
 	if err != nil {
 		return err
 	}
-	
+
 	if conversation.UserID != userID {
 		return errors.New("unauthorized access to conversation")
 	}
-	
+
 	return uc.conversationMemoryRepo.DeleteConversation(ctx, conversationID)
+}
+
+// GetMessages retrieves messages for a conversation
+func (uc *AIUsecase) GetMessages(ctx context.Context, conversationID string, limit, offset int) ([]*model.AIMessage, error) {
+	return uc.conversationMemoryRepo.GetMessages(ctx, conversationID, limit, offset)
 }
 
 // GenerateInsight generates an insight based on provided data
 func (uc *AIUsecase) GenerateInsight(ctx context.Context, userID, insightType string, data map[string]interface{}) (*model.AIInsight, error) {
 	// Add user ID to data
 	data["user_id"] = userID
-	
+
 	// Generate insight
 	insight, err := uc.aiService.GenerateInsight(ctx, insightType, data)
 	if err != nil {
 		uc.logger.Error().Err(err).Str("insightType", insightType).Msg("Failed to generate insight")
 		return nil, err
 	}
-	
+
 	return insight, nil
 }
 
@@ -161,14 +166,14 @@ func (uc *AIUsecase) GenerateInsight(ctx context.Context, userID, insightType st
 func (uc *AIUsecase) GenerateTradeRecommendation(ctx context.Context, userID string, data map[string]interface{}) (*model.AITradeRecommendation, error) {
 	// Add user ID to data
 	data["user_id"] = userID
-	
+
 	// Generate trade recommendation
 	recommendation, err := uc.aiService.GenerateTradeRecommendation(ctx, data)
 	if err != nil {
 		uc.logger.Error().Err(err).Msg("Failed to generate trade recommendation")
 		return nil, err
 	}
-	
+
 	return recommendation, nil
 }
 

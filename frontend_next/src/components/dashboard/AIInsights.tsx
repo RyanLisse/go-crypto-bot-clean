@@ -7,8 +7,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Loader2, AlertCircle, TrendingUp, TrendingDown, RefreshCw, ChevronDown, ChevronUp, Lightbulb, BarChart, LineChart, PieChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePortfolioQuery } from '@/hooks/queries/usePortfolioQueries';
-import { useTradeHistoryQuery } from '@/hooks/queries/useTradeQueries';
+import { usePortfolioSummaryQuery } from '../../../../frontend/src/hooks/queries/usePortfolioQueries';
+import { useTradeHistoryQuery } from '../../../../frontend/src/hooks/queries/useTradeQueries';
 
 interface AIInsightsProps {
   className?: string;
@@ -52,7 +52,8 @@ async function fetchAIInsights(portfolioData: any, tradeHistory: any): Promise<I
 }
 
 // Mutation function for generating AI insights
-const generateAIInsightsFn = async ({ portfolio, tradeHistory }: { portfolio: any; tradeHistory: any }): Promise<Insight[]> => {
+const generateAIInsightsFn = async (args: { portfolio: any; tradeHistory: any }): Promise<Insight[]> => {
+  const { portfolio, tradeHistory } = args;
   try {
     return await fetchAIInsights(portfolio, tradeHistory);
   } catch (error) {
@@ -105,7 +106,7 @@ export function AIInsights({ className }: AIInsightsProps) {
   const [expandedInsights, setExpandedInsights] = useState<string[]>([]);
   
   // Get portfolio and trade history data
-  const { data: portfolioData } = usePortfolioQuery();
+  const { data: portfolioData } = usePortfolioSummaryQuery();
   const { data: tradeHistory } = useTradeHistoryQuery(50);
   
   // TanStack Query mutation for generating insights
@@ -115,7 +116,7 @@ export function AIInsights({ className }: AIInsightsProps) {
     isPending,
     error,
     reset,
-  } = useMutation<Insight[], Error, { portfolio: any; tradeHistory: any }>(generateAIInsightsFn);
+  } = useMutation<Insight[], Error, { portfolio: any; tradeHistory: any }>(generateAIInsightsFn, {});
 
   // Trigger insights generation when portfolioData or tradeHistory changes
   React.useEffect(() => {
@@ -136,13 +137,13 @@ export function AIInsights({ className }: AIInsightsProps) {
   };
   
   // Filter insights based on active tab
-  const filteredInsights = insights?.filter(insight => {
+  const filteredInsights: Insight[] = (insights ?? []).filter((insight: Insight) => {
     if (activeTab === 'all') return true;
     return insight.type === activeTab;
   });
   
   // Get importance color
-  const getImportanceColor = (importance: string) => {
+  const getImportanceColor = (importance: string): string => {
     switch (importance) {
       case 'high':
         return 'bg-red-100 text-red-800';
@@ -156,7 +157,7 @@ export function AIInsights({ className }: AIInsightsProps) {
   };
   
   // Get type icon
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string): JSX.Element | null => {
     switch (type) {
       case 'portfolio':
         return <PieChart className="h-4 w-4" />;
@@ -264,7 +265,7 @@ export function AIInsights({ className }: AIInsightsProps) {
                       
                       {insight.metrics && (
                         <div className="grid grid-cols-2 gap-4 mb-4">
-                          {insight.metrics.map((metric, index) => (
+                          {insight.metrics?.map((metric: { name: string; value: string; change?: number }, index: number) => (
                             <div key={index} className="bg-muted/50 p-3 rounded-md">
                               <p className="text-xs text-muted-foreground">{metric.name}</p>
                               <div className="flex items-center mt-1">
@@ -311,4 +312,4 @@ export function AIInsights({ className }: AIInsightsProps) {
   );
 }
 
-export { AIInsights };
+

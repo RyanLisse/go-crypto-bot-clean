@@ -1,11 +1,11 @@
 package controller
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/apperror"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/service"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/util"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 )
@@ -37,8 +37,13 @@ func (c *AuthController) VerifyToken(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Token string `json:"token"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		apperror.WriteError(w, apperror.NewInvalid("Invalid request body", nil, err))
+	// Use standardized JSON body parsing utility for better error handling
+	if err := util.ParseJSONBody(r, &request); err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			apperror.WriteError(w, appErr)
+		} else {
+			apperror.WriteError(w, apperror.NewInternal(err))
+		}
 		return
 	}
 
@@ -77,5 +82,5 @@ func (c *AuthController) VerifyToken(w http.ResponseWriter, r *http.Request) {
 	// Write response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	util.WriteJSONResponse(w, http.StatusOK, response)
 }

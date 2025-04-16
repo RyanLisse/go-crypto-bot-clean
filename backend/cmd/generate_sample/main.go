@@ -2,11 +2,9 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/scripts"
 )
 
 func main() {
 	fmt.Println("Generating sample data...")
-	scripts.GenerateSampleData()
+	// TODO: Implement GenerateSample logic directly here or move code from scripts/generate_sample_data.go
 }

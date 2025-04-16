@@ -11,8 +11,17 @@ import (
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
+	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 )
+
+func init() {
+	// Load .env file if it exists
+	if err := godotenv.Load(); err != nil {
+		// It's okay if .env doesn't exist, we'll just use environment variables
+		log.Println("Warning: .env file not found, using environment variables")
+	}
+}
 
 func main() {
 	// Initialize logger

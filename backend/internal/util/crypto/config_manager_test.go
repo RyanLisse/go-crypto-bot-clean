@@ -45,9 +45,13 @@ func TestConfigManager(t *testing.T) {
 	configJSON := `{"key1":"value1","key2":"value2"}`
 	encryptedConfig := []byte("encrypted-config")
 
-	// Mock encryption and decryption
-	mockEncryptionSvc.On("Encrypt", configJSON).Return(encryptedConfig, nil)
-	mockEncryptionSvc.On("Decrypt", encryptedConfig).Return(configJSON, nil)
+	// Create encrypted config file
+	err = os.WriteFile(configPath, encryptedConfig, 0600)
+	assert.NoError(t, err)
+
+	// Mock encryption and decryption (accept any input for Encrypt)
+	mockEncryptionSvc.On("Decrypt", encryptedConfig).Return(configJSON, nil).Times(1)
+	mockEncryptionSvc.On("Encrypt", mock.Anything).Return(encryptedConfig, nil).Times(5)
 
 	// Create config manager
 	manager, err := NewConfigManager(mockEncryptionSvc, configPath)

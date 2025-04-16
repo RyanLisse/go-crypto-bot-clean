@@ -31,22 +31,8 @@ type Config struct {
 		FrontendURL        string        `mapstructure:"frontend_url"`
 		CORSAllowedOrigins []string      `mapstructure:"cors_allowed_origins"`
 	} `mapstructure:"server"`
-	Database struct {
-		Driver   string `mapstructure:"driver"`
-		Path     string `mapstructure:"path"`
-		Host     string `mapstructure:"host"`
-		Port     int    `mapstructure:"port"`
-		User     string `mapstructure:"user"`
-		Password string `mapstructure:"password"`
-		Name     string `mapstructure:"name"`
-		SSLMode  string `mapstructure:"ssl_mode"`
-		Turso    struct {
-			Enabled   bool   `mapstructure:"enabled"`
-			URL       string `mapstructure:"url"`
-			AuthToken string `mapstructure:"auth_token"`
-		} `mapstructure:"turso"`
-	} `mapstructure:"database"`
-	Market struct {
+	Database DatabaseConfig `mapstructure:"database"`
+	Market   struct {
 		Cache struct {
 			TickerTTL    int `mapstructure:"ticker_ttl"`
 			CandleTTL    int `mapstructure:"candle_ttl"`
@@ -123,6 +109,24 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("unable to decode config: %w", err)
 	}
 
+	// Explicitly set MEXC API credentials from environment variables
+	// This is needed because the YAML variable substitution may not work properly
+	if apiKey := os.Getenv("MEXC_API_KEY"); apiKey != "" {
+		config.MEXC.APIKey = apiKey
+	}
+
+	if apiSecret := os.Getenv("MEXC_SECRET_KEY"); apiSecret != "" {
+		config.MEXC.APISecret = apiSecret
+	}
+
+	if baseURL := os.Getenv("MEXC_BASE_URL"); baseURL != "" {
+		config.MEXC.BaseURL = baseURL
+	}
+
+	if wsBaseURL := os.Getenv("MEXC_WEBSOCKET_URL"); wsBaseURL != "" {
+		config.MEXC.WSBaseURL = wsBaseURL
+	}
+
 	// Validate config
 	if err := validateConfig(&config); err != nil {
 		return nil, err
@@ -159,6 +163,23 @@ type WebhookNotification struct {
 	MinLevel  string            `mapstructure:"min_level"`
 	Timeout   time.Duration     `mapstructure:"timeout"`
 	BatchSize int               `mapstructure:"batch_size"`
+}
+
+// DatabaseConfig holds database configuration
+type DatabaseConfig struct {
+	Driver   string `mapstructure:"driver"`
+	Path     string `mapstructure:"path"`
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	Name     string `mapstructure:"name"`
+	SSLMode  string `mapstructure:"ssl_mode"`
+	Turso    struct {
+		Enabled   bool   `mapstructure:"enabled"`
+		URL       string `mapstructure:"url"`
+		AuthToken string `mapstructure:"auth_token"`
+	} `mapstructure:"turso"`
 }
 
 // setDefaults sets the default values for configuration

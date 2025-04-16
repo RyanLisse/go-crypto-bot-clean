@@ -192,8 +192,8 @@ func (l *AdvancedRateLimiter) Allow(r *http.Request) (bool, string, error) {
 
 	// Get user ID from context
 	var userID string
-	if id, ok := GetUserIDFromContext(r.Context()); ok {
-		userID = id
+	if user, ok := GetUserFromContext(r.Context()); ok && user != nil {
+		userID = user.ID
 	}
 
 	// Check if the user is authenticated

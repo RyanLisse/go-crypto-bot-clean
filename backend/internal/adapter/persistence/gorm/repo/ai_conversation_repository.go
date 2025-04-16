@@ -309,3 +309,31 @@ func (r *GormAIConversationRepository) messagesToDomain(entities []AIMessageEnti
 
 // Ensure GormAIConversationRepository implements port.ConversationMemoryRepository
 var _ port.ConversationMemoryRepository = (*GormAIConversationRepository)(nil)
+
+// GetMessage gets a message by ID
+func (r *GormAIConversationRepository) GetMessage(ctx context.Context, messageID string) (*model.AIMessage, error) {
+	var entity AIMessageEntity
+	result := r.db.Where("id = ?", messageID).First(&entity)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, errors.New("message not found")
+		}
+		return nil, result.Error
+	}
+
+	return r.messageToDomain(&entity), nil
+}
+
+// DeleteMessage deletes a message
+func (r *GormAIConversationRepository) DeleteMessage(ctx context.Context, messageID string) error {
+	result := r.db.Where("id = ?", messageID).Delete(&AIMessageEntity{})
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("message not found")
+	}
+
+	return nil
+}

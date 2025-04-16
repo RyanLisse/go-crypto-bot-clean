@@ -30,7 +30,7 @@ func NewWalletConnectionHandler(
 }
 
 // RegisterRoutes registers the wallet connection routes
-func (h *WalletConnectionHandler) RegisterRoutes(r chi.Router, authMiddleware *middleware.EnhancedClerkMiddleware) {
+func (h *WalletConnectionHandler) RegisterRoutes(r chi.Router, authMiddleware middleware.AuthMiddleware) {
 	r.Route("/wallet-connection", func(r chi.Router) {
 		// Protected routes
 		r.Group(func(r chi.Router) {
@@ -111,7 +111,7 @@ func (h *WalletConnectionHandler) Connect(w http.ResponseWriter, r *http.Request
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return
@@ -185,7 +185,7 @@ func (h *WalletConnectionHandler) Verify(w http.ResponseWriter, r *http.Request)
 // RefreshWallet handles the refresh wallet endpoint
 func (h *WalletConnectionHandler) RefreshWallet(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	_, ok := middleware.GetUserIDFromContext(r.Context())
+	_, ok := r.Context().Value("userID").(string)
 	if !ok {
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
 		return

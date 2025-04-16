@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/validation"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware"
+
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/apperror"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
@@ -47,7 +47,7 @@ type CreateCredentialRequest struct {
 // CreateCredential creates a new API credential
 func (h *APICredentialHandler) CreateCredential(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		h.logger.Error().Msg("User ID not found in context")
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
@@ -104,7 +104,7 @@ func (h *APICredentialHandler) CreateCredential(w http.ResponseWriter, r *http.R
 // ListCredentials lists API credentials for the current user
 func (h *APICredentialHandler) ListCredentials(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		h.logger.Error().Msg("User ID not found in context")
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
@@ -145,7 +145,7 @@ func (h *APICredentialHandler) ListCredentials(w http.ResponseWriter, r *http.Re
 // GetCredential gets an API credential by ID
 func (h *APICredentialHandler) GetCredential(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		h.logger.Error().Msg("User ID not found in context")
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
@@ -207,7 +207,7 @@ type UpdateCredentialRequest struct {
 // UpdateCredential updates an API credential
 func (h *APICredentialHandler) UpdateCredential(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		h.logger.Error().Msg("User ID not found in context")
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))
@@ -300,7 +300,7 @@ func (h *APICredentialHandler) UpdateCredential(w http.ResponseWriter, r *http.R
 // DeleteCredential deletes an API credential
 func (h *APICredentialHandler) DeleteCredential(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("userID").(string)
 	if !ok {
 		h.logger.Error().Msg("User ID not found in context")
 		apperror.WriteError(w, apperror.NewUnauthorized("User ID not found in context", nil))

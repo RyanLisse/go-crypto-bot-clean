@@ -3,6 +3,7 @@ package crypto
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -99,21 +100,38 @@ func (f *EncryptionServiceFactory) createEnhancedEncryptionService() (Encryption
 
 // createKeyManager creates a key manager based on environment variables
 func createKeyManager() (KeyManager, error) {
-	// Check if we should use the environment key manager
+	// Check if we should use the environment key manager with multiple keys
 	if os.Getenv("ENCRYPTION_KEYS") != "" {
 		return NewEnvKeyManager()
 	}
 
-	// Fallback to a simple key manager with a single key
+	// Use a single key manager
 	keyB64 := os.Getenv("ENCRYPTION_KEY")
 	if keyB64 == "" {
-		// For development, use a default key
-		keyB64 = "Wn3PvhLOYk0QpFdod9qUDRRik9cI8jD3noi0TgrTJ1M="
+		// Check if we're in production
+		if os.Getenv("ENV") == "production" || os.Getenv("GO_ENV") == "production" {
+			return nil, errors.New("ENCRYPTION_KEY environment variable is required in production")
+		}
+
+		// For non-production, log a warning and use a temporary key
+		fmt.Fprintf(os.Stderr, "WARNING: Using a temporary encryption key. This is insecure and should only be used for development.\n")
+		fmt.Fprintf(os.Stderr, "WARNING: Set the ENCRYPTION_KEY environment variable to a secure 32-byte key encoded in base64.\n")
+
+		// Generate a temporary key
+		tempKey, err := GenerateEncryptionKey()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate temporary encryption key: %w", err)
+		}
+		keyB64 = tempKey
 	}
 
 	key, err := base64.StdEncoding.DecodeString(keyB64)
-	if err != nil || len(key) != 32 {
-		return nil, errors.New("invalid encryption key")
+	if err != nil {
+		return nil, fmt.Errorf("invalid encryption key format (must be base64): %w", err)
+	}
+
+	if len(key) != 32 {
+		return nil, fmt.Errorf("invalid encryption key length: got %d bytes, want 32 bytes", len(key))
 	}
 
 	manager := &EnvKeyManager{

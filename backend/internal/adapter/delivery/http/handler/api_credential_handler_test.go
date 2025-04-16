@@ -9,10 +9,9 @@ import (
 	"testing"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/handler"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware"
+
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase/mocks"
-	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -39,7 +38,7 @@ func TestCreateCredential(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/credentials", bytes.NewReader(reqBytes))
 
 	// Set up the context with a user ID
-	ctx := context.WithValue(req.Context(), middleware.UserIDKey, "user1")
+	ctx := context.WithValue(req.Context(), "userID", "user1")
 	req = req.WithContext(ctx)
 
 	// Create a response recorder
@@ -81,7 +80,7 @@ func TestListCredentials(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/credentials", nil)
 
 	// Set up the context with a user ID
-	ctx := context.WithValue(req.Context(), middleware.UserIDKey, "user1")
+	ctx := context.WithValue(req.Context(), "userID", "user1")
 	req = req.WithContext(ctx)
 
 	// Create a response recorder
@@ -130,8 +129,9 @@ func TestListCredentials(t *testing.T) {
 	mockUseCase.AssertExpectations(t)
 }
 
-func setupRouter(h *handler.APICredentialHandler) *chi.Mux {
-	r := chi.NewRouter()
-	h.RegisterRoutes(r)
-	return r
-}
+// Unused helper function - can be activated when needed for route testing
+// func setupRouter(h *handler.APICredentialHandler) *chi.Mux {
+// 	r := chi.NewRouter()
+// 	h.RegisterRoutes(r)
+// 	return r
+// }

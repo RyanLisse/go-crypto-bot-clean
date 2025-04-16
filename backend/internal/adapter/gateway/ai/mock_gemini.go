@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	"github.com/google/uuid"
 )
 
 // MockGeminiAIService is a mock implementation of the GeminiAIService for testing
@@ -31,7 +31,8 @@ func (s *MockGeminiAIService) Chat(ctx context.Context, message string, conversa
 }
 
 // ChatWithHistory sends a message with conversation history to the AI and returns a mock response
-func (s *MockGeminiAIService) ChatWithHistory(ctx context.Context, messages []model.AIMessage) (*model.AIMessage, error) {
+// ChatWithHistory sends a message with conversation history and trading context to the AI and returns a mock response
+func (s *MockGeminiAIService) ChatWithHistory(ctx context.Context, messages []model.AIMessage, tradingContext map[string]interface{}) (*model.AIMessage, error) {
 	conversationID := ""
 	if len(messages) > 0 {
 		conversationID = messages[0].ConversationID
@@ -102,6 +103,6 @@ func (s *MockGeminiAIService) GenerateEmbedding(ctx context.Context, text string
 }
 
 // RegisterFunction registers a mock function handler
-func (s *MockGeminiAIService) RegisterFunction(name string, handler FunctionHandler) {
+func (s *MockGeminiAIService) RegisterFunction(name string, handler func(ctx context.Context, params map[string]interface{}) (interface{}, error)) {
 	// Do nothing in the mock implementation
 }

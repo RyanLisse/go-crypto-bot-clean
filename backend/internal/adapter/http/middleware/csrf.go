@@ -149,7 +149,7 @@ func (m *CSRFMiddleware) getOrCreateToken(w http.ResponseWriter, r *http.Request
 func (m *CSRFMiddleware) generateToken(r *http.Request) (string, error) {
 	// Get user ID from context
 	var userID string
-	if id, ok := GetUserIDFromContext(r.Context()); ok {
+	if id, ok := r.Context().Value("userID").(string); ok {
 		userID = id
 	}
 
@@ -206,7 +206,7 @@ func (m *CSRFMiddleware) verifyToken(r *http.Request, tokenWithSignature string)
 
 	// Get user ID from context
 	var userID string
-	if id, ok := GetUserIDFromContext(r.Context()); ok {
+	if id, ok := r.Context().Value("userID").(string); ok {
 		userID = id
 	}
 

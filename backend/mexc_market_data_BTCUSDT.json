@@ -1,0 +1,111 @@
+{
+  "symbol": "BTCUSDT",
+  "ticker": {
+    "symbol": "BTCUSDT",
+    "exchange": "",
+    "lastPrice": 84764.6,
+    "priceChange": -149.85,
+    "priceChangePercent": -0.0017,
+    "highPrice": 85270.27,
+    "lowPrice": 83111.64,
+    "volume": 1594.44868667,
+    "quoteVolume": 0,
+    "openPrice": 0,
+    "prevClosePrice": 0,
+    "bidPrice": 0,
+    "bidQty": 0,
+    "askPrice": 0,
+    "askQty": 0,
+    "count": 0,
+    "timestamp": "0001-01-01T00:00:00Z"
+  },
+  "orderBook": {
+    "symbol": "BTCUSDT",
+    "lastUpdateId": 41247234909,
+    "bids": [
+      {
+        "price": 84720.39,
+        "quantity": 2.54748
+      },
+      {
+        "price": 84720.38,
+        "quantity": 0.26615751
+      },
+      {
+        "price": 84720.37,
+        "quantity": 0.23980642
+      },
+      {
+        "price": 84720.26,
+        "quantity": 2.50287
+      },
+      {
+        "price": 84720.25,
+        "quantity": 1.0705822
+      },
+      {
+        "price": 84720.24,
+        "quantity": 1.03559122
+      },
+      {
+        "price": 84720.05,
+        "quantity": 0.26318848
+      },
+      {
+        "price": 84720.04,
+        "quantity": 0.24666103
+      },
+      {
+        "price": 84719.92,
+        "quantity": 1.11460119
+      },
+      {
+        "price": 84719.91,
+        "quantity": 1.07223285
+      }
+    ],
+    "asks": [
+      {
+        "price": 84720.4,
+        "quantity": 2.421285
+      },
+      {
+        "price": 84720.53,
+        "quantity": 1.61419
+      },
+      {
+        "price": 84721.36,
+        "quantity": 0.24670388
+      },
+      {
+        "price": 84721.37,
+        "quantity": 0.2710572
+      },
+      {
+        "price": 84721.38,
+        "quantity": 0.27536634
+      },
+      {
+        "price": 84721.39,
+        "quantity": 0.27745843
+      },
+      {
+        "price": 84721.49,
+        "quantity": 1.12156293
+      },
+      {
+        "price": 84721.5,
+        "quantity": 0.94962505
+      },
+      {
+        "price": 84721.51,
+        "quantity": 1.12366713
+      },
+      {
+        "price": 84721.52,
+        "quantity": 0.97722441
+      }
+    ],
+    "timestamp": "0001-01-01T00:00:00Z"
+  }
+}

@@ -62,37 +62,43 @@ func (r *GormAIEmbeddingRepository) SaveEmbedding(ctx context.Context, embedding
 	})
 }
 
-// FindSimilar finds similar embeddings
-// Note: This is a simplified implementation that doesn't use vector similarity search
-// In a production environment, you would use a vector database like Pinecone, Milvus, or pgvector
-func (r *GormAIEmbeddingRepository) FindSimilar(ctx context.Context, vector []float64, limit int) ([]*model.AIEmbedding, error) {
-	r.logger.Warn().Msg("FindSimilar is using a simplified implementation without vector similarity search")
+// SearchEmbeddings searches for embeddings similar to a query vector
+// This is a placeholder implementation - in a real system you'd use a vector database like Pinecone, Weaviate, etc.
+func (r *GormAIEmbeddingRepository) SearchEmbeddings(ctx context.Context, queryVector []float64, limit int) ([]*model.AIEmbedding, error) {
+	// In a real implementation, this would use cosine similarity search or other vector similarity
+	// For this simple implementation, just return the most recent embeddings
 
-	// Get all embeddings
 	var entities []AIEmbeddingEntity
-	err := r.GetDB(ctx).
-		Order("created_at DESC").
-		Limit(limit).
-		Find(&entities).Error
-	if err != nil {
-		r.logger.Error().Err(err).Msg("Failed to find embeddings")
+	if err := r.db.WithContext(ctx).Order("created_at DESC").Limit(limit).Find(&entities).Error; err != nil {
 		return nil, err
 	}
 
 	// Convert to domain models
-	embeddings := make([]*model.AIEmbedding, 0, len(entities))
-	for _, entity := range entities {
-		embedding := r.toDomain(&entity)
-		if embedding != nil {
-			embeddings = append(embeddings, embedding)
-		}
+	embeddings := make([]*model.AIEmbedding, len(entities))
+	for i, entity := range entities {
+		embeddings[i] = r.toDomain(&entity)
 	}
 
 	return embeddings, nil
 }
 
-// GetEmbedding retrieves an embedding by source ID and type
-func (r *GormAIEmbeddingRepository) GetEmbedding(ctx context.Context, sourceID, sourceType string) (*model.AIEmbedding, error) {
+// GetEmbedding retrieves an embedding by ID
+func (r *GormAIEmbeddingRepository) GetEmbedding(ctx context.Context, embeddingID string) (*model.AIEmbedding, error) {
+	var entity AIEmbeddingEntity
+	err := r.FindOne(ctx, &entity, "id = ?", embeddingID)
+	if err != nil {
+		return nil, err
+	}
+
+	if entity.ID == "" {
+		return nil, nil // Not found
+	}
+
+	return r.toDomain(&entity), nil
+}
+
+// GetEmbeddingBySource retrieves an embedding by source ID and type
+func (r *GormAIEmbeddingRepository) GetEmbeddingBySource(ctx context.Context, sourceID, sourceType string) (*model.AIEmbedding, error) {
 	var entity AIEmbeddingEntity
 	err := r.FindOne(ctx, &entity, "source_id = ? AND source_type = ?", sourceID, sourceType)
 	if err != nil {
@@ -109,6 +115,11 @@ func (r *GormAIEmbeddingRepository) GetEmbedding(ctx context.Context, sourceID, 
 // DeleteEmbedding deletes an embedding
 func (r *GormAIEmbeddingRepository) DeleteEmbedding(ctx context.Context, id string) error {
 	return r.DeleteByID(ctx, &AIEmbeddingEntity{}, id)
+}
+
+// FindSimilar is an alias for SearchEmbeddings for backward compatibility
+func (r *GormAIEmbeddingRepository) FindSimilar(ctx context.Context, vector []float64, limit int) ([]*model.AIEmbedding, error) {
+	return r.SearchEmbeddings(ctx, vector, limit)
 }
 
 // Helper methods for entity conversion

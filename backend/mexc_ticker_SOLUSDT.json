@@ -1,0 +1,19 @@
+{
+  "symbol": "SOLUSDT",
+  "exchange": "",
+  "lastPrice": 127.4,
+  "priceChange": -2.65,
+  "priceChangePercent": -0.0203,
+  "highPrice": 130.31,
+  "lowPrice": 123.5,
+  "volume": 645366.74,
+  "quoteVolume": 0,
+  "openPrice": 0,
+  "prevClosePrice": 0,
+  "bidPrice": 0,
+  "bidQty": 0,
+  "askPrice": 0,
+  "askQty": 0,
+  "count": 0,
+  "timestamp": "0001-01-01T00:00:00Z"
+}

@@ -14,19 +14,20 @@ func TestMigrations_RunAll(t *testing.T) {
 		t.Fatalf("failed to open in-memory db: %v", err)
 	}
 	logger := zerolog.Nop()
-	migrator := NewMigrator(db, &logger)
 
-	RegisterMigrations(migrator, &logger)
-	if err := migrator.RunMigrations(); err != nil {
+	// Use RunConsolidatedMigrations
+	if err := RunConsolidatedMigrations(db, &logger); err != nil {
 		t.Fatalf("migrations failed: %v", err)
 	}
 
 	tables := []string{
-		"account_entities",
-		"wallet_entities",
-		"order_entities",
-		"position_entities",
-		"transaction_entities",
+		"enhanced_wallets",
+		"enhanced_wallet_balances",
+		"enhanced_wallet_balance_history", // Note: singular "history" not "histories"
+		"positions",
+		"orders",
+		"transactions",
+		"statuses",
 	}
 	for _, table := range tables {
 		if !db.Migrator().HasTable(table) {

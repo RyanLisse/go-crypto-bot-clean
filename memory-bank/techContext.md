@@ -21,7 +21,7 @@
 - **Database**:
   - TursoDB (primary)
   - SQLite (fallback/development)
-- **API Framework**: 
+- **API Framework**:
   - Chi Router (primary routing)
   - Huma (OpenAPI documentation and service integration)
 - **Authentication**: Clerk SDK
@@ -68,6 +68,24 @@
 - WebSocket implementation
 - Error handling
 - Logging and monitoring
+
+### Backend Refactoring
+- Data flow improvements:
+  - Live API calls instead of mock data
+  - Proper service/repository layer separation
+  - Consistent error handling
+- Redundancy consolidation:
+  - Unified factory pattern implementation
+  - Consolidated entity definitions
+  - Standardized repository implementations
+- Authentication simplification (in progress):
+  - Standardizing on a single auth strategy
+  - Removing redundant middleware
+- Security improvements (planned):
+  - Mandatory encryption for sensitive data
+  - Improved secret management
+- Migration standardization (planned):
+  - Single migration strategy
 
 ### Database Layer
 - TursoDB setup and configuration
