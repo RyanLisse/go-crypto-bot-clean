@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm/repo"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
@@ -20,6 +21,7 @@ type ConsolidatedFactory struct {
 	logger     *zerolog.Logger
 	cfg        *config.Config
 	mexcClient port.MEXCClient
+	txManager  port.TransactionManager
 }
 
 // NewConsolidatedFactory creates a new ConsolidatedFactory
@@ -27,11 +29,15 @@ func NewConsolidatedFactory(db *gormdb.DB, logger *zerolog.Logger, cfg *config.C
 	// Create MEXC client
 	mexcClient := NewMEXCClient(cfg, logger)
 
+	// Create transaction manager
+	txManager := gorm.NewTransactionManager(db, logger)
+
 	return &ConsolidatedFactory{
 		db:         db,
 		logger:     logger,
 		cfg:        cfg,
 		mexcClient: mexcClient,
+		txManager:  txManager,
 	}
 }
 

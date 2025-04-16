@@ -1,10 +1,11 @@
-package handler
+package mocks
 
 import (
 	"context"
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/usecase"
 )
 
 // MockAIUsecase is a mock implementation of the AIUsecase interface for testing

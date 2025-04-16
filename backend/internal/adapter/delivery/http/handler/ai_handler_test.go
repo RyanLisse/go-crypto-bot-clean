@@ -11,6 +11,7 @@ import (
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/response"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/usecase"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"

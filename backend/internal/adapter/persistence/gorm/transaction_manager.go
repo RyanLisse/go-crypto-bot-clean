@@ -15,7 +15,7 @@ type TransactionManager struct {
 }
 
 // NewTransactionManager creates a new TransactionManager
-func NewTransactionManager(db *gorm.DB, logger *zerolog.Logger) *TransactionManager {
+func NewTransactionManager(db *gorm.DB, logger *zerolog.Logger) port.TransactionManager {
 	return &TransactionManager{
 		db:     db,
 		logger: logger,

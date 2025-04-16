@@ -1,2 +1,2 @@
-// Package usecase contains application business logic
+package mocks
 package usecase

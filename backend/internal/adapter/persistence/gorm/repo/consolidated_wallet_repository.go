@@ -78,6 +78,7 @@ func NewConsolidatedWalletRepository(db *gorm.DB, logger *zerolog.Logger) port.W
 	return &ConsolidatedWalletRepository{
 		db:     db,
 		logger: logger,
+		// We'll set the transaction manager later
 	}
 }
 
@@ -101,6 +102,27 @@ func (r *ConsolidatedWalletRepository) Save(ctx context.Context, wallet *model.W
 		}
 	}()
 
+	// Create a transaction context
+	txCtx := context.WithValue(ctx, port.TxContextKey, tx)
+
+	// Save with transaction
+	if err := r.saveWithTransaction(txCtx, wallet); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Commit transaction
+	return tx.Commit().Error
+}
+
+// saveWithTransaction performs the actual save operation within a transaction
+func (r *ConsolidatedWalletRepository) saveWithTransaction(ctx context.Context, wallet *model.Wallet) error {
+	// Get the transaction from context
+	tx, ok := ctx.Value(port.TxContextKey).(*gorm.DB)
+	if !ok || tx == nil {
+		return errors.New("transaction not found in context")
+	}
+
 	// Convert metadata to JSON
 	var metadataJSON []byte
 	var err error
@@ -108,7 +130,6 @@ func (r *ConsolidatedWalletRepository) Save(ctx context.Context, wallet *model.W
 		metadataJSON, err = json.Marshal(wallet.Metadata)
 		if err != nil {
 			r.logger.Error().Err(err).Msg("Failed to marshal wallet metadata")
-			tx.Rollback()
 			return err
 		}
 	}
@@ -131,7 +152,6 @@ func (r *ConsolidatedWalletRepository) Save(ctx context.Context, wallet *model.W
 	result := tx.Where("id = ?", wallet.ID).First(&existingWallet)
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		r.logger.Error().Err(result.Error).Str("id", wallet.ID).Msg("Error checking if wallet exists")
-		tx.Rollback()
 		return result.Error
 	}
 
@@ -140,7 +160,6 @@ func (r *ConsolidatedWalletRepository) Save(ctx context.Context, wallet *model.W
 		// Create new wallet
 		if err := tx.Create(&walletEntity).Error; err != nil {
 			r.logger.Error().Err(err).Str("id", wallet.ID).Msg("Failed to create wallet")
-			tx.Rollback()
 			return err
 		}
 	} else {
@@ -155,7 +174,6 @@ func (r *ConsolidatedWalletRepository) Save(ctx context.Context, wallet *model.W
 			"last_sync_at":    wallet.LastSyncAt,
 		}).Error; err != nil {
 			r.logger.Error().Err(err).Str("id", wallet.ID).Msg("Failed to update wallet")
-			tx.Rollback()
 			return err
 		}
 	}
@@ -163,7 +181,6 @@ func (r *ConsolidatedWalletRepository) Save(ctx context.Context, wallet *model.W
 	// Delete existing balances
 	if err := tx.Where("wallet_id = ?", wallet.ID).Delete(&EnhancedWalletBalanceEntity{}).Error; err != nil {
 		r.logger.Error().Err(err).Str("id", wallet.ID).Msg("Failed to delete existing balances")
-		tx.Rollback()
 		return err
 	}
 
@@ -180,13 +197,11 @@ func (r *ConsolidatedWalletRepository) Save(ctx context.Context, wallet *model.W
 
 		if err := tx.Create(&balanceEntity).Error; err != nil {
 			r.logger.Error().Err(err).Str("id", wallet.ID).Str("asset", string(asset)).Msg("Failed to create balance")
-			tx.Rollback()
 			return err
 		}
 	}
 
-	// Commit transaction
-	return tx.Commit().Error
+	return nil
 }
 
 // GetByID retrieves a wallet by ID
@@ -282,22 +297,40 @@ func (r *ConsolidatedWalletRepository) DeleteWallet(ctx context.Context, id stri
 		}
 	}()
 
-	// Delete balances
-	if err := tx.Where("wallet_id = ?", id).Delete(&EnhancedWalletBalanceEntity{}).Error; err != nil {
-		r.logger.Error().Err(err).Str("id", id).Msg("Failed to delete balances")
-		tx.Rollback()
-		return err
-	}
+	// Create a transaction context
+	txCtx := context.WithValue(ctx, port.TxContextKey, tx)
 
-	// Delete wallet
-	if err := tx.Where("id = ?", id).Delete(&EnhancedWalletEntity{}).Error; err != nil {
-		r.logger.Error().Err(err).Str("id", id).Msg("Failed to delete wallet")
+	// Delete with transaction
+	if err := r.deleteWalletWithTransaction(txCtx, id); err != nil {
 		tx.Rollback()
 		return err
 	}
 
 	// Commit transaction
 	return tx.Commit().Error
+}
+
+// deleteWalletWithTransaction performs the actual delete operation within a transaction
+func (r *ConsolidatedWalletRepository) deleteWalletWithTransaction(ctx context.Context, id string) error {
+	// Get the transaction from context
+	tx, ok := ctx.Value(port.TxContextKey).(*gorm.DB)
+	if !ok || tx == nil {
+		return errors.New("transaction not found in context")
+	}
+
+	// Delete balances
+	if err := tx.Where("wallet_id = ?", id).Delete(&EnhancedWalletBalanceEntity{}).Error; err != nil {
+		r.logger.Error().Err(err).Str("id", id).Msg("Failed to delete balances")
+		return err
+	}
+
+	// Delete wallet
+	if err := tx.Where("id = ?", id).Delete(&EnhancedWalletEntity{}).Error; err != nil {
+		r.logger.Error().Err(err).Str("id", id).Msg("Failed to delete wallet")
+		return err
+	}
+
+	return nil
 }
 
 // SaveBalanceHistory saves a balance history record

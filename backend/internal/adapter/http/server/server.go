@@ -8,10 +8,8 @@ import (
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/controller"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm/repo"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -45,14 +43,15 @@ func NewServer(db *gorm.DB, cfg *config.Config, authConfig *config.AuthConfig, l
 
 // SetupRoutes sets up the routes for the server
 func (s *Server) SetupRoutes() error {
+	// Create factory
+	factory := factory.NewConsolidatedFactory(s.db, s.logger, s.config)
+
 	// Create wallet service/controller
-	mexcClient := factory.NewMEXCClient(s.config, s.logger)
-	walletRepo := repo.NewConsolidatedWalletRepository(s.db, s.logger)
-	walletService := usecase.NewWalletService(walletRepo, mexcClient, s.logger)
+	walletService := factory.GetWalletService()
 	walletController := controller.NewWalletController(walletService, s.logger)
 
-	// Create a mock middleware
-	authMiddleware := middleware.NewMockMiddleware(s.logger)
+	// Create auth middleware (using test middleware for now)
+	authMiddleware := middleware.NewTestAuthMiddleware(s.logger)
 
 	// Set up middleware
 	s.router.Use(chimiddleware.RequestID)

@@ -9,6 +9,7 @@ import (
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/usecase"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

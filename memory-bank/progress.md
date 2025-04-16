@@ -137,6 +137,12 @@ Subtasks:
 - ✅ Consolidated wallet repository (kept ConsolidatedWalletRepository)
 - ✅ Created consolidated migrations file using GORM's AutoMigrate
 
+### 3. Standardize Transaction Management (High) - COMPLETED
+- ✅ Updated TransactionManager to implement port.TransactionManager interface
+- ✅ Updated ConsolidatedFactory to create and provide TransactionManager
+- ✅ Updated repositories to use TransactionManager for multi-operation transactions
+- ✅ Updated server.go to use ConsolidatedFactory for dependency injection
+
 ### 3. Simplify Authentication (Medium) - COMPLETED
 - ✅ Standardized on Clerk as the primary authentication strategy
 - ✅ Created consolidated authentication middleware

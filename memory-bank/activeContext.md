@@ -136,4 +136,7 @@ Once the Risk Management Repository is complete, we will:
   - Consolidated crypto utilities (kept feature-rich implementation in internal/util/crypto)
   - Consolidated wallet repository (kept ConsolidatedWalletRepository)
   - Created consolidated migrations file using GORM's AutoMigrate
+  - Standardized transaction management across repositories
+  - Updated ConsolidatedFactory to provide TransactionManager
+  - Updated server.go to use ConsolidatedFactory for dependency injection
 - Ready to proceed with Risk Management System implementation
