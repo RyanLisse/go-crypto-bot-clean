@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	usecase "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 )
 
 // MockPositionUseCase is a mock implementation of the PositionUseCase interface
@@ -163,5 +164,5 @@ func (m *MockPositionUseCase) DeletePosition(ctx context.Context, id string) err
 	return nil
 }
 
-// Ensure MockPositionUseCase implements PositionUseCase
-var _ PositionUseCase = (*MockPositionUseCase)(nil)
+// Ensure MockPositionUseCase implements usecase.PositionUseCase
+var _ usecase.PositionUseCase = (*MockPositionUseCase)(nil)

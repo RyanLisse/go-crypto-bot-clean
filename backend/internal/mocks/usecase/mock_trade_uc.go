@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	usecase "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 )
 
 // MockTradeUseCase is a mock implementation of the TradeUseCase interface
@@ -61,5 +62,5 @@ func (m *MockTradeUseCase) CalculateRequiredQuantity(ctx context.Context, symbol
 	return amount, nil
 }
 
-// Ensure MockTradeUseCase implements TradeUseCase
-var _ TradeUseCase = (*MockTradeUseCase)(nil)
+// Ensure MockTradeUseCase implements usecase.TradeUseCase
+var _ usecase.TradeUseCase = (*MockTradeUseCase)(nil)

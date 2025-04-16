@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/status"
+	usecase "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 )
 
 // MockStatusUseCase is a mock implementation of the StatusUseCase interface
@@ -46,5 +47,5 @@ func (m *MockStatusUseCase) RegisterProvider(provider interface{}) {
 	// No-op
 }
 
-// Ensure MockStatusUseCase implements StatusUseCase
-var _ StatusUseCase = (*MockStatusUseCase)(nil)
+// Ensure MockStatusUseCase implements usecase.StatusUseCase
+var _ usecase.StatusUseCase = (*MockStatusUseCase)(nil)

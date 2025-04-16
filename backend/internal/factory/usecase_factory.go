@@ -3,6 +3,7 @@ package factory
 import (
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
+	mocks "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/usecase"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 	"github.com/rs/zerolog"
 )
@@ -73,13 +74,13 @@ func NewUseCaseFactory(
 // CreateTradeUseCase creates a trade use case
 func (f *UseCaseFactory) CreateTradeUseCase() usecase.TradeUseCase {
 	// Return a mock implementation for now to avoid dependency issues
-	return &usecase.MockTradeUseCase{}
+	return &mocks.MockTradeUseCase{}
 }
 
 // CreatePositionUseCase creates a position use case
 func (f *UseCaseFactory) CreatePositionUseCase() usecase.PositionUseCase {
 	// Using a mock implementation for now
-	return &usecase.MockPositionUseCase{}
+	return &mocks.MockPositionUseCase{}
 }
 
 // CreateNewCoinUseCase creates a new coin use case
@@ -106,5 +107,5 @@ func (f *UseCaseFactory) CreateAIUseCase() *usecase.AIUsecase {
 // CreateStatusUseCase creates a status use case
 func (f *UseCaseFactory) CreateStatusUseCase() usecase.StatusUseCase {
 	// Using a mock implementation for now
-	return &usecase.MockStatusUseCase{}
+	return &mocks.MockStatusUseCase{}
 }
