@@ -7,13 +7,12 @@ import (
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
-// RiskProfileEntity is the GORM entity for risk profile
+// RiskProfileEntity is the GORM entity for risk profiles
 type RiskProfileEntity struct {
 	ID                    string    `gorm:"column:id;primaryKey"`
-	UserID                string    `gorm:"column:user_id;index;unique"`
+	UserID                string    `gorm:"column:user_id;index;uniqueIndex"`
 	MaxPositionSize       float64   `gorm:"column:max_position_size"`
 	MaxTotalExposure      float64   `gorm:"column:max_total_exposure"`
 	MaxDrawdown           float64   `gorm:"column:max_drawdown"`
@@ -34,7 +33,7 @@ func (RiskProfileEntity) TableName() string {
 	return "risk_profiles"
 }
 
-// toRiskProfileEntity converts a risk profile model to entity
+// toEntity converts a risk profile model to entity
 func toRiskProfileEntity(model *model.RiskProfile) *RiskProfileEntity {
 	return &RiskProfileEntity{
 		ID:                    model.ID,
@@ -82,7 +81,7 @@ type GormRiskProfileRepository struct {
 }
 
 // NewGormRiskProfileRepository creates a new instance of GormRiskProfileRepository
-func NewGormRiskProfileRepository(db *gorm.DB) *GormRiskProfileRepository {
+func NewGormRiskProfileRepository(db *gorm.DB) port.RiskProfileRepository {
 	return &GormRiskProfileRepository{
 		db: db,
 	}
@@ -91,46 +90,25 @@ func NewGormRiskProfileRepository(db *gorm.DB) *GormRiskProfileRepository {
 // Save creates or updates a risk profile
 func (r *GormRiskProfileRepository) Save(ctx context.Context, profile *model.RiskProfile) error {
 	entity := toRiskProfileEntity(profile)
-	entity.UpdatedAt = time.Now()
-
-	// Use a transaction for the operation
-	tx := r.db.WithContext(ctx).Begin()
-	if tx.Error != nil {
-		return tx.Error
-	}
-
-	// Try to insert or update based on user_id
-	result := tx.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "user_id"}},
-		UpdateAll: true,
-	}).Create(entity)
-
-	if result.Error != nil {
-		tx.Rollback()
-		return result.Error
-	}
-
-	return tx.Commit().Error
+	return r.db.WithContext(ctx).Save(entity).Error
 }
 
 // GetByUserID retrieves a risk profile for a specific user
 func (r *GormRiskProfileRepository) GetByUserID(ctx context.Context, userID string) (*model.RiskProfile, error) {
 	var entity RiskProfileEntity
-	result := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&entity)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			// Return a default risk profile if none exists
+	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&entity).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Return a default risk profile if none exists for this user
 			return model.NewRiskProfile(userID), nil
 		}
-		return nil, result.Error
+		return nil, err
 	}
 	return entity.toDomain(), nil
 }
 
 // Delete removes a risk profile
 func (r *GormRiskProfileRepository) Delete(ctx context.Context, id string) error {
-	result := r.db.WithContext(ctx).Delete(&RiskProfileEntity{}, "id = ?", id)
-	return result.Error
+	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&RiskProfileEntity{}).Error
 }
 
 // Ensure GormRiskProfileRepository implements port.RiskProfileRepository

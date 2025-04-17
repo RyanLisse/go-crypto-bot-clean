@@ -1,7 +1,5 @@
 package mocks
 
-package mocks
-
 import (
 	event "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/event"
 	mock "github.com/stretchr/testify/mock"

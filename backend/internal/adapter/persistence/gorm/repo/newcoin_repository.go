@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
@@ -68,6 +69,21 @@ func (r *GormNewCoinRepository) Save(ctx context.Context, coin *model.NewCoin) e
 	})
 }
 
+// GetByID retrieves a coin by its ID
+func (r *GormNewCoinRepository) GetByID(ctx context.Context, id string) (*model.NewCoin, error) {
+	var entity NewCoinEntity
+	// Use FindOne from BaseRepository, assuming it handles not found correctly
+	err := r.FindOne(ctx, &entity, "id = ?", id)
+	if err != nil {
+		// If FindOne returns gorm.ErrRecordNotFound, return nil, nil
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err // Return other errors
+	}
+	return r.toDomain(&entity), nil
+}
+
 // GetBySymbol retrieves a coin by its trading symbol
 func (r *GormNewCoinRepository) GetBySymbol(ctx context.Context, symbol string) (*model.NewCoin, error) {
 	var entity NewCoinEntity
@@ -87,8 +103,8 @@ func (r *GormNewCoinRepository) GetBySymbol(ctx context.Context, symbol string) 
 func (r *GormNewCoinRepository) GetRecent(ctx context.Context, limit int) ([]*model.NewCoin, error) {
 	var entities []NewCoinEntity
 
-	err := r.GetDB(ctx).
-		Where("status = ?", string(model.StatusTrading)).
+   err := r.GetDB(ctx).
+       Where("status = ?", string(model.CoinStatusTrading)).
 		Order("became_tradable_at DESC").
 		Limit(limit).
 		Find(&entities).Error
@@ -101,7 +117,7 @@ func (r *GormNewCoinRepository) GetRecent(ctx context.Context, limit int) ([]*mo
 }
 
 // GetByStatus retrieves coins with a specific status
-func (r *GormNewCoinRepository) GetByStatus(ctx context.Context, status model.Status) ([]*model.NewCoin, error) {
+func (r *GormNewCoinRepository) GetByStatus(ctx context.Context, status model.CoinStatus) ([]*model.NewCoin, error) {
 	var entities []NewCoinEntity
 
 	err := r.GetDB(ctx).
@@ -129,9 +145,9 @@ func (r *GormNewCoinRepository) FindRecentlyListed(ctx context.Context, threshol
 	var entities []NewCoinEntity
 
 	err := r.GetDB(ctx).
-		Where("(status = ? AND expected_listing_time <= ?) OR (status = ? AND became_tradable_at >= ?)",
-			string(model.StatusListed), time.Now(),
-			string(model.StatusTrading), thresholdTime).
+       Where("(status = ? AND expected_listing_time <= ?) OR (status = ? AND became_tradable_at >= ?)",
+           string(model.CoinStatusListed), time.Now(),
+           string(model.CoinStatusTrading), thresholdTime).
 		Order("CASE WHEN status = 'listed' THEN 0 ELSE 1 END, expected_listing_time ASC").
 		Find(&entities).Error
 
@@ -206,7 +222,7 @@ func (r *GormNewCoinRepository) toDomain(entity *NewCoinEntity) *model.NewCoin {
 		ID:                    entity.ID,
 		Symbol:                entity.Symbol,
 		Name:                  entity.Name,
-		Status:                model.Status(entity.Status),
+       Status:                model.CoinStatus(entity.Status),
 		ExpectedListingTime:   entity.ExpectedListingTime,
 		BecameTradableAt:      entity.BecameTradableAt,
 		BaseAsset:             entity.BaseAsset,
@@ -275,8 +291,8 @@ func (r *GormNewCoinRepository) toEventDomain(entity *NewCoinEventEntity) *model
 		ID:        entity.ID,
 		CoinID:    entity.CoinID,
 		EventType: entity.EventType,
-		OldStatus: model.Status(entity.OldStatus),
-		NewStatus: model.Status(entity.NewStatus),
+       OldStatus: model.CoinStatus(entity.OldStatus),
+       NewStatus: model.CoinStatus(entity.NewStatus),
 		Data:      data,
 		CreatedAt: entity.CreatedAt,
 	}

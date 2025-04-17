@@ -48,7 +48,7 @@ func (c *ExposureControl) Evaluate(ctx context.Context, userID string, profile *
 		}
 
 		// Add position's current value to total exposure
-		positionValue := position.Quantity * ticker.Price
+		positionValue := position.Quantity * ticker.LastPrice
 		totalExposure += positionValue
 	}
 

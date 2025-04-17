@@ -35,8 +35,9 @@ func NewMarketFactory(cfg *config.Config, logger *zerolog.Logger, db *gorm.DB) *
 
 // CreateMarketRepository creates a market data repository
 func (f *MarketFactory) CreateMarketRepository() (port.MarketRepository, port.SymbolRepository) {
-	repo := gormAdapter.NewMarketRepository(f.db, f.logger)
-	// GORM MarketRepository implements both interfaces
+	// Use the direct repository that implements the new model interfaces directly
+	repo := gormAdapter.NewMarketRepositoryDirect(f.db, f.logger)
+	// MarketRepositoryDirect implements both interfaces
 	return repo, repo
 }
 

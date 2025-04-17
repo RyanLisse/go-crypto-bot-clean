@@ -1,7 +1,5 @@
 package mocks
 
-package mocks
-
 import (
 	context "context"
 
@@ -107,6 +105,24 @@ func (_m *StatusUseCase) GetSystemStatus(ctx context.Context) (*status.SystemSta
 // RegisterProvider provides a mock function with given fields: provider
 func (_m *StatusUseCase) RegisterProvider(provider interface{}) {
 	_m.Called(provider)
+}
+
+// SubscribeToChanges provides a mock function with given fields: ch
+func (_m *StatusUseCase) SubscribeToChanges(ch chan status.StatusChange) error {
+	ret := _m.Called(ch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SubscribeToChanges")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(chan status.StatusChange) error); ok {
+		r0 = rf(ch)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // Start provides a mock function with given fields: ctx

@@ -1,7 +1,5 @@
 package mocks
 
-package mocks
-
 import (
 	context "context"
 

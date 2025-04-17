@@ -61,7 +61,7 @@ func (c *ConcentrationControl) Evaluate(ctx context.Context, userID string, prof
 			continue // Skip if we can't get market data
 		}
 
-		positionValue := position.Quantity * ticker.Price
+		positionValue := position.Quantity * ticker.LastPrice
 		valueBySymbol[position.Symbol] += positionValue
 		totalValue += positionValue
 	}

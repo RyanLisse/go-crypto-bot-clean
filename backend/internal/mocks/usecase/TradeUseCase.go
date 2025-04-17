@@ -1,9 +1,7 @@
 package mocks
 
-package mocks
-
 import (
-	usecase "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -12,8 +10,21 @@ type TradeUsecase struct {
 	mock.Mock
 }
 
+// OrderParameters defines parameters for order execution
+type OrderParameters struct {
+	Symbol      string
+	Side        string
+	Type        string
+	Quantity    float64
+	Price       float64
+	UserID      string
+	Exchange    string
+	IsLeveraged bool
+	Leverage    int
+}
+
 // ExecuteMarketBuy provides a mock function with given fields: order
-func (_m *TradeUsecase) ExecuteMarketBuy(order usecase.OrderParameters) error {
+func (_m *TradeUsecase) ExecuteMarketBuy(order OrderParameters) error {
 	ret := _m.Called(order)
 
 	if len(ret) == 0 {

@@ -38,9 +38,10 @@ type WalletRepository interface {
 // NewCoinRepository defines the interface for new coin persistence operations
 type NewCoinRepository interface {
 	Save(ctx context.Context, newCoin *model.NewCoin) error
+	GetByID(ctx context.Context, id string) (*model.NewCoin, error)
 	GetBySymbol(ctx context.Context, symbol string) (*model.NewCoin, error)
 	GetRecent(ctx context.Context, limit int) ([]*model.NewCoin, error)
-	GetByStatus(ctx context.Context, status model.Status) ([]*model.NewCoin, error) // Changed NewCoinStatus to Status
+	GetByStatus(ctx context.Context, status model.CoinStatus) ([]*model.NewCoin, error)
 	Update(ctx context.Context, newCoin *model.NewCoin) error
 	// FindRecentlyListed retrieves coins expected to list soon or recently became tradable.
 	FindRecentlyListed(ctx context.Context, thresholdTime time.Time) ([]*model.NewCoin, error)
@@ -89,20 +90,41 @@ type AnalyticsRepository interface {
 // MarketDataRepository defines the interface for market data persistence operations
 type MarketDataRepository interface {
 	// Ticker operations
-	SaveTicker(ctx context.Context, ticker market.Ticker) error
-	GetTicker(ctx context.Context, exchange, symbol string) (*market.Ticker, error)
-	GetAllTickers(ctx context.Context, exchange string) ([]market.Ticker, error)
+	SaveTicker(ctx context.Context, ticker *model.Ticker) error
+	GetTicker(ctx context.Context, exchange, symbol string) (*model.Ticker, error)
+	GetAllTickers(ctx context.Context, exchange string) ([]*model.Ticker, error)
 
-	// Candle operations
-	SaveCandle(ctx context.Context, candle market.Candle) error
-	GetCandles(ctx context.Context, exchange, symbol string, interval string, from, to time.Time, limit int) ([]market.Candle, error)
+	// Kline operations
+	SaveKline(ctx context.Context, kline *model.Kline) error
+	GetKlines(ctx context.Context, exchange, symbol string, interval model.KlineInterval, from, to time.Time, limit int) ([]*model.Kline, error)
 
 	// Order book operations
-	SaveOrderBook(ctx context.Context, orderBook market.OrderBook) error
-	GetOrderBook(ctx context.Context, exchange, symbol string) (*market.OrderBook, error)
+	SaveOrderBook(ctx context.Context, orderBook *model.OrderBook) error
+	GetOrderBook(ctx context.Context, exchange, symbol string) (*model.OrderBook, error)
 
 	// Symbol operations
-	SaveSymbol(ctx context.Context, symbol market.Symbol) error
-	GetSymbol(ctx context.Context, exchange, symbol string) (*market.Symbol, error)
-	GetAllSymbols(ctx context.Context, exchange string) ([]market.Symbol, error)
+	SaveSymbol(ctx context.Context, symbol *model.Symbol) error
+	GetSymbol(ctx context.Context, exchange, symbol string) (*model.Symbol, error)
+	GetAllSymbols(ctx context.Context, exchange string) ([]*model.Symbol, error)
+
+	// Legacy methods for backward compatibility
+	// These methods will be removed in a future version
+
+	// Ticker operations (legacy)
+	SaveTickerLegacy(ctx context.Context, ticker market.Ticker) error
+	GetTickerLegacy(ctx context.Context, exchange, symbol string) (*market.Ticker, error)
+	GetAllTickersLegacy(ctx context.Context, exchange string) ([]market.Ticker, error)
+
+	// Candle operations (legacy)
+	SaveCandleLegacy(ctx context.Context, candle market.Candle) error
+	GetCandlesLegacy(ctx context.Context, exchange, symbol string, interval string, from, to time.Time, limit int) ([]market.Candle, error)
+
+	// Order book operations (legacy)
+	SaveOrderBookLegacy(ctx context.Context, orderBook market.OrderBook) error
+	GetOrderBookLegacy(ctx context.Context, exchange, symbol string) (*market.OrderBook, error)
+
+	// Symbol operations (legacy)
+	SaveSymbolLegacy(ctx context.Context, symbol market.Symbol) error
+	GetSymbolLegacy(ctx context.Context, exchange, symbol string) (*market.Symbol, error)
+	GetAllSymbolsLegacy(ctx context.Context, exchange string) ([]market.Symbol, error)
 }

@@ -40,12 +40,12 @@ func (f *PositionFactory) CreatePositionRepository() port.PositionRepository {
 
 // CreateMarketRepository creates a market repository
 func (f *PositionFactory) CreateMarketRepository() port.MarketRepository {
-	return gorm.NewMarketRepository(f.db, f.logger)
+	return gorm.NewMarketRepositoryCanonical(f.db, f.logger)
 }
 
 // CreateSymbolRepository creates a symbol repository
 func (f *PositionFactory) CreateSymbolRepository() port.SymbolRepository {
-	return gorm.NewSymbolRepository(f.db, f.logger)
+	return gorm.NewSymbolRepositoryCanonical(f.db, f.logger)
 }
 
 // CreatePositionUseCase creates a position use case

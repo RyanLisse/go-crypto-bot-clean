@@ -384,14 +384,14 @@ func (uc *autoBuyUseCase) evaluateSingleRule(ctx context.Context, rule *model.Au
 
 	switch rule.TriggerType {
 	case model.TriggerTypePriceBelow:
-		conditionMet = ticker.Price <= rule.TriggerValue
+        conditionMet = ticker.LastPrice <= rule.TriggerValue
 	case model.TriggerTypePriceAbove:
-		conditionMet = ticker.Price >= rule.TriggerValue
+        conditionMet = ticker.LastPrice >= rule.TriggerValue
 	case model.TriggerTypePercentDrop:
-		percentChange := (ticker.PriceChange / (ticker.Price - ticker.PriceChange)) * 100
+        percentChange := (ticker.PriceChange / (ticker.LastPrice - ticker.PriceChange)) * 100
 		conditionMet = percentChange <= -rule.TriggerValue
 	case model.TriggerTypePercentRise:
-		percentChange := (ticker.PriceChange / (ticker.Price - ticker.PriceChange)) * 100
+        percentChange := (ticker.PriceChange / (ticker.LastPrice - ticker.PriceChange)) * 100
 		conditionMet = percentChange >= rule.TriggerValue
 	case model.TriggerTypeVolumeSurge:
 		// Would need historical volume data for comparison
@@ -407,7 +407,7 @@ func (uc *autoBuyUseCase) evaluateSingleRule(ctx context.Context, rule *model.Au
 		Str("ruleId", rule.ID).
 		Str("symbol", rule.Symbol).
 		Str("triggerType", string(rule.TriggerType)).
-		Float64("currentPrice", ticker.Price).
+        Float64("currentPrice", ticker.LastPrice).
 		Msg("Auto-buy condition met")
 
 	// Check wallet balance
@@ -458,7 +458,7 @@ func (uc *autoBuyUseCase) evaluateSingleRule(ctx context.Context, rule *model.Au
 	// The deprecated MinOrderAmount field is removed.
 
 	// Calculate quantity based on current price
-	quantity := orderAmount / ticker.Price
+        quantity := orderAmount / ticker.LastPrice
 
 	// Create order request
 	orderRequest := &model.OrderRequest{
@@ -466,7 +466,7 @@ func (uc *autoBuyUseCase) evaluateSingleRule(ctx context.Context, rule *model.Au
 		Side:     model.OrderSideBuy,
 		Type:     rule.OrderType,
 		Quantity: quantity,
-		Price:    ticker.Price,
+            Price:    ticker.LastPrice,
 	}
 
 	// Check risk if risk assessment is enabled
@@ -496,7 +496,7 @@ func (uc *autoBuyUseCase) evaluateSingleRule(ctx context.Context, rule *model.Au
 	// Update last triggered time
 	now := time.Now()
 	rule.LastTriggered = &now
-	rule.LastPrice = ticker.Price
+        rule.LastPrice = ticker.LastPrice
 	rule.ExecutionCount += 1
 
 	if err := uc.autoRuleRepo.Update(ctx, rule); err != nil {
@@ -510,7 +510,7 @@ func (uc *autoBuyUseCase) evaluateSingleRule(ctx context.Context, rule *model.Au
 		UserID:    rule.UserID,
 		Symbol:    rule.Symbol,
 		OrderID:   orderResult.Order.OrderID,
-		Price:     ticker.Price,
+            Price:     ticker.LastPrice,
 		Quantity:  quantity,
 		Amount:    orderAmount,
 		Timestamp: now,
@@ -523,7 +523,7 @@ func (uc *autoBuyUseCase) evaluateSingleRule(ctx context.Context, rule *model.Au
 	uc.logger.Info().
 		Str("ruleId", rule.ID).
 		Str("orderId", orderResult.Order.OrderID).
-		Float64("price", ticker.Price).
+        Float64("price", ticker.LastPrice).
 		Float64("quantity", quantity).
 		Msg("Auto-buy order placed successfully")
 

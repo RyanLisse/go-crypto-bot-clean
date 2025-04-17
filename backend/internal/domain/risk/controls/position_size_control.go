@@ -48,7 +48,7 @@ func (c *PositionSizeControl) Evaluate(ctx context.Context, userID string, profi
 		}
 
 		// Calculate position value
-		orderValue := order.Quantity * ticker.Price
+		orderValue := order.Quantity * ticker.LastPrice
 
 		// Check if order value exceeds maximum position size
 		if orderValue > profile.MaxPositionSize {

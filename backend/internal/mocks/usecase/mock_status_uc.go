@@ -47,5 +47,10 @@ func (m *MockStatusUseCase) RegisterProvider(provider interface{}) {
 	// No-op
 }
 
+// SubscribeToChanges subscribes to status change events
+func (m *MockStatusUseCase) SubscribeToChanges(ch chan status.StatusChange) error {
+	return nil
+}
+
 // Ensure MockStatusUseCase implements usecase.StatusUseCase
 var _ usecase.StatusUseCase = (*MockStatusUseCase)(nil)

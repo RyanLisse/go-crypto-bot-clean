@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/controller"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/go-chi/chi/v5"
@@ -37,8 +36,9 @@ func NewExampleServer(cfg *config.Config, logger *zerolog.Logger) *ExampleServer
 
 // SetupRoutes sets up the routes for the example server
 func (s *ExampleServer) SetupRoutes() error {
-	// Create controllers
-	errorExampleController := controller.NewErrorExampleController(s.logger)
+	// Create handlers
+	// Commented out for now as we don't have the example controller
+	// errorExampleHandler := example.NewErrorExampleController(s.logger)
 
 	// Set up the unified error middleware
 	errorMiddleware := middleware.NewUnifiedErrorMiddleware(s.logger)
@@ -66,7 +66,8 @@ func (s *ExampleServer) SetupRoutes() error {
 	}))
 
 	// Register example routes
-	errorExampleController.RegisterRoutes(s.router)
+	// Commented out for now as we don't have the example controller
+	// errorExampleHandler.RegisterRoutes(s.router)
 
 	// Add a simple health check endpoint
 	s.router.Get("/health", func(w http.ResponseWriter, r *http.Request) {

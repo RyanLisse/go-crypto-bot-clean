@@ -91,9 +91,13 @@ type MockTradeService struct {
 	mock.Mock
 }
 
-func (m *MockTradeService) PlaceOrder(ctx context.Context, req *model.OrderRequest) (*model.OrderResponse, error) {
+func (m *MockTradeService) PlaceOrder(ctx context.Context, req *model.OrderRequest) (*model.PlaceOrderResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*model.OrderResponse), args.Error(1)
+	var resp *model.PlaceOrderResponse
+	if arg0 := args.Get(0); arg0 != nil {
+		resp = arg0.(*model.PlaceOrderResponse)
+	}
+	return resp, args.Error(1)
 }
 
 func (m *MockTradeService) CancelOrder(ctx context.Context, symbol, orderID string) error {
@@ -265,7 +269,7 @@ func TestTradeRiskIntegration(t *testing.T) {
 		mockRiskUC.On("EvaluateOrderRisk", ctx, "user123", orderReq).
 			Return(true, []*model.RiskAssessment{}, nil).Once()
 
-		orderResponse := &model.OrderResponse{
+		orderResponse := &model.PlaceOrderResponse{
 			Order: model.Order{
 				OrderID: "order123",
 				Symbol:  "BTCUSDT",
@@ -273,6 +277,7 @@ func TestTradeRiskIntegration(t *testing.T) {
 				Type:    model.OrderTypeLimit,
 				Status:  model.OrderStatusNew,
 			},
+			IsSuccess: true,
 		}
 		mockTradeService.On("PlaceOrder", ctx, &orderReq).Return(orderResponse, nil).Once()
 

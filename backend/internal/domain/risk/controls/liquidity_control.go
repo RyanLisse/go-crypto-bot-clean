@@ -46,7 +46,7 @@ func (c *LiquidityControl) Evaluate(ctx context.Context, userID string, profile 
 		}
 
 		// Calculate USD volume
-		usdVolume := ticker.Volume * ticker.Price
+		usdVolume := ticker.Volume * ticker.LastPrice
 
 		// Check if volume is below minimum liquidity threshold
 		if usdVolume < profile.MinLiquidity {

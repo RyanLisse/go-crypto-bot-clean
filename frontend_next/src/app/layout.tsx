@@ -10,7 +10,6 @@ const jetBrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-
 export const metadata: Metadata = {
   title: "Crypto Bot Dashboard",
   description: "Dashboard for cryptocurrency trading bot",
@@ -22,14 +21,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en" className="dark">
-        <body className="font-mono bg-background text-foreground antialiased">
+    <html lang="en" className={`${jetBrainsMono.variable} dark`}>
+      <body className="font-mono bg-background text-foreground antialiased">
+        <ClerkProvider>
           <Providers>
             {children}
           </Providers>
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

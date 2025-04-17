@@ -1,7 +1,5 @@
 package mocks
 
-package mocks
-
 import (
 	model "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	mock "github.com/stretchr/testify/mock"

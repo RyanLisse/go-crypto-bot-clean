@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/compat"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/rs/zerolog"
@@ -30,13 +32,14 @@ func (a *MarketDataServiceAdapter) RefreshTicker(ctx context.Context, symbol str
 	if err != nil {
 		return nil, err
 	}
-	return ticker, nil
+	// Convert model.Ticker to market.Ticker
+	return compat.ConvertTickerToMarketTicker(ticker), nil
 }
 
 // GetHistoricalPrices implements MarketDataServiceInterface
 func (a *MarketDataServiceAdapter) GetHistoricalPrices(ctx context.Context, symbol string, startTime, endTime time.Time) ([]market.Ticker, error) {
 	// Convert candles to tickers
-	candles, err := a.marketDataService.GetHistoricalPrices(ctx, symbol, startTime, endTime, string(market.Interval1h))
+	candles, err := a.marketDataService.GetHistoricalPrices(ctx, symbol, startTime, endTime, model.KlineInterval1h)
 	if err != nil {
 		return nil, err
 	}
@@ -44,6 +47,7 @@ func (a *MarketDataServiceAdapter) GetHistoricalPrices(ctx context.Context, symb
 	// Convert candles to tickers
 	tickers := make([]market.Ticker, 0, len(candles))
 	for _, candle := range candles {
+		// Convert model.Candle to market.Ticker
 		tickers = append(tickers, market.Ticker{
 			Symbol:      candle.Symbol,
 			Price:       candle.Close,

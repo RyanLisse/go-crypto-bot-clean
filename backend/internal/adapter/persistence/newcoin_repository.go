@@ -137,7 +137,7 @@ func (r *NewCoinRepository) GetBySymbol(symbol string) (*model.NewCoin, error) {
 }
 
 // List retrieves all coins with optional filtering
-func (r *NewCoinRepository) List(status model.Status, limit, offset int) ([]*model.NewCoin, error) {
+func (r *NewCoinRepository) List(status model.CoinStatus, limit, offset int) ([]*model.NewCoin, error) {
 	query := `
 		SELECT
 			id, symbol, name, status, expected_listing_time, became_tradable_at,
@@ -148,7 +148,7 @@ func (r *NewCoinRepository) List(status model.Status, limit, offset int) ([]*mod
 		ORDER BY expected_listing_time DESC
 		LIMIT $2 OFFSET $3`
 
-	rows, err := r.db.Query(query, status, limit, offset)
+   rows, err := r.db.Query(query, status, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (r *NewCoinRepository) List(status model.Status, limit, offset int) ([]*mod
 
 // GetRecent retrieves recently listed coins that are now tradable
 func (r *NewCoinRepository) GetRecent(limit int) ([]*model.NewCoin, error) {
-	query := `
+   query := `
 		SELECT
 			id, symbol, name, status, expected_listing_time, became_tradable_at,
 			base_asset, quote_asset, min_price, max_price, min_qty, max_qty,
@@ -183,7 +183,7 @@ func (r *NewCoinRepository) GetRecent(limit int) ([]*model.NewCoin, error) {
 		ORDER BY became_tradable_at DESC
 		LIMIT $2`
 
-	rows, err := r.db.Query(query, model.StatusTrading, limit)
+   rows, err := r.db.Query(query, model.CoinStatusTrading, limit)
 	if err != nil {
 		return nil, err
 	}

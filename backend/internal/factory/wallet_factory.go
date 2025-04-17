@@ -6,6 +6,7 @@ import (
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/pkg/platform/mexc"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 )
@@ -40,7 +41,7 @@ func (f *WalletFactory) CreateWalletService(mexcClient port.MEXCClient) usecase.
 // CreateWalletServiceWithClient creates a wallet service with the provided MEXC client
 func (f *WalletFactory) CreateWalletServiceWithClient() usecase.WalletService {
 	// Create MEXC client
-	mexcClient := NewMEXCClient(f.cfg, f.logger)
+	mexcClient := mexc.NewClient(f.cfg.MEXC.APIKey, f.cfg.MEXC.APISecret, f.logger)
 
 	// Create wallet service
 	return f.CreateWalletService(mexcClient)

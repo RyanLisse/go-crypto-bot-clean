@@ -38,20 +38,20 @@ func (f *RepositoryFactory) CreateWalletRepository() port.WalletRepository {
 
 // CreateNewCoinRepository creates a NewCoinRepository
 func (f *RepositoryFactory) CreateNewCoinRepository() port.NewCoinRepository {
-	// TODO: implement actual repository when needed
-	return nil
+   // Create a GORM-based NewCoinRepository
+   return repo.NewGormNewCoinRepository(f.db, f.logger)
 }
 
 // CreateEventRepository creates an EventRepository
 func (f *RepositoryFactory) CreateEventRepository() port.EventRepository {
-	// TODO: implement actual repository when needed
-	return nil
+   // Create a GORM-based EventRepository
+   return repo.NewGormEventRepository(f.db, f.logger)
 }
 
 // CreateTickerRepository creates a TickerRepository
 func (f *RepositoryFactory) CreateTickerRepository() port.TickerRepository {
-	// TODO: implement actual repository when needed
-	return nil
+   // Create a GORM-based TickerRepository
+   return repo.NewGormTickerRepository(f.db, f.logger)
 }
 
 // CreateAIConversationRepository creates an AIConversationRepository

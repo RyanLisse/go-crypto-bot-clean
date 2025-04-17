@@ -20,51 +20,53 @@ type FilterConfig struct {
 }
 
 // Symbol represents a trading pair on an exchange
+// DEPRECATED: Use model.Symbol instead. This will be removed in a future version.
+// Use the compat package for conversion between market.Symbol and model.Symbol.
 type Symbol struct {
 	// Symbol is the trading pair identifier (e.g., "BTCUSDT")
-	Symbol string 
+	Symbol string
 
 	// BaseAsset is the first part of the pair (e.g., "BTC")
-	BaseAsset string 
+	BaseAsset string
 
 	// QuoteAsset is the second part of the pair (e.g., "USDT")
-	QuoteAsset string 
+	QuoteAsset string
 
 	// Exchange indicates which exchange this symbol is from
-	Exchange string 
+	Exchange string
 
 	// Status indicates if trading is enabled for this symbol
-	Status string 
+	Status string
 
 	// MinPrice is the minimum valid price for orders
-	MinPrice float64 
+	MinPrice float64
 
 	// MaxPrice is the maximum valid price for orders
-	MaxPrice float64 
+	MaxPrice float64
 
 	// PricePrecision is the number of decimal places allowed for price
-	PricePrecision int 
+	PricePrecision int
 
 	// MinQty is the minimum quantity for orders
-	MinQty float64 
+	MinQty float64
 
 	// MaxQty is the maximum quantity for orders
-	MaxQty float64 
+	MaxQty float64
 
 	// QtyPrecision is the number of decimal places allowed for quantity
-	QtyPrecision int 
+	QtyPrecision int
 
 	// BaseAssetPrecision is the precision for the base asset
-	BaseAssetPrecision int 
+	BaseAssetPrecision int
 
 	// QuoteAssetPrecision is the precision for the quote asset
-	QuoteAssetPrecision int 
+	QuoteAssetPrecision int
 
 	// MinNotional is the minimum order value (price * quantity)
-	MinNotional float64 
+	MinNotional float64
 
 	// MinLotSize is the minimum order quantity
-	MinLotSize float64 
+	MinLotSize float64
 
 	// MaxLotSize is the maximum order quantity
 	MaxLotSize float64 `json:"maxLotSize,omitempty"` // Added

@@ -6,16 +6,16 @@ import (
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	mockRepo "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/repository"
+	mockService "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// Using mocks from mocks_test.go
-
 func TestCredentialManager_StoreCredential(t *testing.T) {
 	// Create mocks
-	mockRepo := new(MockAPICredentialRepository)
-	mockEncryptionSvc := new(MockEncryptionService)
+	mockRepo := new(mockRepo.MockAPICredentialRepository)
+	mockEncryptionSvc := new(mockService.MockEncryptionService)
 
 	// Create credential manager
 	manager := NewCredentialManager(mockRepo, mockEncryptionSvc)
@@ -54,8 +54,8 @@ func TestCredentialManager_StoreCredential(t *testing.T) {
 
 func TestCredentialManager_GetCredential(t *testing.T) {
 	// Create mocks
-	mockRepo := new(MockAPICredentialRepository)
-	mockEncryptionSvc := new(MockEncryptionService)
+	mockRepo := new(mockRepo.MockAPICredentialRepository)
+	mockEncryptionSvc := new(mockService.MockEncryptionService)
 
 	// Create credential manager
 	manager := NewCredentialManager(mockRepo, mockEncryptionSvc)
@@ -101,8 +101,8 @@ func TestCredentialManager_GetCredential(t *testing.T) {
 
 func TestCredentialManager_GetCredentialWithSecret(t *testing.T) {
 	// Create mocks
-	mockRepo := new(MockAPICredentialRepository)
-	mockEncryptionSvc := new(MockEncryptionService)
+	mockRepo := new(mockRepo.MockAPICredentialRepository)
+	mockEncryptionSvc := new(mockService.MockEncryptionService)
 
 	// Create credential manager
 	manager := NewCredentialManager(mockRepo, mockEncryptionSvc)
@@ -153,8 +153,8 @@ func TestCredentialManager_GetCredentialWithSecret(t *testing.T) {
 
 func TestCredentialManager_ListCredentials(t *testing.T) {
 	// Create mocks
-	mockRepo := new(MockAPICredentialRepository)
-	mockEncryptionSvc := new(MockEncryptionService)
+	mockRepo := new(mockRepo.MockAPICredentialRepository)
+	mockEncryptionSvc := new(mockService.MockEncryptionService)
 
 	// Create credential manager
 	manager := NewCredentialManager(mockRepo, mockEncryptionSvc)
@@ -208,8 +208,8 @@ func TestCredentialManager_ListCredentials(t *testing.T) {
 
 func TestCredentialManager_DeleteCredential(t *testing.T) {
 	// Create mocks
-	mockRepo := new(MockAPICredentialRepository)
-	mockEncryptionSvc := new(MockEncryptionService)
+	mockRepo := new(mockRepo.MockAPICredentialRepository)
+	mockEncryptionSvc := new(mockService.MockEncryptionService)
 
 	// Create credential manager
 	manager := NewCredentialManager(mockRepo, mockEncryptionSvc)
@@ -233,8 +233,8 @@ func TestCredentialManager_DeleteCredential(t *testing.T) {
 
 func TestCredentialManager_UpdateCredential(t *testing.T) {
 	// Create mocks
-	mockRepo := new(MockAPICredentialRepository)
-	mockEncryptionSvc := new(MockEncryptionService)
+	mockRepo := new(mockRepo.MockAPICredentialRepository)
+	mockEncryptionSvc := new(mockService.MockEncryptionService)
 
 	// Create credential manager
 	manager := NewCredentialManager(mockRepo, mockEncryptionSvc)
@@ -244,34 +244,32 @@ func TestCredentialManager_UpdateCredential(t *testing.T) {
 	id := "cred123"
 	userID := "user123"
 	exchange := "MEXC"
-	apiKey := "test-api-key"
-	oldSecret := "old-encrypted-secret"
-	newApiKey := "new-api-key"
-	newSecret := "new-api-secret"
-	newLabel := "New Label"
-	encryptedNewSecret := []byte("new-encrypted-secret")
+	apiKey := "test-api-key-updated"
+	apiSecret := "test-api-secret-updated"
+	label := "Test Credential Updated"
 
 	// Mock repository get
-	mockCredential := &model.APICredential{
+	existingCredential := &model.APICredential{
 		ID:        id,
 		UserID:    userID,
 		Exchange:  exchange,
-		APIKey:    apiKey,
-		APISecret: oldSecret,
+		APIKey:    "old-api-key",
+		APISecret: "old-encrypted-secret",
 		Label:     "Old Label",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		CreatedAt: time.Now().Add(-24 * time.Hour),
+		UpdatedAt: time.Now().Add(-24 * time.Hour),
 	}
-	mockRepo.On("GetByID", ctx, id).Return(mockCredential, nil)
+	mockRepo.On("GetByID", ctx, id).Return(existingCredential, nil)
 
 	// Mock encryption
-	mockEncryptionSvc.On("Encrypt", newSecret).Return(encryptedNewSecret, nil)
+	encryptedSecret := []byte("new-encrypted-secret")
+	mockEncryptionSvc.On("Encrypt", apiSecret).Return(encryptedSecret, nil)
 
 	// Mock repository save
 	mockRepo.On("Save", ctx, mock.AnythingOfType("*model.APICredential")).Return(nil)
 
 	// Call method
-	credential, err := manager.UpdateCredential(ctx, id, newApiKey, newSecret, newLabel)
+	credential, err := manager.UpdateCredential(ctx, id, apiKey, apiSecret, label)
 
 	// Assert
 	assert.NoError(t, err)
@@ -279,9 +277,9 @@ func TestCredentialManager_UpdateCredential(t *testing.T) {
 	assert.Equal(t, id, credential.ID)
 	assert.Equal(t, userID, credential.UserID)
 	assert.Equal(t, exchange, credential.Exchange)
-	assert.Equal(t, newApiKey, credential.APIKey)
+	assert.Equal(t, apiKey, credential.APIKey)
 	assert.Equal(t, "********", credential.APISecret) // Secret should be masked
-	assert.Equal(t, newLabel, credential.Label)
+	assert.Equal(t, label, credential.Label)
 
 	// Verify mocks
 	mockRepo.AssertExpectations(t)

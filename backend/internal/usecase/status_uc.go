@@ -27,6 +27,8 @@ type StatusUseCaseImpl struct {
 	stopChan        chan struct{}
 	updateTicker    *time.Ticker
 	notifyThreshold map[string]status.Status
+	subscribers     []chan status.StatusChange
+	subscribersMu   sync.RWMutex
 }
 
 // StatusUseCaseConfig contains configuration for the status use case
@@ -387,4 +389,49 @@ func shouldNotify(oldStatus, newStatus status.Status) bool {
 	}
 
 	return false
+}
+
+// SubscribeToChanges subscribes to status change events
+func (uc *StatusUseCaseImpl) SubscribeToChanges(ch chan status.StatusChange) error {
+	uc.subscribersMu.Lock()
+	defer uc.subscribersMu.Unlock()
+
+	if ch == nil {
+		return fmt.Errorf("cannot subscribe with nil channel")
+	}
+
+	uc.subscribers = append(uc.subscribers, ch)
+	uc.logger.Info().Msg("Added new subscriber to status changes")
+	return nil
+}
+
+// UnsubscribeFromChanges removes a subscription to status change events
+func (uc *StatusUseCaseImpl) UnsubscribeFromChanges(ch chan status.StatusChange) {
+	uc.subscribersMu.Lock()
+	defer uc.subscribersMu.Unlock()
+
+	for i, subscriber := range uc.subscribers {
+		if subscriber == ch {
+			// Remove subscriber by replacing it with the last element and truncating the slice
+			uc.subscribers[i] = uc.subscribers[len(uc.subscribers)-1]
+			uc.subscribers = uc.subscribers[:len(uc.subscribers)-1]
+			uc.logger.Info().Msg("Removed subscriber from status changes")
+			return
+		}
+	}
+}
+
+// notifyStatusChange notifies all subscribers of a status change
+func (uc *StatusUseCaseImpl) notifyStatusChange(change status.StatusChange) {
+	uc.subscribersMu.RLock()
+	defer uc.subscribersMu.RUnlock()
+
+	for _, subscriber := range uc.subscribers {
+		select {
+		case subscriber <- change:
+			// Successfully sent the change
+		default:
+			// Channel is full or closed - could log this, but it might spam logs
+		}
+	}
 }

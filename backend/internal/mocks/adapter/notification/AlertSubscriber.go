@@ -1,7 +1,5 @@
 package mocks
 
-package mocks
-
 import (
 	notification "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/notification"
 	mock "github.com/stretchr/testify/mock"

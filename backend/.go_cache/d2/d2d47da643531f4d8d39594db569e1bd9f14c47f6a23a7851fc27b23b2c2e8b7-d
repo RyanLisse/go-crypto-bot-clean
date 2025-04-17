@@ -1,0 +1,4 @@
+./market_data_status.go
+./newcoin_status.go
+./risk_status.go
+./trading_status.go

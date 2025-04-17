@@ -11,18 +11,18 @@ import (
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/response"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/usecase"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+	mocks "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/usecase"
 )
 
 func TestAIHandler_Chat_Authenticated(t *testing.T) {
 	logger := zerolog.Nop()
 
-	mockAIService := &usecase.MockAIService{}
-	mockConvRepo := &usecase.MockConversationMemoryRepository{}
-	mockEmbedRepo := &usecase.MockEmbeddingRepository{}
+	mockAIService := &mocks.MockAIService{}
+	mockConvRepo := &mocks.MockConversationMemoryRepository{}
+	mockEmbedRepo := &mocks.MockEmbeddingRepository{}
 	useCase := usecase.NewAIUsecase(mockAIService, mockConvRepo, mockEmbedRepo, logger)
 	h := NewAIHandler(useCase, &logger)
 

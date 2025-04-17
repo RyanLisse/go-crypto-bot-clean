@@ -104,8 +104,8 @@ func (r *GormEventRepository) toDomain(entity *EventEntity) *model.NewCoinEvent 
 		ID:        entity.ID,
 		CoinID:    entity.CoinID,
 		EventType: entity.EventType,
-		OldStatus: model.Status(entity.OldStatus),
-		NewStatus: model.Status(entity.NewStatus),
+       OldStatus: model.CoinStatus(entity.OldStatus),
+       NewStatus: model.CoinStatus(entity.NewStatus),
 		Data:      data,
 		CreatedAt: entity.CreatedAt,
 	}

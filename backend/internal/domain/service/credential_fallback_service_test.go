@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	mockRepo "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/repository"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,7 +16,7 @@ import (
 
 func TestCredentialFallbackService_GetCredentialWithFallback(t *testing.T) {
 	// Create mocks
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockCredentialRepo := new(mockRepo.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service with a low failure threshold for testing
@@ -85,7 +86,7 @@ func TestCredentialFallbackService_GetCredentialWithFallback(t *testing.T) {
 
 func TestCredentialFallbackService_ResetFailureCounters(t *testing.T) {
 	// Create mocks
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockCredentialRepo := new(mockRepo.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service with a low failure threshold for testing
@@ -130,7 +131,7 @@ func TestCredentialFallbackService_ResetFailureCounters(t *testing.T) {
 
 	// First failure
 	service.GetCredentialWithFallback(context.Background(), userCredential.UserID, userCredential.Exchange)
-	
+
 	// Second failure - should trigger fallback
 	result, err := service.GetCredentialWithFallback(context.Background(), userCredential.UserID, userCredential.Exchange)
 	assert.NoError(t, err)
@@ -151,7 +152,7 @@ func TestCredentialFallbackService_ResetFailureCounters(t *testing.T) {
 
 func TestCredentialFallbackService_GetFallbackConfig(t *testing.T) {
 	// Create mocks
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockCredentialRepo := new(mockRepo.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service

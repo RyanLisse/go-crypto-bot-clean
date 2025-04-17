@@ -79,16 +79,16 @@ func (c *Client) GetNewListings(ctx context.Context) ([]*model.NewCoin, error) {
 		minQty, _ := strconv.ParseFloat(s.MinQty, 64)
 		maxQty, _ := strconv.ParseFloat(s.MaxQty, 64)
 
-		var status model.Status
-		switch s.Status {
-		case "PRE_TRADING":
-			status = model.StatusExpected
-		case "TRADING":
-			status = model.StatusTrading
-		case "BREAK":
-			status = model.StatusFailed
-		default:
-			status = model.StatusListed
+   var status model.CoinStatus
+   switch s.Status {
+   case "PRE_TRADING":
+       status = model.CoinStatusExpected
+   case "TRADING":
+       status = model.CoinStatusTrading
+   case "BREAK":
+       status = model.CoinStatusFailed
+   default:
+       status = model.CoinStatusListed
 		}
 
 		coin := &model.NewCoin{
@@ -190,24 +190,24 @@ func (c *Client) GetSymbolInfo(ctx context.Context, symbol string) (*model.Symbo
 }
 
 // GetSymbolStatus checks if a symbol is currently tradeable
-func (c *Client) GetSymbolStatus(ctx context.Context, symbol string) (model.Status, error) {
+func (c *Client) GetSymbolStatus(ctx context.Context, symbol string) (model.CoinStatus, error) {
 	symbolInfo, err := c.GetSymbolInfo(ctx, symbol)
 	if err != nil {
-		return model.StatusFailed, err
+		return model.CoinStatusFailed, err
 	}
 
 	// Convert string status to model.Status
 	switch symbolInfo.Status {
-	case "TRADING":
-		return model.StatusTrading, nil
-	case "PRE_TRADING":
-		return model.StatusExpected, nil
-	case "BREAK":
-		return model.StatusFailed, nil
-	case "HALT":
-		return model.StatusListed, nil // Using StatusListed for suspended
-	default:
-		return model.StatusListed, nil
+   case "TRADING":
+       return model.CoinStatusTrading, nil
+   case "PRE_TRADING":
+       return model.CoinStatusExpected, nil
+   case "BREAK":
+       return model.CoinStatusFailed, nil
+   case "HALT":
+       return model.CoinStatusListed, nil // Using CoinStatusListed for suspended
+   default:
+       return model.CoinStatusListed, nil
 	}
 }
 

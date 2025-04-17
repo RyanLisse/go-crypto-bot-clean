@@ -9,7 +9,6 @@ import (
 	gormadapter "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -77,26 +76,8 @@ func main() {
 			UpdatedAt:         time.Now(),
 		}
 
-		// Convert domain model to market.Symbol for repository
-		marketSymbol := &market.Symbol{
-			Symbol:            domainSymbol.Symbol,
-			BaseAsset:         domainSymbol.BaseAsset,
-			QuoteAsset:        domainSymbol.QuoteAsset,
-			Status:            string(domainSymbol.Status),
-			Exchange:          domainSymbol.Exchange,
-			MinPrice:          domainSymbol.MinPrice,
-			MaxPrice:          domainSymbol.MaxPrice,
-			PricePrecision:    domainSymbol.PricePrecision,
-			MinQty:            domainSymbol.MinQuantity,
-			MaxQty:            domainSymbol.MaxQuantity,
-			QtyPrecision:      domainSymbol.QuantityPrecision,
-			AllowedOrderTypes: domainSymbol.AllowedOrderTypes,
-			CreatedAt:         domainSymbol.CreatedAt,
-			UpdatedAt:         domainSymbol.UpdatedAt,
-		}
-
-		// Save to database
-		err := symbolRepo.Create(ctx, marketSymbol)
+		// Save to database using canonical model.Symbol
+		err := symbolRepo.Create(ctx, domainSymbol)
 		if err != nil {
 			logger.Error().Err(err).Str("symbol", symbol.Symbol).Msg("Failed to save symbol")
 			continue

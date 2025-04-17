@@ -1,11 +1,14 @@
 package di
 
 import (
+	"time"
+
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/service"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
 	"github.com/rs/zerolog"
 	gormdb "gorm.io/gorm"
@@ -21,8 +24,9 @@ type Container struct {
 	useCaseFactory    *factory.UseCaseFactory
 
 	// External services
-	mexcClient port.MEXCClient
-	eventBus   port.EventBus
+	mexcClient    port.MEXCClient
+	eventBus      port.EventBus
+	sniperService port.SniperService
 
 	// Repositories
 	orderRepository          port.OrderRepository
@@ -38,11 +42,13 @@ type Container struct {
 	statusRepository         port.SystemStatusRepository
 
 	// Use cases
-	tradeUseCase    usecase.TradeUseCase
-	positionUseCase usecase.PositionUseCase
-	newCoinUseCase  *usecase.NewCoinUseCase
-	aiUseCase       *usecase.AIUsecase
-	statusUseCase   usecase.StatusUseCase
+	tradeUseCase               usecase.TradeUseCase
+	positionUseCase            usecase.PositionUseCase
+	newCoinUseCase             usecase.NewCoinUseCase
+	aiUseCase                  *usecase.AIUsecase
+	statusUseCase              usecase.StatusUseCase
+	sniperUseCase              usecase.SniperUseCase
+	newListingDetectionService *service.NewListingDetectionService
 }
 
 // NewContainer creates a new dependency injection container
@@ -85,7 +91,9 @@ func (c *Container) Initialize() error {
 		c.statusRepository,
 		c.mexcClient,
 		c.eventBus,
-		c.txManager)
+		c.txManager,
+		c.sniperService,
+	)
 
 	// Initialize use cases
 	c.initializeUseCases()
@@ -116,6 +124,47 @@ func (c *Container) initializeExternalServices() {
 
 	// Create event bus
 	c.eventBus = delivery.NewInMemoryEventBus(*c.logger)
+
+	// Create sniper service
+	// Create market factory
+	marketFactory := factory.NewMarketFactory(c.config, c.logger, c.db)
+
+	// Create market data service
+	marketDataService := marketFactory.CreateMarketDataService()
+
+	// Create new listing detection service first
+	interval := 10 * time.Second
+	if c.config.MEXC.RateLimit.RequestsPerMinute > 0 {
+		interval = time.Minute / time.Duration(c.config.MEXC.RateLimit.RequestsPerMinute)
+	}
+	c.newListingDetectionService = service.NewNewListingDetectionService(
+		c.newCoinRepository,
+		c.eventRepository,
+		c.eventBus,
+		c.mexcClient,
+		c.logger,
+		service.NewListingDetectionConfig{
+			RESTPollingInterval: interval,
+			WebSocketEnabled:    c.config.MEXC.WSBaseURL != "",
+			MaxQueueSize:        1000,
+		},
+	)
+	if err := c.newListingDetectionService.Start(); err != nil {
+		c.logger.Error().Err(err).Msg("Failed to start new listing detection service")
+	}
+
+	// Create sniper factory
+	sniperFactory := factory.NewSniperFactory(
+		c.mexcClient,
+		c.repositoryFactory.CreateSymbolRepository(),
+		c.orderRepository,
+		marketDataService,
+		c.newListingDetectionService,
+		c.logger,
+	)
+
+	// Create real sniper service
+	c.sniperService = sniperFactory.CreateSniperService()
 }
 
 // initializeUseCases initializes all use cases
@@ -125,6 +174,7 @@ func (c *Container) initializeUseCases() {
 	c.newCoinUseCase = c.useCaseFactory.CreateNewCoinUseCase()
 	c.aiUseCase = c.useCaseFactory.CreateAIUseCase()
 	c.statusUseCase = c.useCaseFactory.CreateStatusUseCase()
+	c.sniperUseCase = c.useCaseFactory.CreateSniperUseCase()
 }
 
 // GetOrderRepository returns the order repository
@@ -213,7 +263,7 @@ func (c *Container) GetPositionUseCase() usecase.PositionUseCase {
 }
 
 // GetNewCoinUseCase returns the new coin use case
-func (c *Container) GetNewCoinUseCase() *usecase.NewCoinUseCase {
+func (c *Container) GetNewCoinUseCase() usecase.NewCoinUseCase {
 	return c.newCoinUseCase
 }
 
@@ -235,4 +285,14 @@ func (c *Container) GetMEXCClient() port.MEXCClient {
 // GetEventBus returns the event bus
 func (c *Container) GetEventBus() port.EventBus {
 	return c.eventBus
+}
+
+// GetNewListingDetectionService returns the new listing detection service
+func (c *Container) GetNewListingDetectionService() *service.NewListingDetectionService {
+	return c.newListingDetectionService
+}
+
+// GetSniperUseCase returns the sniper use case
+func (c *Container) GetSniperUseCase() usecase.SniperUseCase {
+	return c.sniperUseCase
 }

@@ -48,7 +48,7 @@ func (c *DrawdownControl) Evaluate(ctx context.Context, userID string, profile *
 		}
 
 		// Calculate current position value
-		currentValue := position.Quantity * ticker.Price
+		currentValue := position.Quantity * ticker.LastPrice
 
 		// Calculate entry position value
 		entryValue := position.Quantity * position.EntryPrice

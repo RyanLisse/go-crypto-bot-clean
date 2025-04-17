@@ -37,7 +37,7 @@ func (m *MockNewCoinRepository) Update(ctx context.Context, coin *model.NewCoin)
 	return args.Error(0)
 }
 
-func (m *MockNewCoinRepository) GetByStatus(ctx context.Context, status model.Status) ([]*model.NewCoin, error) {
+ func (m *MockNewCoinRepository) GetByStatus(ctx context.Context, status model.CoinStatus) ([]*model.NewCoin, error) {
 	args := m.Called(ctx, status)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -61,10 +61,10 @@ func (m *MockNewCoinRepository) GetRecent(ctx context.Context, limit int) ([]*mo
 	return args.Get(0).([]*model.NewCoin), args.Error(1)
 }
 
-// FindByStatus is an alias to GetByStatus to satisfy interface requirements.
-func (m *MockNewCoinRepository) FindByStatus(ctx context.Context, status model.Status) ([]*model.NewCoin, error) {
-	return m.GetByStatus(ctx, status)
-}
+ // FindByStatus is an alias to GetByStatus to satisfy interface requirements.
+ func (m *MockNewCoinRepository) FindByStatus(ctx context.Context, status model.CoinStatus) ([]*model.NewCoin, error) {
+   return m.GetByStatus(ctx, status)
+ }
 
 // MockEventBus is a mock type for the EventBus type
 type MockEventBus struct {

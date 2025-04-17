@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/apperror"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/compat"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/rs/zerolog"
@@ -95,7 +97,7 @@ func NewMarketRepository(db *gorm.DB, logger *zerolog.Logger) *MarketRepository 
 }
 
 // SaveTicker stores a ticker in the database
-func (r *MarketRepository) SaveTicker(ctx context.Context, ticker *market.Ticker) error {
+func (r *MarketRepository) SaveTicker(ctx context.Context, ticker *model.Ticker) error {
 	entity := r.tickerToEntity(ticker)
 
 	result := r.db.WithContext(ctx).Save(&entity)
@@ -109,7 +111,7 @@ func (r *MarketRepository) SaveTicker(ctx context.Context, ticker *market.Ticker
 }
 
 // GetTicker retrieves the latest ticker for a symbol from a specific exchange
-func (r *MarketRepository) GetTicker(ctx context.Context, symbol, exchange string) (*market.Ticker, error) {
+func (r *MarketRepository) GetTicker(ctx context.Context, symbol, exchange string) (*model.Ticker, error) {
 	var entity TickerEntity
 
 	result := r.db.WithContext(ctx).
@@ -130,7 +132,7 @@ func (r *MarketRepository) GetTicker(ctx context.Context, symbol, exchange strin
 }
 
 // GetAllTickers retrieves all latest tickers from a specific exchange
-func (r *MarketRepository) GetAllTickers(ctx context.Context, exchange string) ([]*market.Ticker, error) {
+func (r *MarketRepository) GetAllTickers(ctx context.Context, exchange string) ([]*model.Ticker, error) {
 	var entities []TickerEntity
 
 	// Using a subquery to get the latest ticker for each symbol
@@ -149,7 +151,7 @@ func (r *MarketRepository) GetAllTickers(ctx context.Context, exchange string) (
 		return nil, fmt.Errorf("failed to get all tickers: %w", result.Error)
 	}
 
-	tickers := make([]*market.Ticker, len(entities))
+	tickers := make([]*model.Ticker, len(entities))
 	for i, entity := range entities {
 		tickers[i] = r.tickerToDomain(&entity)
 	}
@@ -158,7 +160,7 @@ func (r *MarketRepository) GetAllTickers(ctx context.Context, exchange string) (
 }
 
 // GetTickerHistory retrieves ticker history for a symbol within a time range
-func (r *MarketRepository) GetTickerHistory(ctx context.Context, symbol, exchange string, start, end time.Time) ([]*market.Ticker, error) {
+func (r *MarketRepository) GetTickerHistory(ctx context.Context, symbol, exchange string, start, end time.Time) ([]*model.Ticker, error) {
 	var entities []TickerEntity
 
 	result := r.db.WithContext(ctx).
@@ -172,7 +174,7 @@ func (r *MarketRepository) GetTickerHistory(ctx context.Context, symbol, exchang
 		return nil, fmt.Errorf("failed to get ticker history: %w", result.Error)
 	}
 
-	tickers := make([]*market.Ticker, len(entities))
+	tickers := make([]*model.Ticker, len(entities))
 	for i, entity := range entities {
 		tickers[i] = r.tickerToDomain(&entity)
 	}
@@ -180,15 +182,20 @@ func (r *MarketRepository) GetTickerHistory(ctx context.Context, symbol, exchang
 	return tickers, nil
 }
 
+// SaveKline stores a kline/candle in the database
+func (r *MarketRepository) SaveKline(ctx context.Context, kline *model.Kline) error {
+	return r.SaveCandle(ctx, kline)
+}
+
 // SaveCandle stores a candle in the database
-func (r *MarketRepository) SaveCandle(ctx context.Context, candle *market.Candle) error {
-	entity := r.candleToEntity(candle)
+func (r *MarketRepository) SaveCandle(ctx context.Context, kline *model.Kline) error {
+	entity := r.candleToEntity(kline)
 
 	// Try to find an existing candle with the same symbol, exchange, interval, and open time
 	var existing CandleEntity
 	result := r.db.WithContext(ctx).
 		Where("symbol = ? AND exchange = ? AND interval = ? AND open_time = ?",
-			candle.Symbol, candle.Exchange, candle.Interval, candle.OpenTime).
+			kline.Symbol, kline.Exchange, string(kline.Interval), kline.OpenTime).
 		First(&existing)
 
 	// If the candle exists, update it; otherwise, create a new one
@@ -198,23 +205,28 @@ func (r *MarketRepository) SaveCandle(ctx context.Context, candle *market.Candle
 
 	result = r.db.WithContext(ctx).Save(&entity)
 	if result.Error != nil {
-		r.logger.Error().Err(result.Error).Str("symbol", candle.Symbol).Msg("Failed to save candle")
+		r.logger.Error().Err(result.Error).Str("symbol", kline.Symbol).Msg("Failed to save candle")
 		return fmt.Errorf("failed to save candle: %w", result.Error)
 	}
 
-	r.logger.Info().Str("symbol", candle.Symbol).Str("interval", string(candle.Interval)).Msg("Candle saved successfully")
+	r.logger.Info().Str("symbol", kline.Symbol).Str("interval", string(kline.Interval)).Msg("Candle saved successfully")
 	return nil
 }
 
+// SaveKlines stores multiple klines/candles in the database
+func (r *MarketRepository) SaveKlines(ctx context.Context, klines []*model.Kline) error {
+	return r.SaveCandles(ctx, klines)
+}
+
 // SaveCandles stores multiple candles in the database
-func (r *MarketRepository) SaveCandles(ctx context.Context, candles []*market.Candle) error {
-	if len(candles) == 0 {
+func (r *MarketRepository) SaveCandles(ctx context.Context, klines []*model.Kline) error {
+	if len(klines) == 0 {
 		return nil
 	}
 
-	entities := make([]CandleEntity, len(candles))
-	for i, candle := range candles {
-		entities[i] = r.candleToEntity(candle)
+	entities := make([]CandleEntity, len(klines))
+	for i, kline := range klines {
+		entities[i] = r.candleToEntity(kline)
 	}
 
 	// Use a transaction to save all candles
@@ -238,7 +250,7 @@ func (r *MarketRepository) SaveCandles(ctx context.Context, candles []*market.Ca
 		result = tx.Save(&entity)
 		if result.Error != nil {
 			tx.Rollback()
-			r.logger.Error().Err(result.Error).Str("symbol", candles[i].Symbol).Msg("Failed to save candle in batch")
+			r.logger.Error().Err(result.Error).Str("symbol", klines[i].Symbol).Msg("Failed to save candle in batch")
 			return fmt.Errorf("failed to save candle in batch: %w", result.Error)
 		}
 	}
@@ -248,12 +260,17 @@ func (r *MarketRepository) SaveCandles(ctx context.Context, candles []*market.Ca
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	r.logger.Info().Int("count", len(candles)).Msg("Successfully saved batch of candles")
+	r.logger.Info().Int("count", len(klines)).Msg("Successfully saved batch of candles")
 	return nil
 }
 
+// GetKline retrieves a specific kline/candle for a symbol, interval, and time
+func (r *MarketRepository) GetKline(ctx context.Context, symbol, exchange string, interval model.KlineInterval, openTime time.Time) (*model.Kline, error) {
+	return r.GetCandle(ctx, symbol, exchange, interval, openTime)
+}
+
 // GetCandle retrieves a specific candle for a symbol, interval, and time
-func (r *MarketRepository) GetCandle(ctx context.Context, symbol, exchange string, interval market.Interval, openTime time.Time) (*market.Candle, error) {
+func (r *MarketRepository) GetCandle(ctx context.Context, symbol, exchange string, interval model.KlineInterval, openTime time.Time) (*model.Kline, error) {
 	var entity CandleEntity
 
 	result := r.db.WithContext(ctx).
@@ -273,8 +290,13 @@ func (r *MarketRepository) GetCandle(ctx context.Context, symbol, exchange strin
 	return r.candleToDomain(&entity), nil
 }
 
+// GetKlines retrieves klines/candles for a symbol within a time range
+func (r *MarketRepository) GetKlines(ctx context.Context, symbol, exchange string, interval model.KlineInterval, start, end time.Time, limit int) ([]*model.Kline, error) {
+	return r.GetCandles(ctx, symbol, exchange, interval, start, end, limit)
+}
+
 // GetCandles retrieves candles for a symbol within a time range
-func (r *MarketRepository) GetCandles(ctx context.Context, symbol, exchange string, interval market.Interval, start, end time.Time, limit int) ([]*market.Candle, error) {
+func (r *MarketRepository) GetCandles(ctx context.Context, symbol, exchange string, interval model.KlineInterval, start, end time.Time, limit int) ([]*model.Kline, error) {
 	var entities []CandleEntity
 
 	query := r.db.WithContext(ctx).
@@ -293,16 +315,21 @@ func (r *MarketRepository) GetCandles(ctx context.Context, symbol, exchange stri
 		return nil, fmt.Errorf("failed to get candles: %w", result.Error)
 	}
 
-	candles := make([]*market.Candle, len(entities))
+	klines := make([]*model.Kline, len(entities))
 	for i, entity := range entities {
-		candles[i] = r.candleToDomain(&entity)
+		klines[i] = r.candleToDomain(&entity)
 	}
 
-	return candles, nil
+	return klines, nil
+}
+
+// GetLatestKline retrieves the most recent kline/candle for a symbol and interval
+func (r *MarketRepository) GetLatestKline(ctx context.Context, symbol, exchange string, interval model.KlineInterval) (*model.Kline, error) {
+	return r.GetLatestCandle(ctx, symbol, exchange, interval)
 }
 
 // GetLatestCandle retrieves the most recent candle for a symbol and interval
-func (r *MarketRepository) GetLatestCandle(ctx context.Context, symbol, exchange string, interval market.Interval) (*market.Candle, error) {
+func (r *MarketRepository) GetLatestCandle(ctx context.Context, symbol, exchange string, interval model.KlineInterval) (*model.Kline, error) {
 	var entity CandleEntity
 
 	result := r.db.WithContext(ctx).
@@ -348,7 +375,7 @@ func (r *MarketRepository) PurgeOldData(ctx context.Context, olderThan time.Time
 }
 
 // GetLatestTickers retrieves the latest tickers for all symbols
-func (r *MarketRepository) GetLatestTickers(ctx context.Context, limit int) ([]*market.Ticker, error) {
+func (r *MarketRepository) GetLatestTickers(ctx context.Context, limit int) ([]*model.Ticker, error) {
 	var entities []TickerEntity
 
 	// Using a common table expression (CTE) to get the latest ticker for each symbol
@@ -374,7 +401,7 @@ func (r *MarketRepository) GetLatestTickers(ctx context.Context, limit int) ([]*
 		return nil, fmt.Errorf("failed to get latest tickers: %w", result.Error)
 	}
 
-	tickers := make([]*market.Ticker, len(entities))
+	tickers := make([]*model.Ticker, len(entities))
 	for i, entity := range entities {
 		tickers[i] = r.tickerToDomain(&entity)
 	}
@@ -383,7 +410,7 @@ func (r *MarketRepository) GetLatestTickers(ctx context.Context, limit int) ([]*
 }
 
 // GetTickersBySymbol retrieves tickers for a specific symbol with optional time range
-func (r *MarketRepository) GetTickersBySymbol(ctx context.Context, symbol string, limit int) ([]*market.Ticker, error) {
+func (r *MarketRepository) GetTickersBySymbol(ctx context.Context, symbol string, limit int) ([]*model.Ticker, error) {
 	var entities []TickerEntity
 
 	query := r.db.WithContext(ctx).
@@ -401,7 +428,7 @@ func (r *MarketRepository) GetTickersBySymbol(ctx context.Context, symbol string
 		return nil, fmt.Errorf("failed to get tickers by symbol: %w", result.Error)
 	}
 
-	tickers := make([]*market.Ticker, len(entities))
+	tickers := make([]*model.Ticker, len(entities))
 	for i, entity := range entities {
 		tickers[i] = r.tickerToDomain(&entity)
 	}
@@ -412,7 +439,7 @@ func (r *MarketRepository) GetTickersBySymbol(ctx context.Context, symbol string
 // Symbol Repository implementation
 
 // Create stores a new Symbol
-func (r *MarketRepository) Create(ctx context.Context, symbol *market.Symbol) error {
+func (r *MarketRepository) Create(ctx context.Context, symbol *model.Symbol) error {
 	entity := r.symbolToEntity(symbol)
 
 	result := r.db.WithContext(ctx).Create(&entity)
@@ -426,7 +453,7 @@ func (r *MarketRepository) Create(ctx context.Context, symbol *market.Symbol) er
 }
 
 // GetBySymbol returns a Symbol by its symbol string (e.g., "BTCUSDT")
-func (r *MarketRepository) GetBySymbol(ctx context.Context, symbol string) (*market.Symbol, error) {
+func (r *MarketRepository) GetBySymbol(ctx context.Context, symbol string) (*model.Symbol, error) {
 	var entity SymbolEntity
 
 	result := r.db.WithContext(ctx).Where("symbol = ?", symbol).First(&entity)
@@ -443,7 +470,7 @@ func (r *MarketRepository) GetBySymbol(ctx context.Context, symbol string) (*mar
 }
 
 // GetByExchange returns all Symbols from a specific exchange
-func (r *MarketRepository) GetByExchange(ctx context.Context, exchange string) ([]*market.Symbol, error) {
+func (r *MarketRepository) GetByExchange(ctx context.Context, exchange string) ([]*model.Symbol, error) {
 	var entities []SymbolEntity
 
 	result := r.db.WithContext(ctx).Where("exchange = ?", exchange).Find(&entities)
@@ -452,7 +479,7 @@ func (r *MarketRepository) GetByExchange(ctx context.Context, exchange string) (
 		return nil, fmt.Errorf("failed to get symbols by exchange: %w", result.Error)
 	}
 
-	symbols := make([]*market.Symbol, len(entities))
+	symbols := make([]*model.Symbol, len(entities))
 	for i, entity := range entities {
 		symbols[i] = r.symbolToDomain(&entity)
 	}
@@ -462,7 +489,7 @@ func (r *MarketRepository) GetByExchange(ctx context.Context, exchange string) (
 }
 
 // GetAll returns all available Symbols
-func (r *MarketRepository) GetAll(ctx context.Context) ([]*market.Symbol, error) {
+func (r *MarketRepository) GetAll(ctx context.Context) ([]*model.Symbol, error) {
 	var entities []SymbolEntity
 
 	result := r.db.WithContext(ctx).Find(&entities)
@@ -471,7 +498,7 @@ func (r *MarketRepository) GetAll(ctx context.Context) ([]*market.Symbol, error)
 		return nil, fmt.Errorf("failed to get all symbols: %w", result.Error)
 	}
 
-	symbols := make([]*market.Symbol, len(entities))
+	symbols := make([]*model.Symbol, len(entities))
 	for i, entity := range entities {
 		symbols[i] = r.symbolToDomain(&entity)
 	}
@@ -481,7 +508,7 @@ func (r *MarketRepository) GetAll(ctx context.Context) ([]*market.Symbol, error)
 }
 
 // Update updates an existing Symbol
-func (r *MarketRepository) Update(ctx context.Context, symbol *market.Symbol) error {
+func (r *MarketRepository) Update(ctx context.Context, symbol *model.Symbol) error {
 	entity := r.symbolToEntity(symbol)
 
 	result := r.db.WithContext(ctx).Where("symbol = ?", symbol.Symbol).Updates(&entity)
@@ -497,6 +524,21 @@ func (r *MarketRepository) Update(ctx context.Context, symbol *market.Symbol) er
 
 	r.logger.Info().Str("symbol", symbol.Symbol).Msg("Symbol updated successfully")
 	return nil
+}
+
+// GetSymbolsByStatus returns symbols by status with pagination
+func (r *MarketRepository) GetSymbolsByStatus(ctx context.Context, status string, limit int, offset int) ([]*model.Symbol, error) {
+	var entities []SymbolEntity
+	result := r.db.WithContext(ctx).Where("status = ?", status).Limit(limit).Offset(offset).Find(&entities)
+	if result.Error != nil {
+		r.logger.Error().Err(result.Error).Str("status", status).Msg("Failed to get symbols by status")
+		return nil, fmt.Errorf("failed to get symbols by status: %w", result.Error)
+	}
+	symbols := make([]*model.Symbol, 0, len(entities))
+	for _, entity := range entities {
+		symbols = append(symbols, r.symbolToDomain(&entity))
+	}
+	return symbols, nil
 }
 
 // Delete removes a Symbol
@@ -518,59 +560,59 @@ func (r *MarketRepository) Delete(ctx context.Context, symbol string) error {
 
 // Helper methods to convert between domain model and database entity
 
-func (r *MarketRepository) tickerToEntity(ticker *market.Ticker) TickerEntity {
+func (r *MarketRepository) tickerToEntity(ticker *model.Ticker) TickerEntity {
 	return TickerEntity{
 		ID:            ticker.ID,
 		Symbol:        ticker.Symbol,
-		Price:         ticker.Price,
+		Price:         ticker.LastPrice,
 		Volume:        ticker.Volume,
-		High24h:       ticker.High24h,
-		Low24h:        ticker.Low24h,
+		High24h:       ticker.HighPrice,
+		Low24h:        ticker.LowPrice,
 		PriceChange:   ticker.PriceChange,
-		PercentChange: ticker.PercentChange,
-		LastUpdated:   ticker.LastUpdated,
+		PercentChange: ticker.PriceChangePercent,
+		LastUpdated:   ticker.Timestamp,
 		Exchange:      ticker.Exchange,
 	}
 }
 
-func (r *MarketRepository) tickerToDomain(entity *TickerEntity) *market.Ticker {
-	return &market.Ticker{
-		ID:            entity.ID,
-		Symbol:        entity.Symbol,
-		Price:         entity.Price,
-		Volume:        entity.Volume,
-		High24h:       entity.High24h,
-		Low24h:        entity.Low24h,
-		PriceChange:   entity.PriceChange,
-		PercentChange: entity.PercentChange,
-		LastUpdated:   entity.LastUpdated,
-		Exchange:      entity.Exchange,
+func (r *MarketRepository) tickerToDomain(entity *TickerEntity) *model.Ticker {
+	return &model.Ticker{
+		ID:                 entity.ID,
+		Symbol:             entity.Symbol,
+		LastPrice:          entity.Price,
+		Volume:             entity.Volume,
+		HighPrice:          entity.High24h,
+		LowPrice:           entity.Low24h,
+		PriceChange:        entity.PriceChange,
+		PriceChangePercent: entity.PercentChange,
+		Timestamp:          entity.LastUpdated,
+		Exchange:           entity.Exchange,
 	}
 }
 
-func (r *MarketRepository) candleToEntity(candle *market.Candle) CandleEntity {
+func (r *MarketRepository) candleToEntity(kline *model.Kline) CandleEntity {
 	return CandleEntity{
-		Symbol:      candle.Symbol,
-		Exchange:    candle.Exchange,
-		Interval:    string(candle.Interval),
-		OpenTime:    candle.OpenTime,
-		CloseTime:   candle.CloseTime,
-		Open:        candle.Open,
-		High:        candle.High,
-		Low:         candle.Low,
-		Close:       candle.Close,
-		Volume:      candle.Volume,
-		QuoteVolume: candle.QuoteVolume,
-		TradeCount:  candle.TradeCount,
-		Complete:    candle.Complete,
+		Symbol:      kline.Symbol,
+		Exchange:    kline.Exchange,
+		Interval:    string(kline.Interval),
+		OpenTime:    kline.OpenTime,
+		CloseTime:   kline.CloseTime,
+		Open:        kline.Open,
+		High:        kline.High,
+		Low:         kline.Low,
+		Close:       kline.Close,
+		Volume:      kline.Volume,
+		QuoteVolume: kline.QuoteVolume,
+		TradeCount:  kline.TradeCount,
+		Complete:    kline.Complete,
 	}
 }
 
-func (r *MarketRepository) candleToDomain(entity *CandleEntity) *market.Candle {
-	return &market.Candle{
+func (r *MarketRepository) candleToDomain(entity *CandleEntity) *model.Kline {
+	return &model.Kline{
 		Symbol:      entity.Symbol,
 		Exchange:    entity.Exchange,
-		Interval:    market.Interval(entity.Interval),
+		Interval:    model.KlineInterval(entity.Interval),
 		OpenTime:    entity.OpenTime,
 		CloseTime:   entity.CloseTime,
 		Open:        entity.Open,
@@ -584,12 +626,12 @@ func (r *MarketRepository) candleToDomain(entity *CandleEntity) *market.Candle {
 	}
 }
 
-func (r *MarketRepository) orderBookToEntity(orderbook *market.OrderBook) (OrderBookEntity, []OrderBookEntryEntity) {
+func (r *MarketRepository) orderBookToEntity(orderbook *model.OrderBook) (OrderBookEntity, []OrderBookEntryEntity) {
 	entity := OrderBookEntity{
 		Symbol:       orderbook.Symbol,
-		Exchange:     orderbook.Exchange,
-		LastUpdated:  orderbook.LastUpdated,
-		SequenceNum:  orderbook.SequenceNum,
+		Exchange:     "MEXC", // Default to MEXC since model.OrderBook doesn't have Exchange field
+		LastUpdated:  orderbook.Timestamp,
+		SequenceNum:  0, // Not available in model.OrderBook
 		LastUpdateID: orderbook.LastUpdateID,
 	}
 
@@ -616,19 +658,17 @@ func (r *MarketRepository) orderBookToEntity(orderbook *market.OrderBook) (Order
 	return entity, entries
 }
 
-func (r *MarketRepository) orderBookToDomain(entity *OrderBookEntity, entries []OrderBookEntryEntity) *market.OrderBook {
-	orderbook := &market.OrderBook{
+func (r *MarketRepository) orderBookToDomain(entity *OrderBookEntity, entries []OrderBookEntryEntity) *model.OrderBook {
+	orderbook := &model.OrderBook{
 		Symbol:       entity.Symbol,
-		Exchange:     entity.Exchange,
-		LastUpdated:  entity.LastUpdated,
-		SequenceNum:  entity.SequenceNum,
 		LastUpdateID: entity.LastUpdateID,
-		Bids:         make([]market.OrderBookEntry, 0),
-		Asks:         make([]market.OrderBookEntry, 0),
+		Bids:         make([]model.OrderBookEntry, 0),
+		Asks:         make([]model.OrderBookEntry, 0),
+		Timestamp:    entity.LastUpdated,
 	}
 
 	for _, entry := range entries {
-		bookEntry := market.OrderBookEntry{
+		bookEntry := model.OrderBookEntry{
 			Price:    entry.Price,
 			Quantity: entry.Quantity,
 		}
@@ -643,41 +683,41 @@ func (r *MarketRepository) orderBookToDomain(entity *OrderBookEntity, entries []
 	return orderbook
 }
 
-func (r *MarketRepository) symbolToEntity(symbol *market.Symbol) SymbolEntity {
+func (r *MarketRepository) symbolToEntity(symbol *model.Symbol) SymbolEntity {
 	return SymbolEntity{
 		Symbol:            symbol.Symbol,
 		BaseAsset:         symbol.BaseAsset,
 		QuoteAsset:        symbol.QuoteAsset,
 		Exchange:          symbol.Exchange,
-		Status:            symbol.Status,
+		Status:            string(symbol.Status),
 		MinPrice:          symbol.MinPrice,
 		MaxPrice:          symbol.MaxPrice,
 		PricePrecision:    symbol.PricePrecision,
-		MinQty:            symbol.MinQty,
-		MaxQty:            symbol.MaxQty,
-		QtyPrecision:      symbol.QtyPrecision,
+		MinQty:            symbol.MinQuantity,
+		MaxQty:            symbol.MaxQuantity,
+		QtyPrecision:      symbol.QuantityPrecision,
 		AllowedOrderTypes: strings.Join(symbol.AllowedOrderTypes, ","),
 	}
 }
 
-func (r *MarketRepository) symbolToDomain(entity *SymbolEntity) *market.Symbol {
+func (r *MarketRepository) symbolToDomain(entity *SymbolEntity) *model.Symbol {
 	var allowedOrderTypes []string
 	if entity.AllowedOrderTypes != "" {
 		allowedOrderTypes = strings.Split(entity.AllowedOrderTypes, ",")
 	}
 
-	return &market.Symbol{
+	return &model.Symbol{
 		Symbol:            entity.Symbol,
 		BaseAsset:         entity.BaseAsset,
 		QuoteAsset:        entity.QuoteAsset,
 		Exchange:          entity.Exchange,
-		Status:            entity.Status,
+		Status:            model.SymbolStatus(entity.Status),
 		MinPrice:          entity.MinPrice,
 		MaxPrice:          entity.MaxPrice,
 		PricePrecision:    entity.PricePrecision,
-		MinQty:            entity.MinQty,
-		MaxQty:            entity.MaxQty,
-		QtyPrecision:      entity.QtyPrecision,
+		MinQuantity:       entity.MinQty,
+		MaxQuantity:       entity.MaxQty,
+		QuantityPrecision: entity.QtyPrecision,
 		AllowedOrderTypes: allowedOrderTypes,
 		CreatedAt:         entity.CreatedAt,
 		UpdatedAt:         entity.UpdatedAt,
@@ -685,7 +725,7 @@ func (r *MarketRepository) symbolToDomain(entity *SymbolEntity) *market.Symbol {
 }
 
 // GetOrderBook retrieves the latest order book for a symbol from a specific exchange
-func (r *MarketRepository) GetOrderBook(ctx context.Context, symbol, exchange string, depth int) (*market.OrderBook, error) {
+func (r *MarketRepository) GetOrderBook(ctx context.Context, symbol, exchange string, depth int) (*model.OrderBook, error) {
 	var entity OrderBookEntity
 
 	result := r.db.WithContext(ctx).
@@ -737,4 +777,233 @@ func (r *MarketRepository) GetOrderBook(ctx context.Context, symbol, exchange st
 	}
 
 	return r.orderBookToDomain(&entity, entries), nil
+}
+
+// Legacy methods for backward compatibility
+
+// SaveTickerLegacy stores a ticker in the database using the legacy model
+func (r *MarketRepository) SaveTickerLegacy(ctx context.Context, ticker *market.Ticker) error {
+	// Convert legacy model to canonical model
+	canonicalTicker := compat.ConvertMarketTickerToTicker(ticker)
+	// Use the canonical implementation
+	return r.SaveTicker(ctx, canonicalTicker)
+}
+
+// GetTickerLegacy retrieves the latest ticker for a symbol from a specific exchange using the legacy model
+func (r *MarketRepository) GetTickerLegacy(ctx context.Context, symbol, exchange string) (*market.Ticker, error) {
+	// Use the canonical implementation and convert the result
+	canonicalTicker, err := r.GetTicker(ctx, symbol, exchange)
+	if err != nil {
+		return nil, err
+	}
+	return compat.ConvertTickerToMarketTicker(canonicalTicker), nil
+}
+
+// GetAllTickersLegacy retrieves all latest tickers from a specific exchange using the legacy model
+func (r *MarketRepository) GetAllTickersLegacy(ctx context.Context, exchange string) ([]*market.Ticker, error) {
+	// Use the canonical implementation and convert the results
+	canonicalTickers, err := r.GetAllTickers(ctx, exchange)
+	if err != nil {
+		return nil, err
+	}
+
+	legacyTickers := make([]*market.Ticker, len(canonicalTickers))
+	for i, ticker := range canonicalTickers {
+		legacyTickers[i] = compat.ConvertTickerToMarketTicker(ticker)
+	}
+
+	return legacyTickers, nil
+}
+
+// GetTickerHistoryLegacy retrieves ticker history for a symbol within a time range using the legacy model
+func (r *MarketRepository) GetTickerHistoryLegacy(ctx context.Context, symbol, exchange string, start, end time.Time) ([]*market.Ticker, error) {
+	// Use the canonical implementation and convert the results
+	canonicalTickers, err := r.GetTickerHistory(ctx, symbol, exchange, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	legacyTickers := make([]*market.Ticker, len(canonicalTickers))
+	for i, ticker := range canonicalTickers {
+		legacyTickers[i] = compat.ConvertTickerToMarketTicker(ticker)
+	}
+
+	return legacyTickers, nil
+}
+
+// SaveCandleLegacy stores a candle in the database using the legacy model
+func (r *MarketRepository) SaveCandleLegacy(ctx context.Context, candle *market.Candle) error {
+	// Convert legacy model to canonical model
+	canonicalKline := &model.Kline{
+		Symbol:      candle.Symbol,
+		Exchange:    candle.Exchange,
+		Interval:    model.KlineInterval(candle.Interval),
+		OpenTime:    candle.OpenTime,
+		CloseTime:   candle.CloseTime,
+		Open:        candle.Open,
+		High:        candle.High,
+		Low:         candle.Low,
+		Close:       candle.Close,
+		Volume:      candle.Volume,
+		QuoteVolume: candle.QuoteVolume,
+		TradeCount:  candle.TradeCount,
+		Complete:    candle.Complete,
+	}
+
+	// Use the canonical implementation
+	return r.SaveCandle(ctx, canonicalKline)
+}
+
+// SaveCandlesLegacy stores multiple candles in the database using the legacy model
+func (r *MarketRepository) SaveCandlesLegacy(ctx context.Context, candles []*market.Candle) error {
+	// Convert legacy models to canonical models
+	canonicalKlines := make([]*model.Kline, len(candles))
+	for i, candle := range candles {
+		canonicalKlines[i] = &model.Kline{
+			Symbol:      candle.Symbol,
+			Exchange:    candle.Exchange,
+			Interval:    model.KlineInterval(candle.Interval),
+			OpenTime:    candle.OpenTime,
+			CloseTime:   candle.CloseTime,
+			Open:        candle.Open,
+			High:        candle.High,
+			Low:         candle.Low,
+			Close:       candle.Close,
+			Volume:      candle.Volume,
+			QuoteVolume: candle.QuoteVolume,
+			TradeCount:  candle.TradeCount,
+			Complete:    candle.Complete,
+		}
+	}
+
+	// Use the canonical implementation
+	return r.SaveCandles(ctx, canonicalKlines)
+}
+
+// GetCandleLegacy retrieves a specific candle for a symbol, interval, and time using the legacy model
+func (r *MarketRepository) GetCandleLegacy(ctx context.Context, symbol, exchange string, interval market.Interval, openTime time.Time) (*market.Candle, error) {
+	// Use the canonical implementation and convert the result
+	canonicalKline, err := r.GetCandle(ctx, symbol, exchange, model.KlineInterval(interval), openTime)
+	if err != nil {
+		return nil, err
+	}
+
+	return &market.Candle{
+		Symbol:      canonicalKline.Symbol,
+		Exchange:    canonicalKline.Exchange,
+		Interval:    market.Interval(canonicalKline.Interval),
+		OpenTime:    canonicalKline.OpenTime,
+		CloseTime:   canonicalKline.CloseTime,
+		Open:        canonicalKline.Open,
+		High:        canonicalKline.High,
+		Low:         canonicalKline.Low,
+		Close:       canonicalKline.Close,
+		Volume:      canonicalKline.Volume,
+		QuoteVolume: canonicalKline.QuoteVolume,
+		TradeCount:  canonicalKline.TradeCount,
+		Complete:    canonicalKline.Complete,
+	}, nil
+}
+
+// GetCandlesLegacy retrieves candles for a symbol within a time range using the legacy model
+func (r *MarketRepository) GetCandlesLegacy(ctx context.Context, symbol, exchange string, interval market.Interval, start, end time.Time, limit int) ([]*market.Candle, error) {
+	// Use the canonical implementation and convert the results
+	canonicalKlines, err := r.GetCandles(ctx, symbol, exchange, model.KlineInterval(interval), start, end, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	legacyCandles := make([]*market.Candle, len(canonicalKlines))
+	for i, kline := range canonicalKlines {
+		legacyCandles[i] = &market.Candle{
+			Symbol:      kline.Symbol,
+			Exchange:    kline.Exchange,
+			Interval:    market.Interval(kline.Interval),
+			OpenTime:    kline.OpenTime,
+			CloseTime:   kline.CloseTime,
+			Open:        kline.Open,
+			High:        kline.High,
+			Low:         kline.Low,
+			Close:       kline.Close,
+			Volume:      kline.Volume,
+			QuoteVolume: kline.QuoteVolume,
+			TradeCount:  kline.TradeCount,
+			Complete:    kline.Complete,
+		}
+	}
+
+	return legacyCandles, nil
+}
+
+// GetLatestCandleLegacy retrieves the most recent candle for a symbol and interval using the legacy model
+func (r *MarketRepository) GetLatestCandleLegacy(ctx context.Context, symbol, exchange string, interval market.Interval) (*market.Candle, error) {
+	// Use the canonical implementation and convert the result
+	canonicalKline, err := r.GetLatestCandle(ctx, symbol, exchange, model.KlineInterval(interval))
+	if err != nil {
+		return nil, err
+	}
+
+	return &market.Candle{
+		Symbol:      canonicalKline.Symbol,
+		Exchange:    canonicalKline.Exchange,
+		Interval:    market.Interval(canonicalKline.Interval),
+		OpenTime:    canonicalKline.OpenTime,
+		CloseTime:   canonicalKline.CloseTime,
+		Open:        canonicalKline.Open,
+		High:        canonicalKline.High,
+		Low:         canonicalKline.Low,
+		Close:       canonicalKline.Close,
+		Volume:      canonicalKline.Volume,
+		QuoteVolume: canonicalKline.QuoteVolume,
+		TradeCount:  canonicalKline.TradeCount,
+		Complete:    canonicalKline.Complete,
+	}, nil
+}
+
+// GetLatestTickersLegacy retrieves the latest tickers for all symbols using the legacy model
+func (r *MarketRepository) GetLatestTickersLegacy(ctx context.Context, limit int) ([]*market.Ticker, error) {
+	// Use the canonical implementation and convert the results
+	canonicalTickers, err := r.GetLatestTickers(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	legacyTickers := make([]*market.Ticker, len(canonicalTickers))
+	for i, ticker := range canonicalTickers {
+		legacyTickers[i] = compat.ConvertTickerToMarketTicker(ticker)
+	}
+
+	return legacyTickers, nil
+}
+
+// GetTickersBySymbolLegacy retrieves tickers for a specific symbol with optional time range using the legacy model
+func (r *MarketRepository) GetTickersBySymbolLegacy(ctx context.Context, symbol string, limit int) ([]*market.Ticker, error) {
+	// Use the canonical implementation and convert the results
+	canonicalTickers, err := r.GetTickersBySymbol(ctx, symbol, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	legacyTickers := make([]*market.Ticker, len(canonicalTickers))
+	for i, ticker := range canonicalTickers {
+		legacyTickers[i] = compat.ConvertTickerToMarketTicker(ticker)
+	}
+
+	return legacyTickers, nil
+}
+
+// GetOrderBookLegacy retrieves the order book for a symbol using the legacy model
+func (r *MarketRepository) GetOrderBookLegacy(ctx context.Context, symbol, exchange string, depth int) (*market.OrderBook, error) {
+	// Use the canonical implementation and convert the result
+	canonicalOrderBook, err := r.GetOrderBook(ctx, symbol, exchange, depth)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to legacy model
+	legacyOrderBook := compat.ConvertOrderBookToMarketOrderBook(canonicalOrderBook)
+	// Set the exchange since it's not part of the model.OrderBook
+	legacyOrderBook.Exchange = exchange
+
+	return legacyOrderBook, nil
 }

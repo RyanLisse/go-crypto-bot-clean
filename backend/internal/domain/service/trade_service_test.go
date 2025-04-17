@@ -243,12 +243,23 @@ type MockSymbolRepository struct {
 	mock.Mock
 }
 
-func (m *MockSymbolRepository) Create(ctx context.Context, symbol *market.Symbol) error {
+func (m *MockSymbolRepository) Create(ctx context.Context, symbol *model.Symbol) error {
 	args := m.Called(ctx, symbol)
 	return args.Error(0)
 }
 
-func (m *MockSymbolRepository) Update(ctx context.Context, symbol *market.Symbol) error {
+// CreateLegacy mocks the SymbolRepository interface method
+func (m *MockSymbolRepository) CreateLegacy(ctx context.Context, symbol *market.Symbol) error {
+	args := m.Called(ctx, symbol)
+	return args.Error(0)
+}
+
+func (m *MockSymbolRepository) Update(ctx context.Context, symbol *model.Symbol) error {
+	args := m.Called(ctx, symbol)
+	return args.Error(0)
+}
+
+func (m *MockSymbolRepository) UpdateLegacy(ctx context.Context, symbol *market.Symbol) error {
 	args := m.Called(ctx, symbol)
 	return args.Error(0)
 }
@@ -258,7 +269,15 @@ func (m *MockSymbolRepository) Delete(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
-func (m *MockSymbolRepository) GetByID(ctx context.Context, id string) (*market.Symbol, error) {
+func (m *MockSymbolRepository) GetByID(ctx context.Context, id string) (*model.Symbol, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Symbol), args.Error(1)
+}
+
+func (m *MockSymbolRepository) GetByIDLegacy(ctx context.Context, id string) (*market.Symbol, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -266,7 +285,15 @@ func (m *MockSymbolRepository) GetByID(ctx context.Context, id string) (*market.
 	return args.Get(0).(*market.Symbol), args.Error(1)
 }
 
-func (m *MockSymbolRepository) GetBySymbol(ctx context.Context, symbol string) (*market.Symbol, error) {
+func (m *MockSymbolRepository) GetBySymbol(ctx context.Context, symbol string) (*model.Symbol, error) {
+	args := m.Called(ctx, symbol)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Symbol), args.Error(1)
+}
+
+func (m *MockSymbolRepository) GetBySymbolLegacy(ctx context.Context, symbol string) (*market.Symbol, error) {
 	args := m.Called(ctx, symbol)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -274,7 +301,15 @@ func (m *MockSymbolRepository) GetBySymbol(ctx context.Context, symbol string) (
 	return args.Get(0).(*market.Symbol), args.Error(1)
 }
 
-func (m *MockSymbolRepository) GetAll(ctx context.Context) ([]*market.Symbol, error) {
+func (m *MockSymbolRepository) GetAll(ctx context.Context) ([]*model.Symbol, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.Symbol), args.Error(1)
+}
+
+func (m *MockSymbolRepository) GetAllLegacy(ctx context.Context) ([]*market.Symbol, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -282,7 +317,33 @@ func (m *MockSymbolRepository) GetAll(ctx context.Context) ([]*market.Symbol, er
 	return args.Get(0).([]*market.Symbol), args.Error(1)
 }
 
-func (m *MockSymbolRepository) GetByExchange(ctx context.Context, exchange string) ([]*market.Symbol, error) {
+// GetSymbolsByStatus mocks the SymbolRepository interface method
+func (m *MockSymbolRepository) GetSymbolsByStatus(ctx context.Context, status string, limit int, offset int) ([]*model.Symbol, error) {
+	args := m.Called(ctx, status, limit, offset)
+	if args.Get(0) != nil {
+		return args.Get(0).([]*model.Symbol), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+// GetSymbolsByStatusLegacy mocks the SymbolRepository interface method
+func (m *MockSymbolRepository) GetSymbolsByStatusLegacy(ctx context.Context, status string, limit int, offset int) ([]*market.Symbol, error) {
+	args := m.Called(ctx, status, limit, offset)
+	if args.Get(0) != nil {
+		return args.Get(0).([]*market.Symbol), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *MockSymbolRepository) GetByExchange(ctx context.Context, exchange string) ([]*model.Symbol, error) {
+	args := m.Called(ctx, exchange)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.Symbol), args.Error(1)
+}
+
+func (m *MockSymbolRepository) GetByExchangeLegacy(ctx context.Context, exchange string) ([]*market.Symbol, error) {
 	args := m.Called(ctx, exchange)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -716,19 +777,51 @@ type mockMarketRepoWrapper struct {
 	mock *MockTradeMarketDataService
 }
 
-func (w *mockMarketRepoWrapper) SaveTicker(ctx context.Context, ticker *market.Ticker) error {
+func (w *mockMarketRepoWrapper) SaveTicker(ctx context.Context, ticker *model.Ticker) error {
 	return nil
 }
 
-func (w *mockMarketRepoWrapper) GetTicker(ctx context.Context, symbol, exchange string) (*market.Ticker, error) {
-	return w.mock.RefreshTicker(ctx, symbol)
+func (w *mockMarketRepoWrapper) SaveTickerLegacy(ctx context.Context, ticker *market.Ticker) error {
+	return nil
 }
 
-func (w *mockMarketRepoWrapper) GetAllTickers(ctx context.Context, exchange string) ([]*market.Ticker, error) {
+func (w *mockMarketRepoWrapper) GetTicker(ctx context.Context, symbol, exchange string) (*model.Ticker, error) {
+	return &model.Ticker{
+		Symbol:    symbol,
+		LastPrice: 50000.0,
+		Volume:    100.0,
+	}, nil
+}
+
+func (w *mockMarketRepoWrapper) GetTickerLegacy(ctx context.Context, symbol, exchange string) (*market.Ticker, error) {
+	return &market.Ticker{
+		Symbol: symbol,
+		Price:  50000.0,
+		Volume: 100.0,
+	}, nil
+}
+
+func (w *mockMarketRepoWrapper) GetAllTickers(ctx context.Context, exchange string) ([]*model.Ticker, error) {
 	return nil, nil
 }
 
-func (w *mockMarketRepoWrapper) GetTickerHistory(ctx context.Context, symbol, exchange string, start, end time.Time) ([]*market.Ticker, error) {
+func (w *mockMarketRepoWrapper) GetAllTickersLegacy(ctx context.Context, exchange string) ([]*market.Ticker, error) {
+	return nil, nil
+}
+
+func (w *mockMarketRepoWrapper) GetCandle(ctx context.Context, symbol, exchange string, interval market.Interval, openTime time.Time) (*market.Candle, error) {
+	return nil, nil
+}
+
+func (w *mockMarketRepoWrapper) GetCandleLegacy(ctx context.Context, symbol, exchange string, interval market.Interval, openTime time.Time) (*market.Candle, error) {
+	return nil, nil
+}
+
+func (w *mockMarketRepoWrapper) GetTickerHistory(ctx context.Context, symbol, exchange string, start, end time.Time) ([]*model.Ticker, error) {
+	return nil, nil
+}
+
+func (w *mockMarketRepoWrapper) GetTickerHistoryLegacy(ctx context.Context, symbol, exchange string, start, end time.Time) ([]*market.Ticker, error) {
 	return nil, nil
 }
 
@@ -736,15 +829,39 @@ func (w *mockMarketRepoWrapper) SaveCandle(ctx context.Context, candle *market.C
 	return nil
 }
 
+func (w *mockMarketRepoWrapper) SaveCandleLegacy(ctx context.Context, candle *market.Candle) error {
+	return nil
+}
+
 func (w *mockMarketRepoWrapper) SaveCandles(ctx context.Context, candles []*market.Candle) error {
 	return nil
 }
 
-func (w *mockMarketRepoWrapper) GetCandle(ctx context.Context, symbol, exchange string, interval market.Interval, openTime time.Time) (*market.Candle, error) {
-	return nil, nil
+func (w *mockMarketRepoWrapper) SaveCandlesLegacy(ctx context.Context, candles []*market.Candle) error {
+	return nil
 }
 
 func (w *mockMarketRepoWrapper) GetCandles(ctx context.Context, symbol, exchange string, interval market.Interval, start, end time.Time, limit int) ([]*market.Candle, error) {
+	return nil, nil
+}
+
+func (w *mockMarketRepoWrapper) GetCandlesLegacy(ctx context.Context, symbol, exchange string, interval market.Interval, start, end time.Time, limit int) ([]*market.Candle, error) {
+	return nil, nil
+}
+
+func (w *mockMarketRepoWrapper) SaveKline(ctx context.Context, kline *model.Kline) error {
+	return nil
+}
+
+func (w *mockMarketRepoWrapper) SaveKlines(ctx context.Context, klines []*model.Kline) error {
+	return nil
+}
+
+func (w *mockMarketRepoWrapper) GetKline(ctx context.Context, symbol, exchange string, interval model.KlineInterval, openTime time.Time) (*model.Kline, error) {
+	return nil, nil
+}
+
+func (w *mockMarketRepoWrapper) GetKlines(ctx context.Context, symbol, exchange string, interval model.KlineInterval, start, end time.Time, limit int) ([]*model.Kline, error) {
 	return nil, nil
 }
 
@@ -752,24 +869,47 @@ func (w *mockMarketRepoWrapper) GetLatestCandle(ctx context.Context, symbol, exc
 	return nil, nil
 }
 
+func (w *mockMarketRepoWrapper) GetLatestCandleLegacy(ctx context.Context, symbol, exchange string, interval market.Interval) (*market.Candle, error) {
+	return nil, nil
+}
+
+func (w *mockMarketRepoWrapper) GetLatestKline(ctx context.Context, symbol, exchange string, interval model.KlineInterval) (*model.Kline, error) {
+	return nil, nil
+}
+
 func (w *mockMarketRepoWrapper) PurgeOldData(ctx context.Context, olderThan time.Time) error {
 	return nil
 }
 
-func (w *mockMarketRepoWrapper) GetLatestTickers(ctx context.Context, limit int) ([]*market.Ticker, error) {
+func (w *mockMarketRepoWrapper) GetLatestTickers(ctx context.Context, limit int) ([]*model.Ticker, error) {
 	return nil, nil
 }
 
-func (w *mockMarketRepoWrapper) GetOrderBook(ctx context.Context, symbol, exchange string, depth int) (*market.OrderBook, error) {
-	return &market.OrderBook{
-		Symbol:   symbol,
-		Exchange: exchange,
-		Bids:     []market.OrderBookEntry{{Price: 49000.0, Quantity: 1.0}},
-		Asks:     []market.OrderBookEntry{{Price: 51000.0, Quantity: 1.0}},
+func (w *mockMarketRepoWrapper) GetLatestTickersLegacy(ctx context.Context, limit int) ([]*market.Ticker, error) {
+	return nil, nil
+}
+
+func (w *mockMarketRepoWrapper) GetOrderBook(ctx context.Context, symbol, exchange string, depth int) (*model.OrderBook, error) {
+	return &model.OrderBook{
+		Symbol: symbol,
+		Bids:   []model.OrderBookEntry{{Price: 49000.0, Quantity: 1.0}},
+		Asks:   []model.OrderBookEntry{{Price: 51000.0, Quantity: 1.0}},
 	}, nil
 }
 
-func (w *mockMarketRepoWrapper) GetTickersBySymbol(ctx context.Context, symbol string, limit int) ([]*market.Ticker, error) {
+func (w *mockMarketRepoWrapper) GetOrderBookLegacy(ctx context.Context, symbol, exchange string, depth int) (*market.OrderBook, error) {
+	return &market.OrderBook{
+		Symbol: symbol,
+		Bids:   []market.OrderBookEntry{{Price: 49000.0, Quantity: 1.0}},
+		Asks:   []market.OrderBookEntry{{Price: 51000.0, Quantity: 1.0}},
+	}, nil
+}
+
+func (w *mockMarketRepoWrapper) GetTickersBySymbol(ctx context.Context, symbol string, limit int) ([]*model.Ticker, error) {
+	return nil, nil
+}
+
+func (w *mockMarketRepoWrapper) GetTickersBySymbolLegacy(ctx context.Context, symbol string, limit int) ([]*market.Ticker, error) {
 	return nil, nil
 }
 

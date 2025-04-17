@@ -1,0 +1,5 @@
+./candle.go
+./data.go
+./orderbook.go
+./symbol.go
+./ticker.go

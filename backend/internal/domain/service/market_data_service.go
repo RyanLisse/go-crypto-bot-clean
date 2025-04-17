@@ -43,7 +43,7 @@ func NewMarketDataService(
 
 // RefreshSymbols fetches all trading symbols from the exchange, updates the database
 // and returns the updated list
-func (s *MarketDataService) RefreshSymbols(ctx context.Context) ([]market.Symbol, error) {
+func (s *MarketDataService) RefreshSymbols(ctx context.Context) ([]model.Symbol, error) {
 	// Make sure only one refresh is running at a time
 	s.refreshLock.Lock()
 	defer s.refreshLock.Unlock()
@@ -59,7 +59,7 @@ func (s *MarketDataService) RefreshSymbols(ctx context.Context) ([]market.Symbol
 	}
 
 	// Convert pointer slice to value slice
-	symbols := make([]market.Symbol, len(dbSymbols))
+	symbols := make([]model.Symbol, len(dbSymbols))
 	for i, symbol := range dbSymbols {
 		symbols[i] = *symbol
 	}
@@ -69,14 +69,8 @@ func (s *MarketDataService) RefreshSymbols(ctx context.Context) ([]market.Symbol
 
 // RefreshTicker fetches the latest ticker data for a specific symbol from the exchange,
 // updates the database, and returns the updated ticker
-func (s *MarketDataService) RefreshTicker(ctx context.Context, symbol string) (*market.Ticker, error) {
+func (s *MarketDataService) RefreshTicker(ctx context.Context, symbol string) (*model.Ticker, error) {
 	s.logger.Debug().Str("symbol", symbol).Msg("Refreshing ticker from exchange")
-
-	// Try to get from cache first
-	cachedTicker, exists := s.cache.GetTicker(ctx, "mexc", symbol)
-	if exists {
-		return cachedTicker, nil
-	}
 
 	// Try to get from MEXC Client using GetMarketData
 	ticker, err := s.mexcClient.GetMarketData(ctx, symbol) // Changed mexcAPI to mexcClient
@@ -93,27 +87,13 @@ func (s *MarketDataService) RefreshTicker(ctx context.Context, symbol string) (*
 		return dbTicker, nil
 	}
 
-	// Convert model.Ticker to market.Ticker
-	marketTicker := &market.Ticker{
-		Symbol:      ticker.Symbol,
-		Price:       ticker.LastPrice,
-		Volume:      ticker.Volume,
-		High24h:     ticker.HighPrice,
-		Low24h:      ticker.LowPrice,
-		LastUpdated: time.Now(),
-		Exchange:    "mexc",
-	}
-
-	// Update cache
-	s.cache.CacheTicker(marketTicker)
-
 	// Update database
-	err = s.marketRepo.SaveTicker(ctx, marketTicker)
+	err = s.marketRepo.SaveTicker(ctx, ticker)
 	if err != nil {
 		s.logger.Error().Err(err).Str("symbol", symbol).Msg("Failed to save ticker to database")
 	}
 
-	return marketTicker, nil
+	return ticker, nil
 }
 
 // RefreshCandles fetches the latest candle data for a specific symbol and interval,
@@ -121,9 +101,9 @@ func (s *MarketDataService) RefreshTicker(ctx context.Context, symbol string) (*
 func (s *MarketDataService) RefreshCandles(
 	ctx context.Context,
 	symbol string,
-	interval market.Interval,
+	interval model.KlineInterval,
 	limit int,
-) ([]market.Candle, error) {
+) ([]model.Kline, error) {
 	s.logger.Debug().
 		Str("symbol", symbol).
 		Str("interval", string(interval)).
@@ -134,10 +114,7 @@ func (s *MarketDataService) RefreshCandles(
 	endTime := time.Now()
 	startTime := endTime.Add(-time.Hour * 24) // Default to last 24 hours
 
-	// Convert market.Interval to model.KlineInterval
-	modelInterval := model.KlineInterval(interval)
-
-	klines, err := s.mexcClient.GetKlines(ctx, symbol, modelInterval, limit) // Changed mexcAPI to mexcClient
+	klines, err := s.mexcClient.GetKlines(ctx, symbol, interval, limit) // Changed mexcAPI to mexcClient
 	if err != nil {
 		s.logger.Error().Err(err).
 			Str("symbol", symbol).
@@ -145,56 +122,38 @@ func (s *MarketDataService) RefreshCandles(
 			Msg("Failed to fetch candles from exchange API")
 
 		// Fall back to database
-		dbCandles, dbErr := s.marketRepo.GetCandles(ctx, symbol, "mexc", interval, startTime, endTime, limit)
+		dbKlines, dbErr := s.marketRepo.GetKlines(ctx, symbol, "mexc", interval, startTime, endTime, limit)
 		if dbErr != nil {
 			s.logger.Error().Err(dbErr).
 				Str("symbol", symbol).
 				Str("interval", string(interval)).
-				Msg("Failed to fetch candles from database")
+				Msg("Failed to fetch klines from database")
 			return nil, dbErr
 		}
 
 		// Convert pointer slice to value slice
-		candles := make([]market.Candle, len(dbCandles))
-		for i, candle := range dbCandles {
-			candles[i] = *candle
+		klines := make([]model.Kline, len(dbKlines))
+		for i, kline := range dbKlines {
+			klines[i] = *kline
 		}
 
-		return candles, nil
+		return klines, nil
 	}
 
-	// Convert model.Kline to market.Candle
-	candles := make([]market.Candle, len(klines))
-	for i, kline := range klines {
-		candles[i] = market.Candle{
-			Symbol:    symbol,
-			Interval:  interval,
-			OpenTime:  kline.OpenTime,
-			Open:      kline.Open,
-			High:      kline.High,
-			Low:       kline.Low,
-			Close:     kline.Close,
-			Volume:    kline.Volume,
-			CloseTime: kline.CloseTime,
-			Exchange:  "mexc",
-		}
-	}
-
-	// Update cache and database
-	for i := range candles {
-		s.cache.CacheCandle(&candles[i])
-
-		err = s.marketRepo.SaveCandle(ctx, &candles[i])
+	// Update database
+	for i := range klines {
+		klineCopy := klines[i] // Create a copy to avoid storing references that might change
+		err = s.marketRepo.SaveKline(ctx, &klineCopy)
 		if err != nil {
 			s.logger.Error().Err(err).
 				Str("symbol", symbol).
 				Str("interval", string(interval)).
-				Time("openTime", candles[i].OpenTime).
-				Msg("Failed to save candle to database")
+				Time("openTime", klines[i].OpenTime).
+				Msg("Failed to save kline to database")
 		}
 	}
 
-	return candles, nil
+	return klines, nil
 }
 
 // GetHistoricalTickerPrices fetches historical ticker price data for a specific symbol
@@ -202,7 +161,7 @@ func (s *MarketDataService) GetHistoricalTickerPrices(
 	ctx context.Context,
 	symbol string,
 	startTime, endTime time.Time,
-) ([]market.Ticker, error) {
+) ([]model.Ticker, error) {
 	s.logger.Debug().
 		Str("symbol", symbol).
 		Time("startTime", startTime).
@@ -220,7 +179,7 @@ func (s *MarketDataService) GetHistoricalTickerPrices(
 	}
 
 	// Convert pointer slice to value slice
-	result := make([]market.Ticker, len(tickers))
+	result := make([]model.Ticker, len(tickers))
 	for i, ticker := range tickers {
 		result[i] = *ticker
 	}
@@ -229,68 +188,85 @@ func (s *MarketDataService) GetHistoricalTickerPrices(
 }
 
 // GetTicker implements the port.MarketDataService interface
-func (s *MarketDataService) GetTicker(ctx context.Context, symbol string) (*market.Ticker, error) {
+func (s *MarketDataService) GetTicker(ctx context.Context, symbol string) (*model.Ticker, error) {
 	return s.RefreshTicker(ctx, symbol)
 }
 
+// GetTickerLegacy implements the legacy port.MarketDataService interface
+func (s *MarketDataService) GetTickerLegacy(ctx context.Context, symbol string) (*market.Ticker, error) {
+	// Get the model.Ticker
+	ticker, err := s.RefreshTicker(ctx, symbol)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to market.Ticker
+	return &market.Ticker{
+		Symbol:      ticker.Symbol,
+		Price:       ticker.LastPrice,
+		Volume:      ticker.Volume,
+		High24h:     ticker.HighPrice,
+		Low24h:      ticker.LowPrice,
+		LastUpdated: ticker.Timestamp,
+		Exchange:    ticker.Exchange,
+	}, nil
+}
+
 // GetCandles implements the port.MarketDataService interface
-func (s *MarketDataService) GetCandles(ctx context.Context, symbol string, interval string, limit int) ([]*market.Candle, error) {
-	marketInterval := market.Interval(interval)
-	candles, err := s.RefreshCandles(ctx, symbol, marketInterval, limit)
+func (s *MarketDataService) GetCandles(ctx context.Context, symbol string, interval string, limit int) ([]*model.Kline, error) {
+	klineInterval := model.KlineInterval(interval)
+	klines, err := s.RefreshCandles(ctx, symbol, klineInterval, limit)
 	if err != nil {
 		return nil, err
 	}
 
 	// Convert to pointer slice
-	result := make([]*market.Candle, len(candles))
-	for i := range candles {
-		result[i] = &candles[i]
+	result := make([]*model.Kline, len(klines))
+	for i := range klines {
+		result[i] = &klines[i]
+	}
+
+	return result, nil
+}
+
+// GetCandlesLegacy implements the legacy port.MarketDataService interface
+func (s *MarketDataService) GetCandlesLegacy(ctx context.Context, symbol string, interval string, limit int) ([]*market.Candle, error) {
+	// Get the model.Klines
+	klineInterval := model.KlineInterval(interval)
+	klines, err := s.RefreshCandles(ctx, symbol, klineInterval, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to market.Candle
+	result := make([]*market.Candle, len(klines))
+	for i, kline := range klines {
+		result[i] = &market.Candle{
+			Symbol:    symbol,
+			Interval:  market.Interval(interval),
+			OpenTime:  kline.OpenTime,
+			Open:      kline.Open,
+			High:      kline.High,
+			Low:       kline.Low,
+			Close:     kline.Close,
+			Volume:    kline.Volume,
+			CloseTime: kline.CloseTime,
+			Exchange:  "mexc",
+		}
 	}
 
 	return result, nil
 }
 
 // GetOrderBook implements the port.MarketDataService interface
-func (s *MarketDataService) GetOrderBook(ctx context.Context, symbol string, depth int) (*market.OrderBook, error) {
+func (s *MarketDataService) GetOrderBook(ctx context.Context, symbol string, depth int) (*model.OrderBook, error) {
 	s.logger.Debug().Str("symbol", symbol).Int("depth", depth).Msg("Getting order book")
-
-	// Try to get from cache first
-	cachedOrderBook, exists := s.cache.GetOrderBook(ctx, "mexc", symbol)
-	if exists {
-		return cachedOrderBook, nil
-	}
 
 	// Try to get from MEXC Client
 	if s.mexcClient != nil { // Changed mexcAPI to mexcClient
 		orderBook, err := s.mexcClient.GetOrderBook(ctx, symbol, depth) // Changed mexcAPI to mexcClient
 		if err == nil {
-			// Convert the model to market model if needed
-			marketOrderBook := &market.OrderBook{
-				Symbol:      orderBook.Symbol,
-				Bids:        make([]market.OrderBookEntry, len(orderBook.Bids)),
-				Asks:        make([]market.OrderBookEntry, len(orderBook.Asks)),
-				LastUpdated: time.Now(), // Changed Timestamp to LastUpdated
-				Exchange:    "mexc",
-			}
-
-			for i, bid := range orderBook.Bids {
-				marketOrderBook.Bids[i] = market.OrderBookEntry{
-					Price:    bid.Price,
-					Quantity: bid.Quantity,
-				}
-			}
-
-			for i, ask := range orderBook.Asks {
-				marketOrderBook.Asks[i] = market.OrderBookEntry{
-					Price:    ask.Price,
-					Quantity: ask.Quantity,
-				}
-			}
-
-			// Cache the result
-			s.cache.CacheOrderBook(marketOrderBook)
-
-			return marketOrderBook, nil
+			return orderBook, nil
 		}
 
 		s.logger.Error().Err(err).Str("symbol", symbol).Msg("Failed to fetch order book from exchange API")
@@ -306,8 +282,42 @@ func (s *MarketDataService) GetOrderBook(ctx context.Context, symbol string, dep
 	return dbOrderBook, nil
 }
 
+// GetOrderBookLegacy implements the legacy port.MarketDataService interface
+func (s *MarketDataService) GetOrderBookLegacy(ctx context.Context, symbol string, depth int) (*market.OrderBook, error) {
+	// Get the model.OrderBook
+	orderBook, err := s.GetOrderBook(ctx, symbol, depth)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to market.OrderBook
+	marketOrderBook := &market.OrderBook{
+		Symbol:      orderBook.Symbol,
+		Bids:        make([]market.OrderBookEntry, len(orderBook.Bids)),
+		Asks:        make([]market.OrderBookEntry, len(orderBook.Asks)),
+		LastUpdated: orderBook.Timestamp,
+		Exchange:    "mexc", // Default to MEXC exchange
+	}
+
+	for i, bid := range orderBook.Bids {
+		marketOrderBook.Bids[i] = market.OrderBookEntry{
+			Price:    bid.Price,
+			Quantity: bid.Quantity,
+		}
+	}
+
+	for i, ask := range orderBook.Asks {
+		marketOrderBook.Asks[i] = market.OrderBookEntry{
+			Price:    ask.Price,
+			Quantity: ask.Quantity,
+		}
+	}
+
+	return marketOrderBook, nil
+}
+
 // GetAllSymbols implements the port.MarketDataService interface
-func (s *MarketDataService) GetAllSymbols(ctx context.Context) ([]*market.Symbol, error) {
+func (s *MarketDataService) GetAllSymbols(ctx context.Context) ([]*model.Symbol, error) {
 	s.logger.Debug().Msg("Getting all symbols")
 
 	// Try to get the symbols from the database
@@ -320,18 +330,18 @@ func (s *MarketDataService) GetAllSymbols(ctx context.Context) ([]*market.Symbol
 			exchangeSymbols, err := s.mexcClient.GetExchangeInfo(ctx) // Changed mexcAPI to mexcClient
 			if err == nil {
 				// Convert symbols and return
-				result := make([]*market.Symbol, len(exchangeSymbols.Symbols))
+				result := make([]*model.Symbol, len(exchangeSymbols.Symbols))
 				for i, sym := range exchangeSymbols.Symbols {
-					result[i] = &market.Symbol{
+					result[i] = &model.Symbol{
 						Symbol:              sym.Symbol,
 						BaseAsset:           sym.BaseAsset,
 						QuoteAsset:          sym.QuoteAsset,
-						Status:              sym.Status,
+						Status:              model.SymbolStatus(sym.Status),
 						BaseAssetPrecision:  sym.BaseAssetPrecision,
 						QuoteAssetPrecision: sym.QuoteAssetPrecision,
 						MinNotional:         parseStringToFloat64(sym.MinNotional),
-						MinLotSize:          parseStringToFloat64(sym.MinLotSize),
-						MaxLotSize:          parseStringToFloat64(sym.MaxLotSize),
+						MinQuantity:         parseStringToFloat64(sym.MinLotSize),
+						MaxQuantity:         parseStringToFloat64(sym.MaxLotSize),
 						StepSize:            parseStringToFloat64(sym.StepSize),
 						TickSize:            parseStringToFloat64(sym.TickSize),
 					}
@@ -348,7 +358,7 @@ func (s *MarketDataService) GetAllSymbols(ctx context.Context) ([]*market.Symbol
 }
 
 // GetSymbolInfo implements the port.MarketDataService interface
-func (s *MarketDataService) GetSymbolInfo(ctx context.Context, symbol string) (*market.Symbol, error) {
+func (s *MarketDataService) GetSymbolInfo(ctx context.Context, symbol string) (*model.Symbol, error) {
 	s.logger.Debug().Str("symbol", symbol).Msg("Getting symbol info")
 
 	// Get symbol info from the repository
@@ -361,16 +371,16 @@ func (s *MarketDataService) GetSymbolInfo(ctx context.Context, symbol string) (*
 			exchangeSymbol, err := s.mexcClient.GetSymbolInfo(ctx, symbol) // Changed mexcAPI to mexcClient
 			if err == nil {
 				// Convert and return
-				return &market.Symbol{
+				return &model.Symbol{
 					Symbol:              exchangeSymbol.Symbol,
 					BaseAsset:           exchangeSymbol.BaseAsset,
 					QuoteAsset:          exchangeSymbol.QuoteAsset,
-					Status:              exchangeSymbol.Status,
+					Status:              model.SymbolStatus(exchangeSymbol.Status),
 					BaseAssetPrecision:  exchangeSymbol.BaseAssetPrecision,
 					QuoteAssetPrecision: exchangeSymbol.QuoteAssetPrecision,
 					MinNotional:         parseStringToFloat64(exchangeSymbol.MinNotional),
-					MinLotSize:          parseStringToFloat64(exchangeSymbol.MinLotSize),
-					MaxLotSize:          parseStringToFloat64(exchangeSymbol.MaxLotSize),
+					MinQuantity:         parseStringToFloat64(exchangeSymbol.MinLotSize),
+					MaxQuantity:         parseStringToFloat64(exchangeSymbol.MaxLotSize),
 					StepSize:            parseStringToFloat64(exchangeSymbol.StepSize),
 					TickSize:            parseStringToFloat64(exchangeSymbol.TickSize),
 				}, nil
@@ -385,9 +395,9 @@ func (s *MarketDataService) GetSymbolInfo(ctx context.Context, symbol string) (*
 }
 
 // GetHistoricalPrices implements the port.MarketDataService interface
-func (s *MarketDataService) GetHistoricalPrices(ctx context.Context, symbol string, from, to time.Time, interval string) ([]*market.Candle, error) {
-	marketInterval := market.Interval(interval)
-	candles, err := s.marketRepo.GetCandles(ctx, symbol, "mexc", marketInterval, from, to, 0)
+func (s *MarketDataService) GetHistoricalPrices(ctx context.Context, symbol string, from, to time.Time, interval string) ([]*model.Kline, error) {
+	klineInterval := model.KlineInterval(interval)
+	candles, err := s.marketRepo.GetKlines(ctx, symbol, "mexc", klineInterval, from, to, 0)
 	if err != nil {
 		return nil, err
 	}

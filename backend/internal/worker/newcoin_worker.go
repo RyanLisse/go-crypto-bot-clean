@@ -11,7 +11,7 @@ import (
 
 // NewCoinWorker periodically checks for new coin listings
 type NewCoinWorker struct {
-	newCoinUC *usecase.NewCoinUseCase
+	newCoinUC usecase.NewCoinUseCase
 	cfg       *config.Config
 	logger    zerolog.Logger
 	stopCh    chan struct{}
@@ -19,7 +19,7 @@ type NewCoinWorker struct {
 }
 
 // NewNewCoinWorker creates a new NewCoinWorker instance
-func NewNewCoinWorker(newCoinUC *usecase.NewCoinUseCase, cfg *config.Config, logger zerolog.Logger) *NewCoinWorker {
+func NewNewCoinWorker(newCoinUC usecase.NewCoinUseCase, cfg *config.Config, logger zerolog.Logger) *NewCoinWorker {
 	return &NewCoinWorker{
 		newCoinUC: newCoinUC,
 		cfg:       cfg,

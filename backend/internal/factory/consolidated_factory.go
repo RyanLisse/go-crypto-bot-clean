@@ -11,6 +11,7 @@ import (
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/service"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/pkg/platform/mexc"
 	"github.com/rs/zerolog"
 	gormdb "gorm.io/gorm"
 )
@@ -27,7 +28,7 @@ type ConsolidatedFactory struct {
 // NewConsolidatedFactory creates a new ConsolidatedFactory
 func NewConsolidatedFactory(db *gormdb.DB, logger *zerolog.Logger, cfg *config.Config) *ConsolidatedFactory {
 	// Create MEXC client
-	mexcClient := NewMEXCClient(cfg, logger)
+	mexcClient := mexc.NewClient(cfg.MEXC.APIKey, cfg.MEXC.APISecret, logger)
 
 	// Create transaction manager
 	txManager := gorm.NewTransactionManager(db, logger)
@@ -119,14 +120,21 @@ func (f *ConsolidatedFactory) GetSystemStatusRepository() port.SystemStatusRepos
 
 // GetSymbolRepository returns a symbol repository
 func (f *ConsolidatedFactory) GetSymbolRepository() port.SymbolRepository {
-	// TODO: implement when needed
-	return nil
+	// Use the direct repository that implements both interfaces
+	return gorm.NewMarketRepositoryDirect(f.db, f.logger)
 }
 
 // GetMarketDataRepository returns a market data repository
 func (f *ConsolidatedFactory) GetMarketDataRepository() port.MarketDataRepository {
-	// TODO: implement when needed
+	// TODO: Implement a proper MarketDataRepository that uses the canonical models
+	// For now, return nil as this interface is different from MarketRepository
 	return nil
+}
+
+// GetMarketRepository returns a market repository
+func (f *ConsolidatedFactory) GetMarketRepository() port.MarketRepository {
+	// Use the direct repository that implements both interfaces
+	return gorm.NewMarketRepositoryDirect(f.db, f.logger)
 }
 
 // GetAPICredentialRepository returns an API credential repository

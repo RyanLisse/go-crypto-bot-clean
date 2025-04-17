@@ -13,44 +13,82 @@ import (
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 )
 
-// MockMarketDataService implements port.MarketDataService for testing
+// MockMarketDataService is a mock implementation of port.MarketDataService for testing
 type MockMarketDataService struct {
 	mock.Mock
 }
 
-func (m *MockMarketDataService) GetAllSymbols(ctx context.Context) ([]*market.Symbol, error) {
+// GetAllSymbols is a mock method that returns model.Symbol instead of market.Symbol
+func (m *MockMarketDataService) GetAllSymbols(ctx context.Context) ([]*model.Symbol, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]*market.Symbol), args.Error(1)
+	return args.Get(0).([]*model.Symbol), args.Error(1)
 }
 
-func (m *MockMarketDataService) GetSymbol(ctx context.Context, symbol string) (*market.Symbol, error) {
+// GetSymbol is a mock method
+func (m *MockMarketDataService) GetSymbol(ctx context.Context, symbol string) (*model.Symbol, error) {
 	args := m.Called(ctx, symbol)
-	return args.Get(0).(*market.Symbol), args.Error(1)
+	return args.Get(0).(*model.Symbol), args.Error(1)
 }
 
-func (m *MockMarketDataService) GetTicker(ctx context.Context, symbol string) (*market.Ticker, error) {
+// GetTicker is a mock method
+func (m *MockMarketDataService) GetTicker(ctx context.Context, symbol string) (*model.Ticker, error) {
+	args := m.Called(ctx, symbol)
+	return args.Get(0).(*model.Ticker), args.Error(1)
+}
+
+// GetCandles is a mock method
+func (m *MockMarketDataService) GetCandles(ctx context.Context, symbol string, interval string, limit int) ([]*model.Kline, error) {
+	args := m.Called(ctx, symbol, interval, limit)
+	return args.Get(0).([]*model.Kline), args.Error(1)
+}
+
+// GetOrderBook is a mock method
+func (m *MockMarketDataService) GetOrderBook(ctx context.Context, symbol string, limit int) (*model.OrderBook, error) {
+	args := m.Called(ctx, symbol, limit)
+	return args.Get(0).(*model.OrderBook), args.Error(1)
+}
+
+// GetHistoricalPrices is a mock method
+func (m *MockMarketDataService) GetHistoricalPrices(ctx context.Context, symbol string, startTime time.Time, endTime time.Time, interval string) ([]*model.Kline, error) {
+	args := m.Called(ctx, symbol, startTime, endTime, interval)
+	return args.Get(0).([]*model.Kline), args.Error(1)
+}
+
+// GetSymbolInfo is a mock method
+func (m *MockMarketDataService) GetSymbolInfo(ctx context.Context, symbol string) (*model.Symbol, error) {
+	args := m.Called(ctx, symbol)
+	return args.Get(0).(*model.Symbol), args.Error(1)
+}
+
+// Legacy methods
+func (m *MockMarketDataService) GetTickerLegacy(ctx context.Context, symbol string) (*market.Ticker, error) {
 	args := m.Called(ctx, symbol)
 	return args.Get(0).(*market.Ticker), args.Error(1)
 }
 
-func (m *MockMarketDataService) GetCandles(ctx context.Context, symbol string, interval string, limit int) ([]*market.Candle, error) {
+func (m *MockMarketDataService) GetCandlesLegacy(ctx context.Context, symbol string, interval string, limit int) ([]*market.Candle, error) {
 	args := m.Called(ctx, symbol, interval, limit)
 	return args.Get(0).([]*market.Candle), args.Error(1)
 }
 
-func (m *MockMarketDataService) GetOrderBook(ctx context.Context, symbol string, limit int) (*market.OrderBook, error) {
-	args := m.Called(ctx, symbol, limit)
+func (m *MockMarketDataService) GetOrderBookLegacy(ctx context.Context, symbol string, depth int) (*market.OrderBook, error) {
+	args := m.Called(ctx, symbol, depth)
 	return args.Get(0).(*market.OrderBook), args.Error(1)
 }
 
-func (m *MockMarketDataService) GetHistoricalPrices(ctx context.Context, symbol string, startTime time.Time, endTime time.Time, interval string) ([]*market.Candle, error) {
-	args := m.Called(ctx, symbol, startTime, endTime, interval)
-	return args.Get(0).([]*market.Candle), args.Error(1)
+func (m *MockMarketDataService) GetAllSymbolsLegacy(ctx context.Context) ([]*market.Symbol, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]*market.Symbol), args.Error(1)
 }
 
-func (m *MockMarketDataService) GetSymbolInfo(ctx context.Context, symbol string) (*market.Symbol, error) {
+func (m *MockMarketDataService) GetSymbolInfoLegacy(ctx context.Context, symbol string) (*market.Symbol, error) {
 	args := m.Called(ctx, symbol)
 	return args.Get(0).(*market.Symbol), args.Error(1)
+}
+
+func (m *MockMarketDataService) GetHistoricalPricesLegacy(ctx context.Context, symbol string, startTime time.Time, endTime time.Time, interval string) ([]*market.Candle, error) {
+	args := m.Called(ctx, symbol, startTime, endTime, interval)
+	return args.Get(0).([]*market.Candle), args.Error(1)
 }
 
 func TestVolatilityControl_AssessRisk(t *testing.T) {

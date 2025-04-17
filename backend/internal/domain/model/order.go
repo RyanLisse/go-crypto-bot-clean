@@ -14,9 +14,10 @@ const (
 type OrderType string
 
 const (
-	OrderTypeLimit  OrderType = "LIMIT"
-	OrderTypeMarket OrderType = "MARKET"
-	// Add other types like STOP_LOSS, TAKE_PROFIT, STOP_LOSS_LIMIT, etc. if needed
+	OrderTypeLimit    OrderType = "LIMIT"
+	OrderTypeMarket   OrderType = "MARKET"
+	OrderTypeStopLoss OrderType = "STOP_LOSS" // Stop loss order type
+	// Add other types like TAKE_PROFIT, STOP_LOSS_LIMIT, etc. if needed
 )
 
 // OrderStatus represents the status of an order

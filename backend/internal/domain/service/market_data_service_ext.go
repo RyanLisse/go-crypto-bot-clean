@@ -7,6 +7,7 @@ import (
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/cache/standard"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/apperror"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/compat"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
@@ -325,21 +326,59 @@ func (s *MarketDataServiceWithErrorHandling) GetOrderBook(ctx context.Context, s
 
 func (s *MarketDataServiceWithErrorHandling) GetAllSymbols(ctx context.Context) ([]*market.Symbol, error) {
 	if s.baseService != nil {
-		return s.baseService.GetAllSymbols(ctx)
+		// Convert model.Symbol to market.Symbol
+		modelSymbols, err := s.baseService.GetAllSymbols(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// Convert to market.Symbol
+		marketSymbols := make([]*market.Symbol, len(modelSymbols))
+		for i, symbol := range modelSymbols {
+			marketSymbols[i] = compat.ConvertSymbolToMarketSymbol(symbol)
+		}
+		return marketSymbols, nil
 	}
 	return nil, fmt.Errorf("baseService not available")
 }
 
 func (s *MarketDataServiceWithErrorHandling) GetSymbolInfo(ctx context.Context, symbol string) (*market.Symbol, error) {
 	if s.baseService != nil {
-		return s.baseService.GetSymbolInfo(ctx, symbol)
+		// Convert model.Symbol to market.Symbol
+		modelSymbol, err := s.baseService.GetSymbolInfo(ctx, symbol)
+		if err != nil {
+			return nil, err
+		}
+		return compat.ConvertSymbolToMarketSymbol(modelSymbol), nil
 	}
 	return nil, fmt.Errorf("baseService not available")
 }
 
 func (s *MarketDataServiceWithErrorHandling) GetHistoricalPrices(ctx context.Context, symbol string, from, to time.Time, interval string) ([]*market.Candle, error) {
 	if s.baseService != nil {
-		return s.baseService.GetHistoricalPrices(ctx, symbol, from, to, interval)
+		// Convert model.Kline to market.Candle
+		modelKlines, err := s.baseService.GetHistoricalPrices(ctx, symbol, from, to, interval)
+		if err != nil {
+			return nil, err
+		}
+
+		// Convert to market.Candle
+		marketCandles := make([]*market.Candle, len(modelKlines))
+		for i, kline := range modelKlines {
+			marketCandles[i] = &market.Candle{
+				Symbol:    kline.Symbol,
+				Interval:  market.Interval(kline.Interval),
+				OpenTime:  kline.OpenTime,
+				Open:      kline.Open,
+				High:      kline.High,
+				Low:       kline.Low,
+				Close:     kline.Close,
+				Volume:    kline.Volume,
+				CloseTime: kline.CloseTime,
+				Exchange:  kline.Exchange,
+			}
+		}
+		return marketCandles, nil
 	}
 	return nil, fmt.Errorf("baseService not available")
 }

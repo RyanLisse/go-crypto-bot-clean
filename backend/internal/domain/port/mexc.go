@@ -15,7 +15,7 @@ type MEXCClient interface {
 	GetSymbolInfo(ctx context.Context, symbol string) (*model.SymbolInfo, error) // Changed return type
 
 	// GetSymbolStatus checks if a symbol is currently tradeable
-	GetSymbolStatus(ctx context.Context, symbol string) (model.Status, error)
+   GetSymbolStatus(ctx context.Context, symbol string) (model.CoinStatus, error)
 
 	// GetTradingSchedule retrieves the listing and trading schedule for a symbol
 	GetTradingSchedule(ctx context.Context, symbol string) (model.TradingSchedule, error)

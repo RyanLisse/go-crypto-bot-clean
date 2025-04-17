@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	mockRepo "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/repository"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -14,7 +15,7 @@ import (
 
 func TestCredentialCacheService_GetCredential(t *testing.T) {
 	// Create mocks
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockCredentialRepo := new(mockRepo.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service with a short TTL for testing
@@ -63,7 +64,7 @@ func TestCredentialCacheService_GetCredential(t *testing.T) {
 
 func TestCredentialCacheService_GetCredentialByID(t *testing.T) {
 	// Create mocks
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockCredentialRepo := new(mockRepo.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service with a short TTL for testing
@@ -112,7 +113,7 @@ func TestCredentialCacheService_GetCredentialByID(t *testing.T) {
 
 func TestCredentialCacheService_InvalidateCredential(t *testing.T) {
 	// Create mocks
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockCredentialRepo := new(mockRepo.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service with a long TTL for testing
@@ -161,7 +162,7 @@ func TestCredentialCacheService_InvalidateCredential(t *testing.T) {
 
 func TestCredentialCacheService_InvalidateCredentialByID(t *testing.T) {
 	// Create mocks
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockCredentialRepo := new(mockRepo.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service with a long TTL for testing
@@ -212,7 +213,7 @@ func TestCredentialCacheService_InvalidateCredentialByID(t *testing.T) {
 
 func TestCredentialCacheService_InvalidateAllCredentials(t *testing.T) {
 	// Create mocks
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockCredentialRepo := new(mockRepo.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service with a long TTL for testing
@@ -286,7 +287,7 @@ func TestCredentialCacheService_InvalidateAllCredentials(t *testing.T) {
 
 func TestCredentialCacheService_GetCacheStats(t *testing.T) {
 	// Create mocks
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockCredentialRepo := new(mockRepo.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service with a long TTL for testing

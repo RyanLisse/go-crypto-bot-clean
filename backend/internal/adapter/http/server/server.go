@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/controller"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/handler"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/middleware"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
@@ -46,9 +46,9 @@ func (s *Server) SetupRoutes() error {
 	// Create factory
 	factory := factory.NewConsolidatedFactory(s.db, s.logger, s.config)
 
-	// Create wallet service/controller
+	// Create wallet service/handler
 	walletService := factory.GetWalletService()
-	walletController := controller.NewWalletController(walletService, s.logger)
+	walletHandler := handler.NewWalletHandler(walletService, s.logger)
 
 	// Create auth middleware (using test middleware for now)
 	authMiddleware := middleware.NewTestAuthMiddleware(s.logger)
@@ -74,7 +74,7 @@ func (s *Server) SetupRoutes() error {
 	s.router.Use(authMiddleware.Middleware())
 
 	// Register routes
-	walletController.RegisterRoutes(s.router)
+	walletHandler.RegisterRoutes(s.router, authMiddleware)
 
 	return nil
 }

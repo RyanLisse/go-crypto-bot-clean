@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/pkg/platform/mexc"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
@@ -21,6 +22,7 @@ type Config struct {
 	RateLimit     RateLimitConfig     `mapstructure:"rate_limit"`
 	CSRF          CSRFConfig          `mapstructure:"csrf"`
 	SecureHeaders SecureHeadersConfig `mapstructure:"secure_headers"`
+	Telegram      TelegramConfig      `mapstructure:"telegram"`
 	InfuraAPIKey  string              `mapstructure:"infura_api_key"`
 	Server        struct {
 		Port               int           `mapstructure:"port"`
@@ -62,6 +64,7 @@ type Config struct {
 		TopK         int32   `mapstructure:"top_k"`
 		MaxTokens    int32   `mapstructure:"max_tokens"`
 	} `mapstructure:"ai"`
+	AnnouncementParser mexc.AnnouncementParserConfig `mapstructure:"announcement_parser"`
 }
 
 // Auth holds authentication configuration
@@ -304,6 +307,27 @@ func setDefaults(v *viper.Viper) {
 
 	// Web3 defaults
 	v.SetDefault("infura_api_key", "")
+
+	// Telegram defaults
+	defaultTelegram := GetDefaultTelegramConfig()
+	v.SetDefault("telegram.enabled", defaultTelegram.Enabled)
+	v.SetDefault("telegram.bot_token", defaultTelegram.BotToken)
+	v.SetDefault("telegram.chat_id", defaultTelegram.ChatID)
+	v.SetDefault("telegram.alert_chat_id", defaultTelegram.AlertChatID)
+	v.SetDefault("telegram.trade_chat_id", defaultTelegram.TradeChatID)
+	v.SetDefault("telegram.debug_chat_id", defaultTelegram.DebugChatID)
+	v.SetDefault("telegram.api_base_url", defaultTelegram.APIBaseURL)
+	v.SetDefault("telegram.disable_web_page_preview", defaultTelegram.DisableWebPagePreview)
+	v.SetDefault("telegram.parse_mode", defaultTelegram.ParseMode)
+
+	// Announcement Parser defaults
+	v.SetDefault("announcement_parser.announcements_url", "https://www.mexc.com/support/sections/360000039331") // Verify this URL
+	v.SetDefault("announcement_parser.title_selector", "div.title")                                             // Verify selector
+	v.SetDefault("announcement_parser.symbol_selector", "span.symbol")                                          // Verify selector
+	v.SetDefault("announcement_parser.time_selector", "time.listing-time")                                      // Verify selector
+	v.SetDefault("announcement_parser.poll_interval", 5*time.Minute)
+	v.SetDefault("announcement_parser.max_retries", 3)
+	v.SetDefault("announcement_parser.retry_delay", 10*time.Second)
 }
 
 // validateConfig validates the configuration

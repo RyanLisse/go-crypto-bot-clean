@@ -6,6 +6,7 @@ import (
 
 // Ticker represents real-time market data for a symbol
 type Ticker struct {
+	ID                 string    `json:"id,omitempty"`
 	Symbol             string    `json:"symbol"`
 	Exchange           string    `json:"exchange"`
 	LastPrice          float64   `json:"lastPrice"`
@@ -23,6 +24,63 @@ type Ticker struct {
 	AskQty             float64   `json:"askQty"`
 	Count              int64     `json:"count"`
 	Timestamp          time.Time `json:"timestamp"`
+}
+
+// NewSimpleTicker creates a new ticker with minimal information
+func NewSimpleTicker(symbol string, price float64) *Ticker {
+	return &Ticker{
+		Symbol:    symbol,
+		LastPrice: price,
+		Timestamp: time.Now(),
+	}
+}
+
+// ToMarketTicker converts a full Ticker to the simplified market.Ticker format
+// This is provided for backward compatibility during the transition period
+func (t *Ticker) ToMarketTicker() *MarketTicker {
+	return &MarketTicker{
+		ID:            t.ID,
+		Symbol:        t.Symbol,
+		Price:         t.LastPrice,
+		Volume:        t.Volume,
+		High24h:       t.HighPrice,
+		Low24h:        t.LowPrice,
+		PriceChange:   t.PriceChange,
+		PercentChange: t.PriceChangePercent,
+		LastUpdated:   t.Timestamp,
+		Exchange:      t.Exchange,
+	}
+}
+
+// MarketTicker represents the legacy market/ticker.go model
+// This is provided for backward compatibility during transition
+type MarketTicker struct {
+	ID            string    `json:"id,omitempty"`
+	Symbol        string    `json:"symbol"`
+	Price         float64   `json:"price"`
+	Volume        float64   `json:"volume"`
+	High24h       float64   `json:"high24h"`
+	Low24h        float64   `json:"low24h"`
+	PriceChange   float64   `json:"priceChange"`
+	PercentChange float64   `json:"percentChange"`
+	LastUpdated   time.Time `json:"lastUpdated"`
+	Exchange      string    `json:"exchange"`
+}
+
+// ToTicker converts a MarketTicker to the full Ticker model
+func (mt *MarketTicker) ToTicker() *Ticker {
+	return &Ticker{
+		ID:                 mt.ID,
+		Symbol:             mt.Symbol,
+		LastPrice:          mt.Price,
+		Volume:             mt.Volume,
+		HighPrice:          mt.High24h,
+		LowPrice:           mt.Low24h,
+		PriceChange:        mt.PriceChange,
+		PriceChangePercent: mt.PercentChange,
+		Timestamp:          mt.LastUpdated,
+		Exchange:           mt.Exchange,
+	}
 }
 
 // KlineInterval represents a time interval for candle/kline data
@@ -50,6 +108,7 @@ const (
 // Kline represents candle/kline data for a symbol
 type Kline struct {
 	Symbol      string        `json:"symbol"`
+	Exchange    string        `json:"exchange"`
 	Interval    KlineInterval `json:"interval"`
 	OpenTime    time.Time     `json:"openTime"`
 	CloseTime   time.Time     `json:"closeTime"`
@@ -60,13 +119,16 @@ type Kline struct {
 	Volume      float64       `json:"volume"`
 	QuoteVolume float64       `json:"quoteVolume"`
 	TradeCount  int64         `json:"tradeCount"`
+	Complete    bool          `json:"complete"`
 	IsClosed    bool          `json:"isClosed"`
 }
 
 // OrderBook represents an order book for a symbol
 type OrderBook struct {
 	Symbol       string           `json:"symbol"`
+	Exchange     string           `json:"exchange"`
 	LastUpdateID int64            `json:"lastUpdateId"`
+	SequenceNum  int64            `json:"sequenceNum"`
 	Bids         []OrderBookEntry `json:"bids"`
 	Asks         []OrderBookEntry `json:"asks"`
 	Timestamp    time.Time        `json:"timestamp"`

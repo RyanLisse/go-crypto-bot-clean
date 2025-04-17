@@ -36,31 +36,23 @@ echo -e "${GREEN}MEXC credentials found:${NC}"
 echo "  API Key: ${MEXC_API_KEY:0:5}...${MEXC_API_KEY: -4}"
 echo "  API Secret: ${MEXC_SECRET_KEY:0:5}...${MEXC_SECRET_KEY: -4}"
 
-# Check if Turso is configured
+# Check if Turso is configured (assuming Turso is the default for this script)
 if [ -z "$TURSO_URL" ] || [ -z "$TURSO_AUTH_TOKEN" ]; then
-  echo -e "${RED}Error: Turso is not properly configured.${NC}"
-  echo "Please set TURSO_URL and TURSO_AUTH_TOKEN in your .env file."
+  echo -e "${YELLOW}Warning: Turso environment variables (TURSO_URL, TURSO_AUTH_TOKEN) not found in .env.${NC}"
+  echo "The server might attempt to use SQLite if configured as a fallback."
+  # Consider exiting if Turso is strictly required:
+  # echo -e "${RED}Error: Turso is not properly configured. Please set TURSO_URL and TURSO_AUTH_TOKEN in your .env file.${NC}"
+  # exit 1
+fi
+
+# Ensure the server binary exists
+if [ ! -f "./server" ]; then
+  echo -e "${RED}Error: Server binary './server' not found.${NC}"
+  echo "Please build the server first using './build_server.sh'."
   exit 1
 fi
 
-# Configure Turso settings
-export TURSO_SYNC_INTERVAL_SECONDS="300"  # 5 minutes
-export TURSO_SYNC_ENABLED="true"
-
-# Create data directory for Turso
-mkdir -p ./data/turso
-
-# Build the server if not already built
-if [ ! -f "./server" ] || [ "$1" == "--rebuild" ]; then
-  echo -e "${YELLOW}Building server...${NC}"
-  go build -o server cmd/server/main.go
-  if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Failed to build server.${NC}"
-    exit 1
-  fi
-  echo -e "${GREEN}Server built successfully.${NC}"
-fi
-
-# Run the server
-echo -e "${GREEN}Starting server...${NC}"
+# Run the pre-built server
+# It will use the environment variables loaded from .env
+echo -e "${GREEN}Starting server (using configuration from .env)...${NC}"
 ./server

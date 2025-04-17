@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
+	repoMocks "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/repository"
+	serviceMocks "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/service"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,8 +19,8 @@ import (
 
 func TestCredentialEncryptionService_EncryptAndSaveCredential(t *testing.T) {
 	// Create mocks
-	mockEncryptionService := new(MockEncryptionService)
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockEncryptionService := new(serviceMocks.MockEncryptionService)
+	mockCredentialRepo := new(repoMocks.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service
@@ -61,8 +63,8 @@ func TestCredentialEncryptionService_EncryptAndSaveCredential(t *testing.T) {
 
 func TestCredentialEncryptionService_GetDecryptedCredential(t *testing.T) {
 	// Create mocks
-	mockEncryptionService := new(MockEncryptionService)
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockEncryptionService := new(serviceMocks.MockEncryptionService)
+	mockCredentialRepo := new(repoMocks.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service
@@ -104,8 +106,8 @@ func TestCredentialEncryptionService_GetDecryptedCredential(t *testing.T) {
 
 func TestCredentialEncryptionService_GetDecryptedCredentialByUserAndExchange(t *testing.T) {
 	// Create mocks
-	mockEncryptionService := new(MockEncryptionService)
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockEncryptionService := new(serviceMocks.MockEncryptionService)
+	mockCredentialRepo := new(repoMocks.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service
@@ -147,8 +149,8 @@ func TestCredentialEncryptionService_GetDecryptedCredentialByUserAndExchange(t *
 
 func TestCredentialEncryptionService_ListDecryptedCredentials(t *testing.T) {
 	// Create mocks
-	mockEncryptionService := new(MockEncryptionService)
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockEncryptionService := new(serviceMocks.MockEncryptionService)
+	mockCredentialRepo := new(repoMocks.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service
@@ -211,8 +213,8 @@ func TestCredentialEncryptionService_ListDecryptedCredentials(t *testing.T) {
 
 func TestCredentialEncryptionService_VerifyCredential(t *testing.T) {
 	// Create mocks
-	mockEncryptionService := new(MockEncryptionService)
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockEncryptionService := new(serviceMocks.MockEncryptionService)
+	mockCredentialRepo := new(repoMocks.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service
@@ -296,8 +298,8 @@ func TestCredentialEncryptionService_VerifyCredential(t *testing.T) {
 
 func TestCredentialEncryptionService_UpdateCredentialStatus(t *testing.T) {
 	// Create mocks
-	mockEncryptionService := new(MockEncryptionService)
-	mockCredentialRepo := new(MockAPICredentialRepository)
+	mockEncryptionService := new(serviceMocks.MockEncryptionService)
+	mockCredentialRepo := new(repoMocks.MockAPICredentialRepository)
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create service

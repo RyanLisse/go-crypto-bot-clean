@@ -2,7 +2,6 @@ package mocks
 
 import (
 	"context"
-	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/stretchr/testify/mock"
@@ -37,7 +36,9 @@ func (m *MockMEXCClient) GetSymbolStatus(ctx context.Context, symbol string) (mo
 	if arg0 := args.Get(0); arg0 != nil {
 		statusStr, ok := arg0.(string)
 		if ok {
-			status = model.Status(statusStr)
+			if statusStr != "" {
+				status = model.Status(statusStr)
+			}
 		} else {
 			status, _ = arg0.(model.Status)
 		}
@@ -45,14 +46,22 @@ func (m *MockMEXCClient) GetSymbolStatus(ctx context.Context, symbol string) (mo
 	return status, args.Error(1)
 }
 
-func (m *MockMEXCClient) GetTradingSchedule(ctx context.Context, symbol string) (time.Time, time.Time, error) {
+func (m *MockMEXCClient) GetTradingSchedule(ctx context.Context, symbol string) (model.TradingSchedule, error) {
 	args := m.Called(ctx, symbol)
-	return args.Get(0).(time.Time), args.Get(1).(time.Time), args.Error(2)
+	var schedule model.TradingSchedule
+	if arg0 := args.Get(0); arg0 != nil {
+		schedule = arg0.(model.TradingSchedule)
+	}
+	return schedule, args.Error(1)
 }
 
-func (m *MockMEXCClient) GetSymbolConstraints(ctx context.Context, symbol string) (float64, float64, float64, float64, int, int, error) {
+func (m *MockMEXCClient) GetSymbolConstraints(ctx context.Context, symbol string) (*model.SymbolConstraints, error) {
 	args := m.Called(ctx, symbol)
-	return args.Get(0).(float64), args.Get(1).(float64), args.Get(2).(float64), args.Get(3).(float64), args.Int(4), args.Int(5), args.Error(6)
+	var constraints *model.SymbolConstraints
+	if arg0 := args.Get(0); arg0 != nil {
+		constraints = arg0.(*model.SymbolConstraints)
+	}
+	return constraints, args.Error(1)
 }
 
 func (m *MockMEXCClient) GetExchangeInfo(ctx context.Context) (*model.ExchangeInfo, error) {

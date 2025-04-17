@@ -27,9 +27,10 @@ type UseCaseFactory struct {
 	statusRepository         port.SystemStatusRepository
 
 	// External services
-	mexcClient port.MEXCClient
-	eventBus   port.EventBus
-	txManager  port.TransactionManager
+	mexcClient    port.MEXCClient
+	eventBus      port.EventBus
+	txManager     port.TransactionManager
+	sniperService port.SniperService
 }
 
 // NewUseCaseFactory creates a new UseCaseFactory
@@ -50,6 +51,7 @@ func NewUseCaseFactory(
 	mexcClient port.MEXCClient,
 	eventBus port.EventBus,
 	txManager port.TransactionManager,
+	sniperService port.SniperService,
 ) *UseCaseFactory {
 	return &UseCaseFactory{
 		cfg:                      cfg,
@@ -68,6 +70,7 @@ func NewUseCaseFactory(
 		mexcClient:               mexcClient,
 		eventBus:                 eventBus,
 		txManager:                txManager,
+		sniperService:            sniperService,
 	}
 }
 
@@ -84,7 +87,7 @@ func (f *UseCaseFactory) CreatePositionUseCase() usecase.PositionUseCase {
 }
 
 // CreateNewCoinUseCase creates a new coin use case
-func (f *UseCaseFactory) CreateNewCoinUseCase() *usecase.NewCoinUseCase {
+func (f *UseCaseFactory) CreateNewCoinUseCase() usecase.NewCoinUseCase {
 	return usecase.NewNewCoinUseCase(
 		f.newCoinRepository,
 		f.eventRepository,
@@ -108,4 +111,20 @@ func (f *UseCaseFactory) CreateAIUseCase() *usecase.AIUsecase {
 func (f *UseCaseFactory) CreateStatusUseCase() usecase.StatusUseCase {
 	// Using a mock implementation for now
 	return &mocks.MockStatusUseCase{}
+}
+
+// CreateSniperUseCase creates a sniper use case
+func (f *UseCaseFactory) CreateSniperUseCase() usecase.SniperUseCase {
+	// Create new coin use case
+	newCoinUC := f.CreateNewCoinUseCase()
+
+	// Create logger for the use case
+	ucLogger := f.logger.With().Str("component", "sniper_usecase").Logger()
+
+	// Create and return the sniper use case
+	return usecase.NewSniperUseCase(
+		f.sniperService,
+		newCoinUC,
+		&ucLogger,
+	)
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks" // Added mocks import
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/domain/mocks" // Added mocks import
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -35,9 +35,18 @@ func TestTradeUsecase_PlaceOrder_Success(t *testing.T) { // Renamed test for cla
 	// Setup mock expectations
 	mockSymbolRepo.On("GetBySymbol", mock.Anything, "BTCUSDT").Return(&market.Symbol{Symbol: "BTCUSDT"}, nil)
 	mockRiskUC.On("EvaluateOrderRisk", mock.Anything, mock.Anything, mock.Anything).Return(true, []*model.RiskAssessment{}, nil) // Assume risk allows
-	mockTradeService.On("PlaceOrder", mock.Anything, mock.AnythingOfType("*model.OrderRequest")).Return(&model.PlaceOrderResponse{
-		Order: model.Order{OrderID: "123", Symbol: "BTCUSDT", Status: model.OrderStatusNew},
-	}, nil)
+
+	// Create a response object that matches what PlaceOrderResponse expects
+	orderResp := &model.PlaceOrderResponse{
+		Order: model.Order{
+			OrderID: "123",
+			Symbol:  "BTCUSDT",
+			Status:  model.OrderStatusNew,
+		},
+		IsSuccess: true,
+	}
+
+	mockTradeService.On("PlaceOrder", mock.Anything, mock.AnythingOfType("*model.OrderRequest")).Return(orderResp, nil)
 
 	// Create a mock transaction manager
 	mockTxManager := &mockTransactionManager{}
@@ -65,14 +74,15 @@ func TestTradeUsecase_PlaceOrder_Success(t *testing.T) { // Renamed test for cla
 		Quantity: quantity,
 		Price:    0.0,
 	}
-	_, err := tradeUsecase.PlaceOrder(ctx, orderReq)
+	resp, err := tradeUsecase.PlaceOrder(ctx, orderReq)
 
 	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, "123", resp.OrderID)
 	// Assert that the tradeService mock was called
 	mockTradeService.AssertCalled(t, "PlaceOrder", mock.Anything, mock.AnythingOfType("*model.OrderRequest"))
 	mockRiskUC.AssertCalled(t, "EvaluateOrderRisk", mock.Anything, mock.Anything, mock.Anything)
 	mockSymbolRepo.AssertCalled(t, "GetBySymbol", mock.Anything, "BTCUSDT")
-
 }
 
 func TestTradeUsecase_PlaceOrder_RiskFailure(t *testing.T) { // Renamed test
@@ -109,9 +119,10 @@ func TestTradeUsecase_PlaceOrder_RiskFailure(t *testing.T) { // Renamed test
 		Quantity: quantity,
 		Price:    0.0,
 	}
-	_, err := tradeUsecase.PlaceOrder(ctx, orderReq)
+	resp, err := tradeUsecase.PlaceOrder(ctx, orderReq)
 
 	assert.Error(t, err)
+	assert.Nil(t, resp)
 	assert.Contains(t, err.Error(), "order rejected due to risk assessment")
 	mockTradeService.AssertNotCalled(t, "PlaceOrder", mock.Anything, mock.Anything) // Verify PlaceOrder wasn't called
 }
@@ -150,9 +161,10 @@ func TestTradeUsecase_PlaceOrder_TradeServiceFailure(t *testing.T) { // Renamed 
 		Quantity: quantity,
 		Price:    0.0,
 	}
-	_, err := tradeUsecase.PlaceOrder(ctx, orderReq)
+	resp, err := tradeUsecase.PlaceOrder(ctx, orderReq)
 
 	assert.Error(t, err)
+	assert.Nil(t, resp)
 	assert.Equal(t, "order response is nil after transaction", err.Error())
 	mockTradeService.AssertCalled(t, "PlaceOrder", mock.Anything, mock.AnythingOfType("*model.OrderRequest"))
 }

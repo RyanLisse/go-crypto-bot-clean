@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+package mexc;
+
+option go_package = "github.com/RyanLisse/go-crypto-bot-clean/backend/pkg/platform/mexc/websocket/proto";
+
+// MexcMessage represents the base message structure for MEXC WebSocket messages
+message MexcMessage {
+  string channel = 1;
+  string symbol = 2;
+  string data_type = 3;
+  oneof data {
+    Ping ping = 4;
+    Pong pong = 5;
+    SubscriptionResponse subscription_response = 6;
+    ErrorResponse error_response = 7;
+    TickerData ticker_data = 8;
+    KlineData kline_data = 9;
+    OrderBookData orderbook_data = 10;
+    TradeData trade_data = 11;
+    NewListingData new_listing_data = 12;
+    SymbolStatusData symbol_status_data = 13;
+  }
+  int64 timestamp = 14;
+}
+
+// Ping message for heartbeat
+message Ping {
+  int64 timestamp = 1;
+}
+
+// Pong response to ping
+message Pong {
+  int64 timestamp = 1;
+}
+
+// SubscriptionResponse for subscription confirmations
+message SubscriptionResponse {
+  string channel = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+// ErrorResponse for error messages
+message ErrorResponse {
+  int32 code = 1;
+  string message = 2;
+}
+
+// TickerData for ticker updates
+message TickerData {
+  string symbol = 1;
+  string last_price = 2;
+  string open_price = 3;
+  string high_price = 4;
+  string low_price = 5;
+  string volume = 6;
+  string quote_volume = 7;
+  string price_change = 8;
+  string price_change_percent = 9;
+  string bid_price = 10;
+  string ask_price = 11;
+  int64 timestamp = 12;
+}
+
+// KlineData for candlestick data
+message KlineData {
+  string symbol = 1;
+  string interval = 2;
+  repeated Kline klines = 3;
+}
+
+// Kline represents a single candlestick
+message Kline {
+  int64 open_time = 1;
+  string open = 2;
+  string high = 3;
+  string low = 4;
+  string close = 5;
+  string volume = 6;
+  string quote_volume = 7;
+  int64 close_time = 8;
+  int32 trades = 9;
+}
+
+// OrderBookData for order book updates
+message OrderBookData {
+  string symbol = 1;
+  repeated PriceLevel bids = 2;
+  repeated PriceLevel asks = 3;
+  int64 timestamp = 4;
+}
+
+// PriceLevel represents a price level in the order book
+message PriceLevel {
+  string price = 1;
+  string quantity = 2;
+}
+
+// TradeData for trade updates
+message TradeData {
+  string symbol = 1;
+  repeated Trade trades = 2;
+}
+
+// Trade represents a single trade
+message Trade {
+  string id = 1;
+  string price = 2;
+  string quantity = 3;
+  string quote_quantity = 4;
+  int64 timestamp = 5;
+  bool is_buyer_maker = 6;
+}
+
+// NewListingData for new listing announcements
+message NewListingData {
+  repeated NewListing listings = 1;
+}
+
+// NewListing represents a newly listed coin
+message NewListing {
+  string symbol = 1;
+  string base_asset = 2;
+  string quote_asset = 3;
+  string status = 4;
+  int64 listing_time = 5;
+  int64 trading_time = 6;
+  string initial_price = 7;
+  string price_precision = 8;
+  string quantity_precision = 9;
+  string min_quantity = 10;
+  string max_quantity = 11;
+  string min_notional = 12;
+  repeated string tags = 13;
+  string description = 14;
+}
+
+// SymbolStatusData for symbol status updates
+message SymbolStatusData {
+  string symbol = 1;
+  string old_status = 2;
+  string new_status = 3;
+  int64 update_time = 4;
+  string reason = 5;
+}

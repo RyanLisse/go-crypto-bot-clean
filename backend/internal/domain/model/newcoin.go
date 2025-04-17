@@ -1,21 +1,22 @@
 package model
 
 import (
+	"context"
 	"time"
 )
 
-// Status represents the status of a newly listed coin
-type Status string
+// CoinStatus represents the status of a newly listed coin
+type CoinStatus string
 
 const (
-	// StatusExpected indicates the coin is expected to be listed
-	StatusExpected Status = "expected"
-	// StatusListed indicates the coin is now listed but not yet tradeable
-	StatusListed Status = "listed"
-	// StatusTrading indicates active trading has begun
-	StatusTrading Status = "trading"
-	// StatusFailed indicates listing process failed or was cancelled
-	StatusFailed Status = "failed"
+	// CoinStatusExpected indicates the coin is expected to be listed
+	CoinStatusExpected CoinStatus = "expected"
+	// CoinStatusListed indicates the coin is now listed but not yet tradeable
+	CoinStatusListed CoinStatus = "listed"
+	// CoinStatusTrading indicates active trading has begun
+	CoinStatusTrading CoinStatus = "trading"
+	// CoinStatusFailed indicates listing process failed or was cancelled
+	CoinStatusFailed CoinStatus = "failed"
 )
 
 // NewCoin represents a newly listed cryptocurrency
@@ -23,7 +24,7 @@ type NewCoin struct {
 	ID                    string     `json:"id"`
 	Symbol                string     `json:"symbol"`
 	Name                  string     `json:"name"`
-	Status                Status     `json:"status"`
+	Status                CoinStatus `json:"status"`
 	ExpectedListingTime   time.Time  `json:"expected_listing_time"`
 	BecameTradableAt      *time.Time `json:"became_tradable_at,omitempty"`
 	BaseAsset             string     `json:"base_asset"`  // e.g., "BTC"
@@ -41,7 +42,7 @@ type NewCoin struct {
 
 // MarkAsTradable updates the coin's status to trading and sets the tradable time
 func (c *NewCoin) MarkAsTradable(tradableTime time.Time) {
-	c.Status = StatusTrading
+	c.Status = CoinStatusTrading
 	c.BecameTradableAt = &tradableTime
 	c.UpdatedAt = time.Now()
 }
@@ -51,8 +52,8 @@ type NewCoinEvent struct {
 	ID        string      `json:"id"`
 	CoinID    string      `json:"coin_id"`
 	EventType string      `json:"event_type"` // e.g., "status_change", "trading_started"
-	OldStatus Status      `json:"old_status,omitempty"`
-	NewStatus Status      `json:"new_status,omitempty"`
+	OldStatus CoinStatus  `json:"old_status,omitempty"`
+	NewStatus CoinStatus  `json:"new_status,omitempty"`
 	Data      interface{} `json:"data,omitempty"`
 	CreatedAt time.Time   `json:"created_at"`
 }
@@ -64,11 +65,11 @@ type NewCoinRepository interface {
 	// Update updates an existing coin's information
 	Update(coin *NewCoin) error
 	// GetByID retrieves a coin by its ID
-	GetByID(id string) (*NewCoin, error)
+	GetByID(ctx context.Context, id string) (*NewCoin, error) // Added context
 	// GetBySymbol retrieves a coin by its trading symbol
 	GetBySymbol(symbol string) (*NewCoin, error)
 	// List retrieves all coins with optional filtering
-	List(status Status, limit, offset int) ([]*NewCoin, error)
+	List(status CoinStatus, limit, offset int) ([]*NewCoin, error)
 	// GetRecent retrieves recently listed coins that are now tradable
 	GetRecent(limit int) ([]*NewCoin, error)
 	// CreateEvent stores a new coin event
@@ -82,11 +83,11 @@ type NewCoinService interface {
 	// DetectNewCoins checks for newly listed coins on MEXC
 	DetectNewCoins() error
 	// UpdateCoinStatus updates a coin's status and creates an event
-	UpdateCoinStatus(coinID string, newStatus Status) error
+	UpdateCoinStatus(coinID string, newStatus CoinStatus) error
 	// GetCoinDetails retrieves detailed information about a coin
 	GetCoinDetails(symbol string) (*NewCoin, error)
 	// ListNewCoins retrieves a list of new coins with optional filtering
-	ListNewCoins(status Status, limit, offset int) ([]*NewCoin, error)
+	ListNewCoins(status CoinStatus, limit, offset int) ([]*NewCoin, error)
 	// GetRecentTradableCoins retrieves recently listed coins that are now tradable
 	GetRecentTradableCoins(limit int) ([]*NewCoin, error)
 	// SubscribeToEvents allows subscribing to new coin events

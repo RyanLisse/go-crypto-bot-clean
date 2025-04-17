@@ -39,6 +39,13 @@ func RunConsolidatedMigrations(db *gorm.DB, logger *zerolog.Logger) error {
 		// Auto-buy entities
 		&entity.AutoBuyRuleEntity{},
 		&entity.AutoBuyExecutionEntity{},
+
+		// Risk management entities
+		&entity.RiskAssessmentEntity{},
+
+		// Trade history entities
+		&entity.TradeRecordEntity{},
+		&entity.DetectionLogEntity{},
 	}
 
 	// Run migrations in a single transaction

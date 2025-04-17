@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/handler"
+	mockUsecase "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/mocks/usecase/mocks"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/usecase/mocks"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,7 +19,7 @@ import (
 
 func TestCreateCredential(t *testing.T) {
 	// Create a mock use case
-	mockUseCase := new(mocks.MockAPICredentialUseCase)
+	mockUseCase := new(mockUsecase.MockAPICredentialUseCase)
 
 	// Create a logger
 	logger := zerolog.New(zerolog.NewTestWriter(t))
@@ -68,7 +68,7 @@ func TestCreateCredential(t *testing.T) {
 
 func TestListCredentials(t *testing.T) {
 	// Create a mock use case
-	mockUseCase := new(mocks.MockAPICredentialUseCase)
+	mockUseCase := new(mockUsecase.MockAPICredentialUseCase)
 
 	// Create a logger
 	logger := zerolog.New(zerolog.NewTestWriter(t))

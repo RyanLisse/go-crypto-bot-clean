@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -10,16 +11,21 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/rs/zerolog"
 
 	adapterhttp "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/delivery/http/handler"
+	httphandler "github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/http/handler"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/notification"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/persistence/gorm"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/adapter/wallet"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/config"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/di"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/factory"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/logger"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/util/crypto"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/pkg/platform/mexc"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -32,10 +38,23 @@ func init() {
 	}
 }
 
+// stdLogAdapter adapts zerolog.Logger to the standard log.Logger interface (specifically the Write method)
+type stdLogAdapter struct {
+	logger *zerolog.Logger
+}
+
+func (a *stdLogAdapter) Write(p []byte) (n int, err error) {
+	a.logger.Info().Msg(string(p)) // Or use Debug, depending on desired level
+	return len(p), nil
+}
+
 func main() {
 	// Initialize logger
 	logger := logger.NewLogger()
 	logger.Info().Msg("Starting crypto bot backend service")
+
+	// Create standard logger adapter
+	stdLogger := log.New(&stdLogAdapter{logger: logger}, "", 0)
 
 	// Load configuration
 	cfg := config.LoadConfig(logger)
@@ -77,12 +96,67 @@ func main() {
 	statusUseCase := statusFactory.CreateStatusUseCase()
 	statusHandler := statusFactory.CreateStatusHandler()
 	logger.Info().Msg("Created status handler")
+	// Integration test comment
+
+	// Integration test comment
+
 	statusFactory.RegisterStatusProviders(statusUseCase, marketFactory)
 	if err := statusUseCase.Start(context.Background()); err != nil {
 		logger.Error().Err(err).Msg("Failed to start status monitoring")
 	}
 
 	// Create alert handler
+
+	// --- Integration: MEXC New Listing & Announcement to TelegramNotifier ---
+
+	// Initialize TelegramNotifier
+	// The notifier starts its own processing loop internally if enabled.
+	telegramNotifier := notification.NewTelegramNotifier(cfg.Telegram, logger)
+
+	// Get event bus and repository from DI container
+	eventBus := container.GetEventBus()             // Assume container.GetEventBus() returns port.EventBus
+	newCoinRepo := container.GetNewCoinRepository() // Assume container.GetNewCoinRepository() returns port.NewCoinRepository
+
+	// Subscribe to new listing events from event bus
+	eventBus.Subscribe(func(event *model.NewCoinEvent) {
+		// Fetch the associated coin details
+		coin, err := newCoinRepo.GetByID(context.Background(), event.CoinID) // Re-added context argument
+		if err != nil {
+			logger.Error().Err(err).Str("coinID", event.CoinID).Msg("Failed to fetch coin details for event")
+			return
+		}
+		if coin == nil {
+			logger.Warn().Str("coinID", event.CoinID).Msg("Coin not found for event")
+			return
+		}
+
+		// Format message for Telegram
+		// TODO: Determine best way to get a relevant URL (maybe from event.Data?)
+		msg := fmt.Sprintf("New listing detected: %s\nStatus: %s\nExpected Listing: %s", coin.Symbol, event.NewStatus, coin.ExpectedListingTime.Format(time.RFC3339))
+
+		// Send Telegram notification
+		if err := telegramNotifier.NotifyAlert(context.Background(), "info", "New Listing", msg, "MEXC"); err != nil {
+			logger.Error().Err(err).Msg("Failed to send Telegram notification for new listing")
+		}
+		// TODO: Forward to TradingService or trading event channel if needed
+	})
+
+	// --- Announcement Parser Integration ---
+	announcementCh := make(chan mexc.Announcement, 10)
+	// Use the correct config field and the stdLogger adapter
+	announcementParser := mexc.NewAnnouncementParser(cfg.AnnouncementParser, stdLogger, &http.Client{})
+	go announcementParser.StartPolling(announcementCh)
+	go func() {
+		for ann := range announcementCh {
+			msg := fmt.Sprintf("Scheduled listing: %s\nTime: %s\nURL: %s\nTitle: %s", ann.Symbol, ann.ListingTime.Format(time.RFC3339), ann.URL, ann.Title)
+			if err := telegramNotifier.NotifyAlert(context.Background(), "info", "Scheduled Listing", msg, "MEXC"); err != nil {
+				logger.Error().Err(err).Msg("Failed to send Telegram notification for scheduled listing")
+			}
+			// TODO: Forward to TradingService or trading event channel if needed
+		}
+	}()
+	// --- End Integration ---
+
 	alertHandler := statusFactory.CreateAlertHandler()
 	logger.Info().Msg("Created alert handler")
 
@@ -187,6 +261,12 @@ func main() {
 	mexcHandler := handler.NewMEXCHandler(mexcClient, logger)
 	logger.Info().Msg("Created MEXC handler")
 
+	// Create sniper handler
+	sniperUC := container.GetSniperUseCase()
+	// Use the correct import path for SniperHandler
+	sniperHandler := httphandler.NewSniperHandler(sniperUC, logger)
+	logger.Info().Msg("Created sniper handler")
+
 	// API v1 routes
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public routes
@@ -226,6 +306,10 @@ func main() {
 		r.Group(func(r chi.Router) {
 			mexcHandler.RegisterRoutes(r)
 			logger.Info().Msg("Registered MEXC routes at /api/v1/mexc/* without authentication")
+
+			// Register sniper routes without authentication for testing
+			sniperHandler.RegisterRoutes(r)
+			logger.Info().Msg("Registered sniper routes at /api/v1/sniper/* without authentication")
 		})
 
 		// Protected routes (require authentication)

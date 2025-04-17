@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
@@ -74,8 +75,22 @@ func TestSaveAndGetTicker(t *testing.T) {
 		LastUpdated:   time.Now().Round(time.Millisecond), // Round to avoid precision issues
 	}
 
+	// Convert market.Ticker to model.Ticker
+	modelTicker := &model.Ticker{
+		ID:                 ticker.ID,
+		Symbol:             ticker.Symbol,
+		Exchange:           ticker.Exchange,
+		LastPrice:          ticker.Price,
+		Volume:             ticker.Volume,
+		HighPrice:          ticker.High24h,
+		LowPrice:           ticker.Low24h,
+		PriceChange:        ticker.PriceChange,
+		PriceChangePercent: ticker.PercentChange,
+		Timestamp:          ticker.LastUpdated,
+	}
+
 	// Save the ticker
-	err := repo.SaveTicker(ctx, ticker)
+	err := repo.SaveTicker(ctx, modelTicker)
 	require.NoError(t, err)
 
 	// Retrieve the ticker
@@ -86,13 +101,13 @@ func TestSaveAndGetTicker(t *testing.T) {
 	assert.Equal(t, ticker.ID, retrievedTicker.ID)
 	assert.Equal(t, ticker.Symbol, retrievedTicker.Symbol)
 	assert.Equal(t, ticker.Exchange, retrievedTicker.Exchange)
-	assert.Equal(t, ticker.Price, retrievedTicker.Price)
+	assert.Equal(t, ticker.Price, retrievedTicker.LastPrice)
 	assert.Equal(t, ticker.Volume, retrievedTicker.Volume)
-	assert.Equal(t, ticker.High24h, retrievedTicker.High24h)
-	assert.Equal(t, ticker.Low24h, retrievedTicker.Low24h)
+	assert.Equal(t, ticker.High24h, retrievedTicker.HighPrice)
+	assert.Equal(t, ticker.Low24h, retrievedTicker.LowPrice)
 	assert.Equal(t, ticker.PriceChange, retrievedTicker.PriceChange)
-	assert.Equal(t, ticker.PercentChange, retrievedTicker.PercentChange)
-	assert.Equal(t, ticker.LastUpdated.Unix(), retrievedTicker.LastUpdated.Unix())
+	assert.Equal(t, ticker.PercentChange, retrievedTicker.PriceChangePercent)
+	assert.Equal(t, ticker.LastUpdated.Unix(), retrievedTicker.Timestamp.Unix())
 }
 
 func TestGetAllTickers(t *testing.T) {
@@ -102,7 +117,7 @@ func TestGetAllTickers(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test tickers
-	ticker1 := &market.Ticker{
+	marketTicker1 := &market.Ticker{
 		ID:          "test-ticker-1",
 		Symbol:      "BTCUSDT",
 		Exchange:    "mexc",
@@ -110,12 +125,29 @@ func TestGetAllTickers(t *testing.T) {
 		LastUpdated: time.Now().Round(time.Millisecond),
 	}
 
-	ticker2 := &market.Ticker{
+	marketTicker2 := &market.Ticker{
 		ID:          "test-ticker-2",
 		Symbol:      "ETHUSDT",
 		Exchange:    "mexc",
 		Price:       3000.0,
 		LastUpdated: time.Now().Round(time.Millisecond),
+	}
+
+	// Convert to model.Ticker
+	ticker1 := &model.Ticker{
+		ID:        marketTicker1.ID,
+		Symbol:    marketTicker1.Symbol,
+		Exchange:  marketTicker1.Exchange,
+		LastPrice: marketTicker1.Price,
+		Timestamp: marketTicker1.LastUpdated,
+	}
+
+	ticker2 := &model.Ticker{
+		ID:        marketTicker2.ID,
+		Symbol:    marketTicker2.Symbol,
+		Exchange:  marketTicker2.Exchange,
+		LastPrice: marketTicker2.Price,
+		Timestamp: marketTicker2.LastUpdated,
 	}
 
 	// Save the tickers
@@ -146,7 +178,7 @@ func TestSaveAndGetCandle(t *testing.T) {
 
 	// Create a test candle
 	now := time.Now().Round(time.Millisecond)
-	candle := &market.Candle{
+	marketCandle := &market.Candle{
 		Symbol:      "BTCUSDT",
 		Exchange:    "mexc",
 		Interval:    market.Interval1h,
@@ -162,28 +194,45 @@ func TestSaveAndGetCandle(t *testing.T) {
 		Complete:    true,
 	}
 
+	// Convert to model.Kline
+	kline := &model.Kline{
+		Symbol:      marketCandle.Symbol,
+		Exchange:    marketCandle.Exchange,
+		Interval:    model.KlineInterval(string(marketCandle.Interval)),
+		OpenTime:    marketCandle.OpenTime,
+		CloseTime:   marketCandle.CloseTime,
+		Open:        marketCandle.Open,
+		High:        marketCandle.High,
+		Low:         marketCandle.Low,
+		Close:       marketCandle.Close,
+		Volume:      marketCandle.Volume,
+		QuoteVolume: marketCandle.QuoteVolume,
+		TradeCount:  marketCandle.TradeCount,
+		Complete:    marketCandle.Complete,
+	}
+
 	// Save the candle
-	err := repo.SaveCandle(ctx, candle)
+	err := repo.SaveCandle(ctx, kline)
 	require.NoError(t, err)
 
 	// Retrieve the candle
-	retrievedCandle, err := repo.GetCandle(ctx, "BTCUSDT", "mexc", market.Interval1h, now)
+	retrievedCandle, err := repo.GetCandle(ctx, "BTCUSDT", "mexc", model.KlineInterval("1h"), now)
 	require.NoError(t, err)
 
 	// Verify the candle was saved correctly
-	assert.Equal(t, candle.Symbol, retrievedCandle.Symbol)
-	assert.Equal(t, candle.Exchange, retrievedCandle.Exchange)
-	assert.Equal(t, candle.Interval, retrievedCandle.Interval)
-	assert.Equal(t, candle.OpenTime.Unix(), retrievedCandle.OpenTime.Unix())
-	assert.Equal(t, candle.CloseTime.Unix(), retrievedCandle.CloseTime.Unix())
-	assert.Equal(t, candle.Open, retrievedCandle.Open)
-	assert.Equal(t, candle.High, retrievedCandle.High)
-	assert.Equal(t, candle.Low, retrievedCandle.Low)
-	assert.Equal(t, candle.Close, retrievedCandle.Close)
-	assert.Equal(t, candle.Volume, retrievedCandle.Volume)
-	assert.Equal(t, candle.QuoteVolume, retrievedCandle.QuoteVolume)
-	assert.Equal(t, candle.TradeCount, retrievedCandle.TradeCount)
-	assert.Equal(t, candle.Complete, retrievedCandle.Complete)
+	assert.Equal(t, marketCandle.Symbol, retrievedCandle.Symbol)
+	assert.Equal(t, marketCandle.Exchange, retrievedCandle.Exchange)
+	assert.Equal(t, string(marketCandle.Interval), string(retrievedCandle.Interval))
+	assert.Equal(t, marketCandle.OpenTime.Unix(), retrievedCandle.OpenTime.Unix())
+	assert.Equal(t, marketCandle.CloseTime.Unix(), retrievedCandle.CloseTime.Unix())
+	assert.Equal(t, marketCandle.Open, retrievedCandle.Open)
+	assert.Equal(t, marketCandle.High, retrievedCandle.High)
+	assert.Equal(t, marketCandle.Low, retrievedCandle.Low)
+	assert.Equal(t, marketCandle.Close, retrievedCandle.Close)
+	assert.Equal(t, marketCandle.Volume, retrievedCandle.Volume)
+	assert.Equal(t, marketCandle.QuoteVolume, retrievedCandle.QuoteVolume)
+	assert.Equal(t, marketCandle.TradeCount, retrievedCandle.TradeCount)
+	assert.Equal(t, marketCandle.Complete, retrievedCandle.Complete)
 }
 
 func TestGetCandles(t *testing.T) {
@@ -194,7 +243,7 @@ func TestGetCandles(t *testing.T) {
 
 	// Create test candles
 	now := time.Now().Round(time.Millisecond)
-	candle1 := &market.Candle{
+	marketCandle1 := &market.Candle{
 		Symbol:    "BTCUSDT",
 		Exchange:  "mexc",
 		Interval:  market.Interval1h,
@@ -208,7 +257,7 @@ func TestGetCandles(t *testing.T) {
 		Complete:  true,
 	}
 
-	candle2 := &market.Candle{
+	marketCandle2 := &market.Candle{
 		Symbol:    "BTCUSDT",
 		Exchange:  "mexc",
 		Interval:  market.Interval1h,
@@ -222,23 +271,52 @@ func TestGetCandles(t *testing.T) {
 		Complete:  true,
 	}
 
+	// Convert to model.Kline
+	kline1 := &model.Kline{
+		Symbol:    marketCandle1.Symbol,
+		Exchange:  marketCandle1.Exchange,
+		Interval:  model.KlineInterval(string(marketCandle1.Interval)),
+		OpenTime:  marketCandle1.OpenTime,
+		CloseTime: marketCandle1.CloseTime,
+		Open:      marketCandle1.Open,
+		High:      marketCandle1.High,
+		Low:       marketCandle1.Low,
+		Close:     marketCandle1.Close,
+		Volume:    marketCandle1.Volume,
+		Complete:  marketCandle1.Complete,
+	}
+
+	kline2 := &model.Kline{
+		Symbol:    marketCandle2.Symbol,
+		Exchange:  marketCandle2.Exchange,
+		Interval:  model.KlineInterval(string(marketCandle2.Interval)),
+		OpenTime:  marketCandle2.OpenTime,
+		CloseTime: marketCandle2.CloseTime,
+		Open:      marketCandle2.Open,
+		High:      marketCandle2.High,
+		Low:       marketCandle2.Low,
+		Close:     marketCandle2.Close,
+		Volume:    marketCandle2.Volume,
+		Complete:  marketCandle2.Complete,
+	}
+
 	// Save the candles
-	err := repo.SaveCandle(ctx, candle1)
+	err := repo.SaveCandle(ctx, kline1)
 	require.NoError(t, err)
 
-	err = repo.SaveCandle(ctx, candle2)
+	err = repo.SaveCandle(ctx, kline2)
 	require.NoError(t, err)
 
 	// Retrieve candles within a time range
 	start := now.Add(-3 * time.Hour)
 	end := now.Add(1 * time.Hour)
-	candles, err := repo.GetCandles(ctx, "BTCUSDT", "mexc", market.Interval1h, start, end, 10)
+	candles, err := repo.GetCandles(ctx, "BTCUSDT", "mexc", model.KlineInterval("1h"), start, end, 10)
 	require.NoError(t, err)
 
 	// Verify the candles were retrieved correctly
 	assert.Equal(t, 2, len(candles))
-	assert.Equal(t, candle1.OpenTime.Unix(), candles[0].OpenTime.Unix())
-	assert.Equal(t, candle2.OpenTime.Unix(), candles[1].OpenTime.Unix())
+	assert.Equal(t, marketCandle1.OpenTime.Unix(), candles[0].OpenTime.Unix())
+	assert.Equal(t, marketCandle2.OpenTime.Unix(), candles[1].OpenTime.Unix())
 }
 
 func TestGetLatestCandle(t *testing.T) {
@@ -249,7 +327,7 @@ func TestGetLatestCandle(t *testing.T) {
 
 	// Create test candles with different times
 	now := time.Now().Round(time.Millisecond)
-	candle1 := &market.Candle{
+	marketCandle1 := &market.Candle{
 		Symbol:    "BTCUSDT",
 		Exchange:  "mexc",
 		Interval:  market.Interval1h,
@@ -260,7 +338,7 @@ func TestGetLatestCandle(t *testing.T) {
 		Complete:  true,
 	}
 
-	candle2 := &market.Candle{
+	marketCandle2 := &market.Candle{
 		Symbol:    "BTCUSDT",
 		Exchange:  "mexc",
 		Interval:  market.Interval1h,
@@ -271,20 +349,43 @@ func TestGetLatestCandle(t *testing.T) {
 		Complete:  true,
 	}
 
+	// Convert to model.Kline
+	kline1 := &model.Kline{
+		Symbol:    marketCandle1.Symbol,
+		Exchange:  marketCandle1.Exchange,
+		Interval:  model.KlineInterval(string(marketCandle1.Interval)),
+		OpenTime:  marketCandle1.OpenTime,
+		CloseTime: marketCandle1.CloseTime,
+		Open:      marketCandle1.Open,
+		Close:     marketCandle1.Close,
+		Complete:  marketCandle1.Complete,
+	}
+
+	kline2 := &model.Kline{
+		Symbol:    marketCandle2.Symbol,
+		Exchange:  marketCandle2.Exchange,
+		Interval:  model.KlineInterval(string(marketCandle2.Interval)),
+		OpenTime:  marketCandle2.OpenTime,
+		CloseTime: marketCandle2.CloseTime,
+		Open:      marketCandle2.Open,
+		Close:     marketCandle2.Close,
+		Complete:  marketCandle2.Complete,
+	}
+
 	// Save the candles
-	err := repo.SaveCandle(ctx, candle1)
+	err := repo.SaveCandle(ctx, kline1)
 	require.NoError(t, err)
 
-	err = repo.SaveCandle(ctx, candle2)
+	err = repo.SaveCandle(ctx, kline2)
 	require.NoError(t, err)
 
 	// Retrieve the latest candle
-	latestCandle, err := repo.GetLatestCandle(ctx, "BTCUSDT", "mexc", market.Interval1h)
+	latestCandle, err := repo.GetLatestCandle(ctx, "BTCUSDT", "mexc", model.KlineInterval("1h"))
 	require.NoError(t, err)
 
 	// Verify the latest candle was returned
-	assert.Equal(t, candle2.OpenTime.Unix(), latestCandle.OpenTime.Unix())
-	assert.Equal(t, candle2.Close, latestCandle.Close)
+	assert.Equal(t, marketCandle2.OpenTime.Unix(), latestCandle.OpenTime.Unix())
+	assert.Equal(t, marketCandle2.Close, latestCandle.Close)
 }
 
 func TestSaveAndGetSymbol(t *testing.T) {
@@ -294,7 +395,7 @@ func TestSaveAndGetSymbol(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a test symbol
-	symbol := &market.Symbol{
+	marketSymbol := &market.Symbol{
 		Symbol:            "BTCUSDT",
 		BaseAsset:         "BTC",
 		QuoteAsset:        "USDT",
@@ -309,6 +410,22 @@ func TestSaveAndGetSymbol(t *testing.T) {
 		AllowedOrderTypes: []string{"LIMIT", "MARKET"},
 	}
 
+	// Convert to model.Symbol
+	symbol := &model.Symbol{
+		Symbol:            marketSymbol.Symbol,
+		BaseAsset:         marketSymbol.BaseAsset,
+		QuoteAsset:        marketSymbol.QuoteAsset,
+		Exchange:          marketSymbol.Exchange,
+		Status:            model.SymbolStatus(marketSymbol.Status),
+		MinPrice:          marketSymbol.MinPrice,
+		MaxPrice:          marketSymbol.MaxPrice,
+		PricePrecision:    marketSymbol.PricePrecision,
+		MinQuantity:       marketSymbol.MinQty,
+		MaxQuantity:       marketSymbol.MaxQty,
+		QuantityPrecision: marketSymbol.QtyPrecision,
+		AllowedOrderTypes: marketSymbol.AllowedOrderTypes,
+	}
+
 	// Save the symbol
 	err := repo.Create(ctx, symbol)
 	require.NoError(t, err)
@@ -318,18 +435,18 @@ func TestSaveAndGetSymbol(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the symbol was saved correctly
-	assert.Equal(t, symbol.Symbol, retrievedSymbol.Symbol)
-	assert.Equal(t, symbol.BaseAsset, retrievedSymbol.BaseAsset)
-	assert.Equal(t, symbol.QuoteAsset, retrievedSymbol.QuoteAsset)
-	assert.Equal(t, symbol.Exchange, retrievedSymbol.Exchange)
-	assert.Equal(t, symbol.Status, retrievedSymbol.Status)
-	assert.Equal(t, symbol.MinPrice, retrievedSymbol.MinPrice)
-	assert.Equal(t, symbol.MaxPrice, retrievedSymbol.MaxPrice)
-	assert.Equal(t, symbol.PricePrecision, retrievedSymbol.PricePrecision)
-	assert.Equal(t, symbol.MinQty, retrievedSymbol.MinQty)
-	assert.Equal(t, symbol.MaxQty, retrievedSymbol.MaxQty)
-	assert.Equal(t, symbol.QtyPrecision, retrievedSymbol.QtyPrecision)
-	assert.ElementsMatch(t, symbol.AllowedOrderTypes, retrievedSymbol.AllowedOrderTypes)
+	assert.Equal(t, marketSymbol.Symbol, retrievedSymbol.Symbol)
+	assert.Equal(t, marketSymbol.BaseAsset, retrievedSymbol.BaseAsset)
+	assert.Equal(t, marketSymbol.QuoteAsset, retrievedSymbol.QuoteAsset)
+	assert.Equal(t, marketSymbol.Exchange, retrievedSymbol.Exchange)
+	assert.Equal(t, marketSymbol.Status, string(retrievedSymbol.Status))
+	assert.Equal(t, marketSymbol.MinPrice, retrievedSymbol.MinPrice)
+	assert.Equal(t, marketSymbol.MaxPrice, retrievedSymbol.MaxPrice)
+	assert.Equal(t, marketSymbol.PricePrecision, retrievedSymbol.PricePrecision)
+	assert.Equal(t, marketSymbol.MinQty, retrievedSymbol.MinQuantity)
+	assert.Equal(t, marketSymbol.MaxQty, retrievedSymbol.MaxQuantity)
+	assert.Equal(t, marketSymbol.QtyPrecision, retrievedSymbol.QuantityPrecision)
+	assert.ElementsMatch(t, marketSymbol.AllowedOrderTypes, retrievedSymbol.AllowedOrderTypes)
 }
 
 func TestGetByExchange(t *testing.T) {
@@ -339,25 +456,47 @@ func TestGetByExchange(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test symbols
-	symbol1 := &market.Symbol{
+	marketSymbol1 := &market.Symbol{
 		Symbol:    "BTCUSDT",
 		BaseAsset: "BTC",
 		Exchange:  "mexc",
 		Status:    "TRADING",
 	}
 
-	symbol2 := &market.Symbol{
+	marketSymbol2 := &market.Symbol{
 		Symbol:    "ETHUSDT",
 		BaseAsset: "ETH",
 		Exchange:  "mexc",
 		Status:    "TRADING",
 	}
 
-	symbol3 := &market.Symbol{
+	marketSymbol3 := &market.Symbol{
 		Symbol:    "BTCUSDT",
 		BaseAsset: "BTC",
 		Exchange:  "binance",
 		Status:    "TRADING",
+	}
+
+	// Convert to model.Symbol
+	symbol1 := &model.Symbol{
+		Symbol:    marketSymbol1.Symbol,
+		BaseAsset: marketSymbol1.BaseAsset,
+		Exchange:  marketSymbol1.Exchange,
+		Status:    model.SymbolStatus(marketSymbol1.Status),
+	}
+
+	symbol2 := &model.Symbol{
+		Symbol:    marketSymbol2.Symbol,
+		BaseAsset: marketSymbol2.BaseAsset,
+		Exchange:  marketSymbol2.Exchange,
+		Status:    model.SymbolStatus(marketSymbol2.Status),
+	}
+
+	symbol3 := &model.Symbol{
+		Symbol:    marketSymbol3.Symbol,
+		BaseAsset: marketSymbol3.BaseAsset,
+		Exchange:  marketSymbol3.Exchange,
+		Status:    model.SymbolStatus(marketSymbol3.Status),
 	}
 
 	// Save the symbols
@@ -395,18 +534,33 @@ func TestGetAll(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test symbols
-	symbol1 := &market.Symbol{
+	marketSymbol1 := &market.Symbol{
 		Symbol:    "BTCUSDT",
 		BaseAsset: "BTC",
 		Exchange:  "mexc",
 		Status:    "TRADING",
 	}
 
-	symbol2 := &market.Symbol{
+	marketSymbol2 := &market.Symbol{
 		Symbol:    "ETHUSDT",
 		BaseAsset: "ETH",
 		Exchange:  "mexc",
 		Status:    "TRADING",
+	}
+
+	// Convert to model.Symbol
+	symbol1 := &model.Symbol{
+		Symbol:    marketSymbol1.Symbol,
+		BaseAsset: marketSymbol1.BaseAsset,
+		Exchange:  marketSymbol1.Exchange,
+		Status:    model.SymbolStatus(marketSymbol1.Status),
+	}
+
+	symbol2 := &model.Symbol{
+		Symbol:    marketSymbol2.Symbol,
+		BaseAsset: marketSymbol2.BaseAsset,
+		Exchange:  marketSymbol2.Exchange,
+		Status:    model.SymbolStatus(marketSymbol2.Status),
 	}
 
 	// Save the symbols
@@ -436,11 +590,19 @@ func TestUpdateSymbol(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a test symbol
-	symbol := &market.Symbol{
+	marketSymbol := &market.Symbol{
 		Symbol:    "BTCUSDT",
 		BaseAsset: "BTC",
 		Exchange:  "mexc",
 		Status:    "TRADING",
+	}
+
+	// Convert to model.Symbol
+	symbol := &model.Symbol{
+		Symbol:    marketSymbol.Symbol,
+		BaseAsset: marketSymbol.BaseAsset,
+		Exchange:  marketSymbol.Exchange,
+		Status:    model.SymbolStatus(marketSymbol.Status),
 	}
 
 	// Save the symbol
@@ -448,7 +610,7 @@ func TestUpdateSymbol(t *testing.T) {
 	require.NoError(t, err)
 
 	// Update the symbol
-	symbol.Status = "BREAK"
+	symbol.Status = model.SymbolStatus("BREAK")
 	err = repo.Update(ctx, symbol)
 	require.NoError(t, err)
 
@@ -457,7 +619,7 @@ func TestUpdateSymbol(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the symbol was updated correctly
-	assert.Equal(t, "BREAK", updatedSymbol.Status)
+	assert.Equal(t, model.SymbolStatus("BREAK"), updatedSymbol.Status)
 }
 
 func TestDeleteSymbol(t *testing.T) {
@@ -467,11 +629,19 @@ func TestDeleteSymbol(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a test symbol
-	symbol := &market.Symbol{
+	marketSymbol := &market.Symbol{
 		Symbol:    "BTCUSDT",
 		BaseAsset: "BTC",
 		Exchange:  "mexc",
 		Status:    "TRADING",
+	}
+
+	// Convert to model.Symbol
+	symbol := &model.Symbol{
+		Symbol:    marketSymbol.Symbol,
+		BaseAsset: marketSymbol.BaseAsset,
+		Exchange:  marketSymbol.Exchange,
+		Status:    model.SymbolStatus(marketSymbol.Status),
 	}
 
 	// Save the symbol
@@ -498,7 +668,7 @@ func TestPurgeOldData(t *testing.T) {
 	newTime := time.Now().Round(time.Millisecond)
 
 	// Create old ticker
-	oldTicker := &market.Ticker{
+	oldMarketTicker := &market.Ticker{
 		ID:          "old-ticker",
 		Symbol:      "BTCUSDT",
 		Exchange:    "mexc",
@@ -507,12 +677,29 @@ func TestPurgeOldData(t *testing.T) {
 	}
 
 	// Create new ticker
-	newTicker := &market.Ticker{
+	newMarketTicker := &market.Ticker{
 		ID:          "new-ticker",
 		Symbol:      "BTCUSDT",
 		Exchange:    "mexc",
 		Price:       50000.0,
 		LastUpdated: newTime,
+	}
+
+	// Convert to model.Ticker
+	oldTicker := &model.Ticker{
+		ID:        oldMarketTicker.ID,
+		Symbol:    oldMarketTicker.Symbol,
+		Exchange:  oldMarketTicker.Exchange,
+		LastPrice: oldMarketTicker.Price,
+		Timestamp: oldMarketTicker.LastUpdated,
+	}
+
+	newTicker := &model.Ticker{
+		ID:        newMarketTicker.ID,
+		Symbol:    newMarketTicker.Symbol,
+		Exchange:  newMarketTicker.Exchange,
+		LastPrice: newMarketTicker.Price,
+		Timestamp: newMarketTicker.LastUpdated,
 	}
 
 	// Save the tickers
@@ -523,7 +710,7 @@ func TestPurgeOldData(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create old candle
-	oldCandle := &market.Candle{
+	oldMarketCandle := &market.Candle{
 		Symbol:    "BTCUSDT",
 		Exchange:  "mexc",
 		Interval:  market.Interval1h,
@@ -535,7 +722,7 @@ func TestPurgeOldData(t *testing.T) {
 	}
 
 	// Create new candle
-	newCandle := &market.Candle{
+	newMarketCandle := &market.Candle{
 		Symbol:    "BTCUSDT",
 		Exchange:  "mexc",
 		Interval:  market.Interval1h,
@@ -544,6 +731,29 @@ func TestPurgeOldData(t *testing.T) {
 		Open:      50000.0,
 		Close:     50500.0,
 		Complete:  true,
+	}
+
+	// Convert to model.Kline
+	oldCandle := &model.Kline{
+		Symbol:    oldMarketCandle.Symbol,
+		Exchange:  oldMarketCandle.Exchange,
+		Interval:  model.KlineInterval(string(oldMarketCandle.Interval)),
+		OpenTime:  oldMarketCandle.OpenTime,
+		CloseTime: oldMarketCandle.CloseTime,
+		Open:      oldMarketCandle.Open,
+		Close:     oldMarketCandle.Close,
+		Complete:  oldMarketCandle.Complete,
+	}
+
+	newCandle := &model.Kline{
+		Symbol:    newMarketCandle.Symbol,
+		Exchange:  newMarketCandle.Exchange,
+		Interval:  model.KlineInterval(string(newMarketCandle.Interval)),
+		OpenTime:  newMarketCandle.OpenTime,
+		CloseTime: newMarketCandle.CloseTime,
+		Open:      newMarketCandle.Open,
+		Close:     newMarketCandle.Close,
+		Complete:  newMarketCandle.Complete,
 	}
 
 	// Save the candles
@@ -564,7 +774,7 @@ func TestPurgeOldData(t *testing.T) {
 	assert.Equal(t, 1, len(tickers))
 	assert.Equal(t, "new-ticker", tickers[0].ID)
 
-	candles, err := repo.GetCandles(ctx, "BTCUSDT", "mexc", market.Interval1h, oldTime, newTime.Add(1*time.Hour), 10)
+	candles, err := repo.GetCandles(ctx, "BTCUSDT", "mexc", model.KlineInterval("1h"), oldTime, newTime.Add(1*time.Hour), 10)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(candles))
 	assert.Equal(t, newTime.Unix(), candles[0].OpenTime.Unix())

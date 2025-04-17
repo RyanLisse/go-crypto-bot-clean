@@ -335,3 +335,29 @@ type Position struct {
 func (Position) TableName() string {
 	return "positions"
 }
+
+// ===== Risk Management Entities =====
+
+// RiskProfileEntity represents a risk profile in the database
+type RiskProfileEntity struct {
+	ID                    string    `gorm:"primaryKey;type:varchar(50)"`
+	UserID                string    `gorm:"uniqueIndex;type:varchar(50);not null"`
+	MaxPositionSize       float64   `gorm:"not null;default:1000.0"`
+	MaxTotalExposure      float64   `gorm:"not null;default:5000.0"`
+	MaxDrawdown           float64   `gorm:"not null;default:0.1"`
+	MaxLeverage           float64   `gorm:"not null;default:3.0"`
+	MaxConcentration      float64   `gorm:"not null;default:0.2"`
+	MinLiquidity          float64   `gorm:"not null;default:10000.0"`
+	VolatilityThreshold   float64   `gorm:"not null;default:0.05"`
+	DailyLossLimit        float64   `gorm:"not null;default:100.0"`
+	WeeklyLossLimit       float64   `gorm:"not null;default:500.0"`
+	EnableAutoRiskControl bool      `gorm:"not null;default:true"`
+	EnableNotifications   bool      `gorm:"not null;default:true"`
+	CreatedAt             time.Time `gorm:"autoCreateTime"`
+	UpdatedAt             time.Time `gorm:"autoUpdateTime"`
+}
+
+// TableName returns the table name for RiskProfileEntity
+func (RiskProfileEntity) TableName() string {
+	return "risk_profiles"
+}

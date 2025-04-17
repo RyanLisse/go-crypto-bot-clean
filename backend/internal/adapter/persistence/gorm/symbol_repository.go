@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model/market"
+	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/model"
 	"github.com/RyanLisse/go-crypto-bot-clean/backend/internal/domain/port"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
@@ -26,7 +26,7 @@ func NewSymbolRepository(db *gorm.DB, logger *zerolog.Logger) port.SymbolReposit
 }
 
 // Create stores a new Symbol
-func (r *SymbolRepository) Create(ctx context.Context, symbol *market.Symbol) error {
+func (r *SymbolRepository) Create(ctx context.Context, symbol *model.Symbol) error {
 	entity := r.symbolToEntity(symbol)
 
 	result := r.db.WithContext(ctx).Create(&entity)
@@ -39,8 +39,23 @@ func (r *SymbolRepository) Create(ctx context.Context, symbol *market.Symbol) er
 	return nil
 }
 
+// GetSymbolsByStatus returns symbols by status with pagination
+func (r *SymbolRepository) GetSymbolsByStatus(ctx context.Context, status string, limit int, offset int) ([]*model.Symbol, error) {
+	var entities []SymbolEntity
+	result := r.db.WithContext(ctx).Where("status = ?", status).Limit(limit).Offset(offset).Find(&entities)
+	if result.Error != nil {
+		r.logger.Error().Err(result.Error).Str("status", status).Msg("Failed to get symbols by status")
+		return nil, fmt.Errorf("failed to get symbols by status: %w", result.Error)
+	}
+	symbols := make([]*model.Symbol, 0, len(entities))
+	for _, entity := range entities {
+		symbols = append(symbols, r.symbolToDomain(&entity))
+	}
+	return symbols, nil
+}
+
 // GetBySymbol returns a Symbol by its symbol string (e.g., "BTCUSDT")
-func (r *SymbolRepository) GetBySymbol(ctx context.Context, symbol string) (*market.Symbol, error) {
+func (r *SymbolRepository) GetBySymbol(ctx context.Context, symbol string) (*model.Symbol, error) {
 	var entity SymbolEntity
 
 	result := r.db.WithContext(ctx).Where("symbol = ?", symbol).First(&entity)
@@ -57,7 +72,7 @@ func (r *SymbolRepository) GetBySymbol(ctx context.Context, symbol string) (*mar
 }
 
 // GetByExchange returns all Symbols from a specific exchange
-func (r *SymbolRepository) GetByExchange(ctx context.Context, exchange string) ([]*market.Symbol, error) {
+func (r *SymbolRepository) GetByExchange(ctx context.Context, exchange string) ([]*model.Symbol, error) {
 	var entities []SymbolEntity
 
 	result := r.db.WithContext(ctx).Where("exchange = ?", exchange).Find(&entities)
@@ -66,7 +81,7 @@ func (r *SymbolRepository) GetByExchange(ctx context.Context, exchange string) (
 		return nil, fmt.Errorf("failed to get symbols by exchange: %w", result.Error)
 	}
 
-	symbols := make([]*market.Symbol, len(entities))
+	symbols := make([]*model.Symbol, len(entities))
 	for i, entity := range entities {
 		symbols[i] = r.symbolToDomain(&entity)
 	}
@@ -76,7 +91,7 @@ func (r *SymbolRepository) GetByExchange(ctx context.Context, exchange string) (
 }
 
 // GetAll returns all available Symbols
-func (r *SymbolRepository) GetAll(ctx context.Context) ([]*market.Symbol, error) {
+func (r *SymbolRepository) GetAll(ctx context.Context) ([]*model.Symbol, error) {
 	var entities []SymbolEntity
 
 	result := r.db.WithContext(ctx).Find(&entities)
@@ -85,7 +100,7 @@ func (r *SymbolRepository) GetAll(ctx context.Context) ([]*market.Symbol, error)
 		return nil, fmt.Errorf("failed to get all symbols: %w", result.Error)
 	}
 
-	symbols := make([]*market.Symbol, len(entities))
+	symbols := make([]*model.Symbol, len(entities))
 	for i, entity := range entities {
 		symbols[i] = r.symbolToDomain(&entity)
 	}
@@ -95,7 +110,7 @@ func (r *SymbolRepository) GetAll(ctx context.Context) ([]*market.Symbol, error)
 }
 
 // Update updates an existing Symbol
-func (r *SymbolRepository) Update(ctx context.Context, symbol *market.Symbol) error {
+func (r *SymbolRepository) Update(ctx context.Context, symbol *model.Symbol) error {
 	entity := r.symbolToEntity(symbol)
 
 	result := r.db.WithContext(ctx).Where("symbol = ?", symbol.Symbol).Updates(&entity)
@@ -131,7 +146,7 @@ func (r *SymbolRepository) Delete(ctx context.Context, symbol string) error {
 }
 
 // Helper methods for entity conversion
-func (r *SymbolRepository) symbolToEntity(symbol *market.Symbol) *SymbolEntity {
+func (r *SymbolRepository) symbolToEntity(symbol *model.Symbol) *SymbolEntity {
 	return &SymbolEntity{
 		Symbol:            symbol.Symbol,
 		BaseAsset:         symbol.BaseAsset,
@@ -141,33 +156,33 @@ func (r *SymbolRepository) symbolToEntity(symbol *market.Symbol) *SymbolEntity {
 		MinPrice:          symbol.MinPrice,
 		MaxPrice:          symbol.MaxPrice,
 		PricePrecision:    symbol.PricePrecision,
-		MinQty:            symbol.MinQty,
-		MaxQty:            symbol.MaxQty,
-		QtyPrecision:      symbol.QtyPrecision,
+		MinQty:            symbol.MinQuantity,
+		MaxQty:            symbol.MaxQuantity,
+		QtyPrecision:      symbol.QuantityPrecision,
 		AllowedOrderTypes: strings.Join(symbol.AllowedOrderTypes, ","),
 		CreatedAt:         symbol.CreatedAt,
 		UpdatedAt:         symbol.UpdatedAt,
 	}
 }
 
-func (r *SymbolRepository) symbolToDomain(entity *SymbolEntity) *market.Symbol {
+func (r *SymbolRepository) symbolToDomain(entity *SymbolEntity) *model.Symbol {
 	var allowedOrderTypes []string
 	if entity.AllowedOrderTypes != "" {
 		allowedOrderTypes = strings.Split(entity.AllowedOrderTypes, ",")
 	}
 
-	return &market.Symbol{
+	return &model.Symbol{
 		Symbol:            entity.Symbol,
 		BaseAsset:         entity.BaseAsset,
 		QuoteAsset:        entity.QuoteAsset,
 		Exchange:          entity.Exchange,
-		Status:            entity.Status,
+		Status:            model.SymbolStatus(entity.Status),
 		MinPrice:          entity.MinPrice,
 		MaxPrice:          entity.MaxPrice,
 		PricePrecision:    entity.PricePrecision,
-		MinQty:            entity.MinQty,
-		MaxQty:            entity.MaxQty,
-		QtyPrecision:      entity.QtyPrecision,
+		MinQuantity:       entity.MinQty,
+		MaxQuantity:       entity.MaxQty,
+		QuantityPrecision: entity.QtyPrecision,
 		AllowedOrderTypes: allowedOrderTypes,
 		CreatedAt:         entity.CreatedAt,
 		UpdatedAt:         entity.UpdatedAt,
