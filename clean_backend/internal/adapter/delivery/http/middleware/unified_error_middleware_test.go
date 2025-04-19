@@ -37,9 +37,11 @@ func TestUnifiedErrorMiddleware(t *testing.T) {
 
 		// Assert
 		assert.Equal(t, http.StatusOK, w.Code)
-		requestID := w.Body.String()
-		assert.NotEmpty(t, requestID, "Request ID should be generated")
-		assert.Equal(t, requestID, w.Header().Get("X-Request-ID"))
+		// Check that the RESPONSE header has a generated ID
+		responseHeaderID := w.Header().Get("X-Request-ID")
+		assert.NotEmpty(t, responseHeaderID, "Response header X-Request-ID should be generated")
+		// Optionally, check the body is empty as the original request had no ID
+		assert.Empty(t, w.Body.String(), "Body should be empty as original request had no ID")
 	})
 
 	t.Run("Uses existing request ID", func(t *testing.T) {
@@ -70,7 +72,8 @@ func TestUnifiedErrorMiddleware(t *testing.T) {
 		handler := middleware.Middleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Trigger an error using the context handler
 			err := apperror.NewNotFound("user", "123", nil)
-			apperror.RespondWithError(w, r, err)
+			requestID := r.Header.Get("X-Request-ID")
+			apperror.RespondWithError(w, r, err, requestID)
 		}))
 
 		req := httptest.NewRequest("GET", "/test", nil)

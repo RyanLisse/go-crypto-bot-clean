@@ -2,6 +2,8 @@ package port
 
 import (
 	"context"
+
+	"github.com/RyanLisse/go-crypto-bot-clean/clean_backend/internal/domain/model" // Import model
 )
 
 // BaseRepository defines common methods for all repositories
@@ -38,4 +40,35 @@ type BaseRepository interface {
 
 	// Update updates an entity with the given fields
 	Update(ctx context.Context, entity interface{}, updates map[string]interface{}) error
+}
+
+// RepositoryFactory defines the interface for creating repository instances
+type RepositoryFactory interface {
+	WithEncryptionService(encryptionSvc EncryptionService) RepositoryFactory // Allow chaining
+	CreateMarketRepository() MarketRepository
+	CreateSymbolRepository() SymbolRepository
+	CreateUserRepository() UserRepository
+	CreateWalletRepository() WalletRepository
+	CreateOrderRepository() OrderRepository
+	CreateAPICredentialRepository() APICredentialRepository
+	CreateNewCoinRepository() NewCoinRepository // Added
+	CreateEventRepository() EventRepository     // Added
+	// CreateRiskRepository() RiskRepository // Keep commented if not implemented
+}
+
+// NewCoinRepository defines methods for interacting with new coin data
+type NewCoinRepository interface {
+	Save(ctx context.Context, coin *model.NewCoin) error
+	GetBySymbol(ctx context.Context, symbol string) (*model.NewCoin, error)
+	GetByID(ctx context.Context, id string) (*model.NewCoin, error)
+	Update(ctx context.Context, coin *model.NewCoin) error
+	Delete(ctx context.Context, id string) error
+	GetByStatus(ctx context.Context, status model.CoinStatus) ([]*model.NewCoin, error)
+	GetRecent(ctx context.Context, limit int) ([]*model.NewCoin, error)
+}
+
+// EventRepository defines methods for storing and retrieving domain events
+type EventRepository interface {
+	SaveEvent(ctx context.Context, event *model.NewCoinEvent) error // Example, adjust model as needed
+	// Add other methods like GetEventsByCoinID, GetEventsByType, etc.
 }

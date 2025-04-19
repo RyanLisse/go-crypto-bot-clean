@@ -248,9 +248,15 @@ func WriteError(w http.ResponseWriter, err *AppError) {
 		},
 	}
 
-	// Add details if present
+	// Add details and trace_id if present
 	if err.Details != nil {
 		response.Error.Details = err.Details
+		// Extract trace_id from details if it was added there (e.g., by panic handler)
+		if detailsMap, ok := err.Details.(map[string]interface{}); ok {
+			if traceID, ok := detailsMap["trace_id"].(string); ok {
+				response.Error.TraceID = traceID
+			}
+		}
 	}
 
 	// Write response
@@ -261,10 +267,10 @@ func WriteError(w http.ResponseWriter, err *AppError) {
 	}
 }
 
-// RespondWithError writes an error response with request context
-func RespondWithError(w http.ResponseWriter, r *http.Request, err *AppError) {
-	// Get request ID from context if available
-	requestID := r.Header.Get("X-Request-ID")
+// RespondWithError writes an error response with request context and trace ID
+func RespondWithError(w http.ResponseWriter, r *http.Request, err *AppError, requestID string) {
+	// Get request ID from context if available -- Removed, now passed as argument
+	// requestID := r.Header.Get("X-Request-ID")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(err.GetStatusCode())
@@ -275,7 +281,7 @@ func RespondWithError(w http.ResponseWriter, r *http.Request, err *AppError) {
 		Error: ErrorDetail{
 			Code:    err.GetErrorCode(),
 			Message: err.Message,
-			TraceID: requestID,
+			TraceID: requestID, // Use passed requestID
 		},
 	}
 

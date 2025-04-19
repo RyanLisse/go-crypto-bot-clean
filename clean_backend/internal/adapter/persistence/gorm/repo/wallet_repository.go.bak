@@ -1,0 +1,243 @@
+package repo
+
+import (
+	"context"
+	"errors"
+
+	"github.com/google/uuid"
+	"github.com/rs/zerolog"
+	"gorm.io/gorm"
+
+	"github.com/RyanLisse/go-crypto-bot-clean/clean_backend/internal/adapter/persistence/gorm/entity"
+	"github.com/RyanLisse/go-crypto-bot-clean/clean_backend/internal/domain/model/wallet"
+	"github.com/RyanLisse/go-crypto-bot-clean/clean_backend/internal/domain/port"
+)
+
+// GormWalletRepository implements the port.WalletRepository interface using GORM
+type GormWalletRepository struct {
+	BaseRepository // Embed BaseRepository for common methods
+	logger         *zerolog.Logger
+}
+
+// NewGormWalletRepository creates a new GormWalletRepository
+func NewGormWalletRepository(db *gorm.DB, logger *zerolog.Logger) port.WalletRepository {
+	return &GormWalletRepository{
+		BaseRepository: NewBaseRepository(db, logger),
+		logger:         logger,
+	}
+}
+
+// CreateWallet creates a new wallet record
+func (r *GormWalletRepository) CreateWallet(ctx context.Context, w *wallet.Wallet) error {
+	entity := entity.FromDomain(w)
+	return r.Create(ctx, entity) // Use BaseRepository.Create
+}
+
+// UpdateWallet updates an existing wallet record
+func (r *GormWalletRepository) UpdateWallet(ctx context.Context, w *wallet.Wallet) error {
+	entity := entity.FromDomain(w)
+	// Use Save for full updates (including zero values)
+	// Use Updates for partial updates (ignores zero values)
+	// Save is generally safer unless partial updates are specifically needed.
+	return r.Save(ctx, entity) // Use BaseRepository.Save
+}
+
+// UpdateWalletStatus updates only the status field of a wallet
+func (r *GormWalletRepository) UpdateWalletStatus(ctx context.Context, walletID uuid.UUID, status wallet.VerificationStatus) error {
+	result := r.GetDB(ctx).Model(&entity.WalletEntity{}).Where("id = ?", walletID).Update("status", string(status))
+	if result.Error != nil {
+		r.logger.Error().Err(result.Error).Str("wallet_id", walletID.String()).Msg("Failed to update wallet status")
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return wallet.ErrWalletNotFound // Use domain error
+	}
+	return nil
+}
+
+// UpdateWalletBalances updates only the balances field of a wallet
+func (r *GormWalletRepository) UpdateWalletBalances(ctx context.Context, walletID uuid.UUID, balances []wallet.Balance) error {
+	// GORM needs the custom type that implements Value/Scan
+	balancesEntity := make(entity.WalletBalances, len(balances))
+	for i := range balances { // Iterate by index to assign to new slice
+		balancesEntity[i] = &balances[i] // Create pointers for the []*wallet.Balance type
+	}
+
+	result := r.GetDB(ctx).Model(&entity.WalletEntity{}).Where("id = ?", walletID).Update("balances", balancesEntity)
+	if result.Error != nil {
+		r.logger.Error().Err(result.Error).Str("wallet_id", walletID.String()).Msg("Failed to update wallet balances")
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return wallet.ErrWalletNotFound
+	}
+	return nil
+}
+
+// SetPrimaryWallet sets a wallet as primary and unsets others for the user (requires transaction)
+// Note: This implements the logic directly. The service layer already handles this transactionally.
+// Keeping the logic here might be useful for direct repo access, but could be simplified
+// if only the service layer manages primary status logic.
+func (r *GormWalletRepository) SetPrimaryWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) error {
+	db := r.GetDB(ctx)
+
+	// Use transaction provided by the service layer or start a new one if not present
+	tx := db // Assume no transaction initially
+	if existingTx, ok := ctx.Value(port.TxContextKey).(*gorm.DB); ok {
+		tx = existingTx
+	}
+
+	return tx.Transaction(func(tx *gorm.DB) error {
+		// Unset current primary wallet for the user
+		err := tx.Model(&entity.WalletEntity{}).
+			Where("user_id = ? AND is_primary = ?", userID, true).
+			Update("is_primary", false).Error
+		if err != nil {
+			r.logger.Error().Err(err).Str("user_id", userID.String()).Msg("Failed to unset previous primary wallet")
+			return err
+		}
+
+		// Set the new wallet as primary
+		result := tx.Model(&entity.WalletEntity{}).
+			Where("id = ? AND user_id = ?", walletID, userID).
+			Update("is_primary", true)
+		if result.Error != nil {
+			r.logger.Error().Err(result.Error).Str("wallet_id", walletID.String()).Msg("Failed to set new primary wallet")
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return wallet.ErrWalletNotFound // Or unauthorized if needed
+		}
+		return nil
+	})
+}
+
+// GetWallet retrieves a wallet by its ID
+func (r *GormWalletRepository) GetWallet(ctx context.Context, walletID uuid.UUID) (*wallet.Wallet, error) {
+	var entity entity.WalletEntity
+	result := r.GetDB(ctx).First(&entity, "id = ?", walletID)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, wallet.ErrWalletNotFound
+		}
+		r.logger.Error().Err(result.Error).Str("wallet_id", walletID.String()).Msg("Failed to get wallet by ID")
+		return nil, result.Error
+	}
+	return entity.ToDomain(), nil
+}
+
+// GetWalletByAddress retrieves a Web3 wallet by its address
+func (r *GormWalletRepository) GetWalletByAddress(ctx context.Context, address string) (*wallet.Wallet, error) {
+	var entity entity.WalletEntity
+	// Ensure we only match Web3 wallets if the type distinction is critical
+	result := r.GetDB(ctx).Where("address = ? AND type = ?", address, string(wallet.TypeWeb3)).First(&entity)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, wallet.ErrWalletNotFound
+		}
+		r.logger.Error().Err(result.Error).Str("address", address).Msg("Failed to get wallet by address")
+		return nil, result.Error
+	}
+	return entity.ToDomain(), nil
+}
+
+// GetWalletByExchangeID retrieves an exchange wallet by its exchange ID
+func (r *GormWalletRepository) GetWalletByExchangeID(ctx context.Context, exchangeID string) (*wallet.Wallet, error) {
+	var entity entity.WalletEntity
+	result := r.GetDB(ctx).Where("exchange_id = ? AND type = ?", exchangeID, string(wallet.TypeExchange)).First(&entity)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, wallet.ErrWalletNotFound
+		}
+		r.logger.Error().Err(result.Error).Str("exchange_id", exchangeID).Msg("Failed to get wallet by exchange ID")
+		return nil, result.Error
+	}
+	return entity.ToDomain(), nil
+}
+
+// GetUserWallets retrieves all wallets for a user
+func (r *GormWalletRepository) GetUserWallets(ctx context.Context, userID uuid.UUID) ([]*wallet.Wallet, error) {
+	var entities []entity.WalletEntity
+	result := r.GetDB(ctx).Where("user_id = ?", userID).Find(&entities)
+	if result.Error != nil {
+		r.logger.Error().Err(result.Error).Str("user_id", userID.String()).Msg("Failed to get user wallets")
+		return nil, result.Error
+	}
+
+	domainWallets := make([]*wallet.Wallet, len(entities))
+	for i, e := range entities {
+		domainWallets[i] = e.ToDomain()
+	}
+	return domainWallets, nil
+}
+
+// GetPrimaryWallet retrieves the primary wallet for a user
+func (r *GormWalletRepository) GetPrimaryWallet(ctx context.Context, userID uuid.UUID) (*wallet.Wallet, error) {
+	var entity entity.WalletEntity
+	result := r.GetDB(ctx).Where("user_id = ? AND is_primary = ?", userID, true).First(&entity)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, wallet.ErrWalletNotFound
+		}
+		r.logger.Error().Err(result.Error).Str("user_id", userID.String()).Msg("Failed to get primary wallet")
+		return nil, result.Error
+	}
+	return entity.ToDomain(), nil
+}
+
+// GetWalletBalance retrieves the balance for a specific token in a wallet
+// This requires querying the JSON data, which can be inefficient or database-specific.
+// Consider if this is truly needed at the repo level or if it should be handled in the service.
+func (r *GormWalletRepository) GetWalletBalance(ctx context.Context, walletID uuid.UUID, token string) (*wallet.Balance, error) {
+	w, err := r.GetWallet(ctx, walletID)
+	if err != nil {
+		return nil, err // Handles not found and other errors
+	}
+
+	for _, balance := range w.Balances {
+		if balance.Token == token {
+			return balance, nil
+		}
+	}
+	// Return nil, nil if the token is not found in the wallet's balances
+	return nil, nil
+}
+
+// GetTotalBalance calculates the total balance for a token across all of a user's wallets
+// This is complex with JSON storage and likely belongs in the service layer or a dedicated reporting read-model.
+// Implementing this efficiently here requires DB-specific JSON functions.
+func (r *GormWalletRepository) GetTotalBalance(ctx context.Context, userID uuid.UUID, token string) (float64, error) {
+	wallets, err := r.GetUserWallets(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	totalValue := 0.0
+	for _, w := range wallets {
+		for _, balance := range w.Balances {
+			if balance.Token == token {
+				// Assuming Value field represents the comparable value (e.g., in USD)
+				totalValue += balance.Value
+			}
+		}
+	}
+
+	return totalValue, nil
+}
+
+// DeleteWallet performs a soft delete on a wallet
+func (r *GormWalletRepository) DeleteWallet(ctx context.Context, walletID uuid.UUID) error {
+	// Use GORM's soft delete feature
+	result := r.GetDB(ctx).Delete(&entity.WalletEntity{}, walletID)
+	if result.Error != nil {
+		r.logger.Error().Err(result.Error).Str("wallet_id", walletID.String()).Msg("Failed to soft delete wallet")
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return wallet.ErrWalletNotFound
+	}
+	return nil
+}
+
+// Ensure GormWalletRepository implements port.WalletRepository
+var _ port.WalletRepository = (*GormWalletRepository)(nil)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +22,7 @@ type ClerkAuthService struct {
 	config     *config.Config
 	userCache  map[string]*model.User
 	cacheMutex sync.RWMutex
+	httpClient *http.Client
 }
 
 // NewClerkAuthService creates a new ClerkAuthService
@@ -35,6 +37,9 @@ func NewClerkAuthService(config *config.Config, logger *zerolog.Logger) port.Aut
 		config:     config,
 		userCache:  make(map[string]*model.User),
 		cacheMutex: sync.RWMutex{},
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
 	}
 }
 
@@ -225,7 +230,7 @@ func (f *AuthServiceFactory) CreateAuthService() port.AuthServiceInterface {
 	// Check provider
 	switch f.config.Auth.Provider {
 	case "clerk":
-		return NewClerkAuthService(f.config, f.logger)
+		return NewClerkAuthServiceV2(f.config, f.logger)
 	default:
 		// Default to test auth service
 		return NewTestAuthService()

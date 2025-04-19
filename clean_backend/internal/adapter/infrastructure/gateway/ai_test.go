@@ -14,15 +14,17 @@ func TestAIGateway_GenerateText(t *testing.T) {
 	logger := zerolog.Nop()
 
 	// Create a config
-	cfg := &config.Config{
-		// Assuming AI config is added to the config struct
-		// AI: config.AIConfig{
-		// 	APIKey: "test-key",
-		// },
+	aiConfig := config.AIConfig{
+		Provider:    "mock",
+		APIKey:      "test-key",
+		ModelName:   "test-model",
+		Temperature: 0.7,
+		MaxTokens:   100,
 	}
 
 	// Create a gateway
-	gateway := NewAIGateway(cfg, &logger)
+	gateway, err := NewAIGateway(aiConfig, &logger)
+	assert.NoError(t, err)
 
 	// Test with empty prompt
 	text, err := gateway.GenerateText(context.Background(), "")
@@ -40,15 +42,17 @@ func TestAIGateway_AnalyzeSentiment(t *testing.T) {
 	logger := zerolog.Nop()
 
 	// Create a config
-	cfg := &config.Config{
-		// Assuming AI config is added to the config struct
-		// AI: config.AIConfig{
-		// 	APIKey: "test-key",
-		// },
+	aiConfig := config.AIConfig{
+		Provider:    "mock",
+		APIKey:      "test-key",
+		ModelName:   "test-model",
+		Temperature: 0.7,
+		MaxTokens:   100,
 	}
 
 	// Create a gateway
-	gateway := NewAIGateway(cfg, &logger)
+	gateway, err := NewAIGateway(aiConfig, &logger)
+	assert.NoError(t, err)
 
 	// Test with empty text
 	sentiment, err := gateway.AnalyzeSentiment(context.Background(), "")

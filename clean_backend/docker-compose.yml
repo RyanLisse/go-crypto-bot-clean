@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - SERVER_PORT=8080
+      - SERVER_HOST=0.0.0.0
+      - DATABASE_DRIVER=sqlite
+      - DATABASE_PATH=/app/data/crypto_bot.db
+      - LOG_LEVEL=debug
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/bin/worker"]
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_DRIVER=sqlite
+      - DATABASE_PATH=/app/data/crypto_bot.db
+      - LOG_LEVEL=debug
+    restart: unless-stopped
+    depends_on:
+      - server

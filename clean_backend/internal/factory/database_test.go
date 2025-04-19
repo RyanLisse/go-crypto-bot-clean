@@ -9,7 +9,29 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
+
+// Helper function for tests to create a GORM config
+func createGormConfig(cfg *config.Config, log *zerolog.Logger) *gorm.Config {
+	// Create a GORM logger that uses zerolog
+	gormLogger := gormLogger.New(
+		&GormLogAdapter{Logger: log},
+		gormLogger.Config{
+			SlowThreshold:             time.Second,     // Log slow queries
+			LogLevel:                  gormLogger.Warn, // Log level
+			IgnoreRecordNotFoundError: true,            // Ignore not found errors
+			Colorful:                  false,           // Disable color
+		},
+	)
+
+	// Configure GORM
+	return &gorm.Config{
+		Logger:                 gormLogger,
+		SkipDefaultTransaction: true, // For better performance
+	}
+}
 
 func TestConnectTurso_LocalOnly(t *testing.T) {
 	// Create a test logger

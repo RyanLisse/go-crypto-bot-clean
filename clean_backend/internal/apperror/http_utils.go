@@ -41,7 +41,7 @@ func HandleError(handler ErrorHandler, logger *zerolog.Logger) http.HandlerFunc 
 		}
 
 		// Respond with error
-		RespondWithError(w, r, appErr)
+		RespondWithError(w, r, appErr, requestID)
 	}
 }
 

@@ -1,0 +1,62 @@
+server:
+  port: 8080
+  host: "0.0.0.0"
+  read_timeout: 10s
+  write_timeout: 10s
+  idle_timeout: 60s
+  cors_allowed_origins:
+    - "https://your-production-domain.com"
+
+database:
+  type: "sqlite"
+  dsn: "./data/crypto_bot.db"
+  max_idle_conns: 10
+  max_open_conns: 50
+  conn_max_lifetime_minutes: 60
+  enable_logging: false
+  auto_migrate: true
+
+log:
+  level: "info"
+  pretty: false
+
+encryption:
+  current_key_id: "default"
+  keys: "[{\"id\":\"default\",\"key\":\"6368616e676520746869732070617373776f726420746f206120736563726574\"}]"
+
+auth:
+  provider: "clerk"
+  disabled: false
+  clerk_secret_key: ""
+  clerk_jwt_public_key: ""
+  clerk_jwt_template: ""
+  jwt_secret: ""
+  use_enhanced: true
+
+# Environment settings
+environment: "production"
+
+# Mock settings - all disabled in production
+mock:
+  enabled: false
+  mexc_client: false
+  wallet_service: false
+  auth_service: false
+  ai_service: false
+
+# Rate limiting
+rate_limit:
+  enabled: true
+  requests_per_minute: 60
+
+# CSRF protection
+csrf:
+  enabled: true
+  secure: true
+  path: "/"
+  domain: ""
+  max_age: 86400
+
+# Secure headers
+secure_headers:
+  enabled: true

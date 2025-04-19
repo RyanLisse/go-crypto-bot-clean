@@ -23,7 +23,7 @@ func NewRepositoryFactory(db *gorm.DB, logger *zerolog.Logger) *RepositoryFactor
 }
 
 // WithEncryptionService sets the encryption service for the factory
-func (f *RepositoryFactory) WithEncryptionService(encryptionSvc port.EncryptionService) *RepositoryFactory {
+func (f *RepositoryFactory) WithEncryptionService(encryptionSvc port.EncryptionService) port.RepositoryFactory {
 	f.encryptionSvc = encryptionSvc
 	return f
 }
@@ -65,6 +65,16 @@ func (f *RepositoryFactory) CreateAPICredentialRepository() port.APICredentialRe
 		return nil
 	}
 	return NewAPICredentialRepository(f.db, f.encryptionSvc, f.logger)
+}
+
+// CreateNewCoinRepository creates a new NewCoinRepository
+func (f *RepositoryFactory) CreateNewCoinRepository() port.NewCoinRepository {
+	return NewNewCoinRepository(f.db, f.logger)
+}
+
+// CreateEventRepository creates a new EventRepository
+func (f *RepositoryFactory) CreateEventRepository() port.EventRepository {
+	return NewEventRepository(f.db, f.logger)
 }
 
 // CreateRiskRepository creates a new RiskRepository

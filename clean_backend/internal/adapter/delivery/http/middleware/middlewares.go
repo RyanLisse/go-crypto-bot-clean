@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"runtime/debug"
@@ -186,7 +187,7 @@ func (m *UnifiedErrorMiddleware) Middleware() func(http.Handler) http.Handler {
 					default:
 						// Handle non-error panic types more gracefully
 						errMsg := fmt.Sprintf("unknown panic type: %T, value: %v", err, err)
-						appErr = apperror.NewInternal(fmt.Errorf(errMsg))
+						appErr = apperror.NewInternal(errors.New(errMsg))
 					}
 
 					// Add trace ID (temporarily in Details) and write error response

@@ -119,20 +119,20 @@ func TestWriteError(t *testing.T) {
 	t.Run("WriteError writes correct response", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		err := apperror.NewBadRequest("Invalid input", map[string]string{"field": "error"}, nil)
-		
+
 		apperror.WriteError(w, err)
-		
+
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
-		
+
 		var response map[string]interface{}
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
-		
+
 		assert.False(t, response["success"].(bool))
 		errorData := response["error"].(map[string]interface{})
 		assert.Equal(t, "BAD_REQUEST", errorData["code"])
 		assert.Equal(t, "Invalid input", errorData["message"])
-		
+
 		details := errorData["details"].(map[string]interface{})
 		assert.Equal(t, "error", details["field"])
 	})
@@ -143,15 +143,15 @@ func TestRespondWithError(t *testing.T) {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/test", nil)
 		r.Header.Set("X-Request-ID", "test-trace-id")
-		
+
 		err := apperror.NewNotFound("User", "123", nil)
-		apperror.RespondWithError(w, r, err)
-		
+		apperror.RespondWithError(w, r, err, "test-trace-id")
+
 		assert.Equal(t, http.StatusNotFound, w.Code)
-		
+
 		var response map[string]interface{}
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
-		
+
 		errorData := response["error"].(map[string]interface{})
 		assert.Equal(t, "test-trace-id", errorData["trace_id"])
 	})
@@ -163,18 +163,18 @@ func TestFromError(t *testing.T) {
 		result := apperror.FromError(original)
 		assert.Same(t, original, result)
 	})
-	
+
 	t.Run("FromError converts standard error to AppError", func(t *testing.T) {
 		result := apperror.FromError(errors.New("standard error"))
 		assert.Equal(t, http.StatusInternalServerError, result.GetStatusCode())
 		assert.Equal(t, "INTERNAL_ERROR", result.GetErrorCode())
 	})
-	
+
 	t.Run("FromError converts known error types correctly", func(t *testing.T) {
 		result := apperror.FromError(apperror.ErrNotFound)
 		assert.Equal(t, http.StatusNotFound, result.GetStatusCode())
 		assert.Equal(t, "NOT_FOUND", result.GetErrorCode())
-		
+
 		result = apperror.FromError(apperror.ErrUnauthorized)
 		assert.Equal(t, http.StatusUnauthorized, result.GetStatusCode())
 		assert.Equal(t, "UNAUTHORIZED", result.GetErrorCode())

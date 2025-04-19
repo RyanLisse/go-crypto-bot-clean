@@ -33,16 +33,16 @@ func provideUnifiedErrorMiddleware(logger *zerolog.Logger) *middleware.UnifiedEr
 func provideMiddlewares(config *config.Config, logger *zerolog.Logger) *MiddlewareProviders {
 	// Create auth service
 	authService := provideAuthService(config, logger)
-	
+
 	// Create auth middleware factory
 	authFactory := provideAuthMiddlewareFactory(authService, config, logger)
-	
+
 	// Create default auth middleware
 	authMiddleware := provideAuthMiddleware(authFactory)
-	
+
 	// Create error middleware
 	errorMiddleware := provideUnifiedErrorMiddleware(logger)
-	
+
 	return &MiddlewareProviders{
 		AuthService:     authService,
 		AuthFactory:     authFactory,

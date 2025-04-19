@@ -1,6 +1,8 @@
 package crypto
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -28,13 +30,43 @@ func NewKeyManager(currentKeyID string, keysStr string, logger *zerolog.Logger) 
 		return nil, errors.New("current key ID cannot be empty")
 	}
 
-	// Create a default key for testing
-	keys := make(map[string][]byte)
-	keys["default"] = []byte("6368616e676520746869732070617373776f726420746f206120736563726574")
+	// Parse the keys JSON string
+	var keyEntries []KeyEntry
+	if keysStr != "" { // Handle empty keysStr gracefully
+		if err := json.Unmarshal([]byte(keysStr), &keyEntries); err != nil {
+			return nil, fmt.Errorf("failed to parse keys JSON: %w", err)
+		}
+	}
 
-	// Verify current key exists
+	// Create map from parsed entries
+	keys := make(map[string][]byte)
+	for _, entry := range keyEntries {
+		if entry.ID == "" {
+			logger.Warn().Msg("Skipping key entry with empty ID")
+			continue
+		}
+		if entry.Key == "" {
+			logger.Warn().Str("keyID", entry.ID).Msg("Skipping key entry with empty key")
+			continue
+		}
+		// Assume keys are hex encoded strings, decode them
+		keyBytes, err := hex.DecodeString(entry.Key)
+		if err != nil {
+			logger.Error().Err(err).Str("keyID", entry.ID).Msg("Failed to decode hex key")
+			return nil, fmt.Errorf("failed to decode hex key for ID %s: %w", entry.ID, err)
+		}
+		keys[entry.ID] = keyBytes // Store decoded bytes
+	}
+
+	// Verify current key exists in the parsed keys
 	if _, ok := keys[currentKeyID]; !ok {
-		return nil, fmt.Errorf("current key ID %s not found in keys", currentKeyID)
+		// If no keys were provided in keysStr, check if it's the default test key
+		if len(keyEntries) == 0 && currentKeyID == "default" {
+			logger.Warn().Msg("No keys provided in JSON, using default test key as current key")
+			keys["default"] = []byte("6368616e676520746869732070617373776f726420746f206120736563726574")
+		} else {
+			return nil, fmt.Errorf("current key ID %s not found in provided keys", currentKeyID)
+		}
 	}
 
 	return &KeyManager{

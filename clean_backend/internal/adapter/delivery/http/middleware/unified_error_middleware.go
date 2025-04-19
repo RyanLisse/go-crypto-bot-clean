@@ -55,15 +55,15 @@ func (m *EnhancedErrorMiddleware) Middleware() func(http.Handler) http.Handler {
 					switch e := err.(type) {
 					case *apperror.AppError:
 						// If it's already an AppError, use it directly
-						apperror.RespondWithError(rw, r, e)
+						apperror.RespondWithError(rw, r, e, requestID)
 					case error:
 						// If it's an error, wrap it in an internal server error
 						appErr := apperror.NewInternal(e)
-						apperror.RespondWithError(rw, r, appErr)
+						apperror.RespondWithError(rw, r, appErr, requestID)
 					default:
 						// For any other type, convert to string and wrap in internal server error
 						appErr := apperror.NewInternal(fmt.Errorf("%v", e))
-						apperror.RespondWithError(rw, r, appErr)
+						apperror.RespondWithError(rw, r, appErr, requestID)
 					}
 				}
 			}()

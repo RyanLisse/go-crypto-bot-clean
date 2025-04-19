@@ -41,12 +41,13 @@ func NewDBConnection(cfg *config.Config, log *zerolog.Logger) (*gorm.DB, error) 
 	var db *gorm.DB
 	var err error
 
+	// Always use Turso for SQLite-based databases to avoid symbol conflicts
 	switch cfg.Database.Type {
-	case "turso", "libsql":
+	case "turso", "libsql", "sqlite":
+		if cfg.Database.Type == "sqlite" {
+			log.Warn().Msg("SQLite driver is deprecated, please use Turso instead")
+		}
 		db, err = connectTurso(cfg, gormConfig, log)
-	case "sqlite":
-		log.Warn().Msg("SQLite driver is deprecated, please use Turso instead")
-		db, err = connectTurso(cfg, gormConfig, log) // Fallback to Turso
 	case "mysql":
 		db, err = gorm.Open(mysql.Open(cfg.Database.DSN), gormConfig)
 	case "postgres":
