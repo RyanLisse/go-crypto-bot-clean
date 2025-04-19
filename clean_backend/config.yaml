@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: 8080
   host: "0.0.0.0"
   read_timeout: 10s
   write_timeout: 10s
@@ -8,8 +8,10 @@ server:
     - "*"
 
 database:
-  type: "sqlite"
-  dsn: "./data/crypto_bot.db"
+  type: "turso"
+  dsn: "libsql://local.db"
+  turso_url: "${TURSO_DB_URL}"
+  auth_token: "${TURSO_AUTH_TOKEN}"
   max_idle_conns: 5
   max_open_conns: 10
   conn_max_lifetime_minutes: 60
@@ -32,3 +34,14 @@ auth:
   clerk_jwt_template: ""
   jwt_secret: "default-jwt-secret-for-testing-only"
   use_enhanced: true
+
+# Environment settings
+environment: "development"
+
+# Mock settings
+mock:
+  enabled: true
+  mexc_client: true
+  wallet_service: false
+  auth_service: false
+  ai_service: false
