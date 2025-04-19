@@ -1,0 +1,34 @@
+server:
+  port: 8081
+  host: "0.0.0.0"
+  read_timeout: 10s
+  write_timeout: 10s
+  idle_timeout: 60s
+  cors_allowed_origins:
+    - "*"
+
+database:
+  type: "sqlite"
+  dsn: "./data/crypto_bot.db"
+  max_idle_conns: 5
+  max_open_conns: 10
+  conn_max_lifetime_minutes: 60
+  enable_logging: false
+  auto_migrate: true
+
+log:
+  level: "info"
+  pretty: true
+
+encryption:
+  current_key_id: "default"
+  keys: "[{\"id\":\"default\",\"key\":\"6368616e676520746869732070617373776f726420746f206120736563726574\"}]"
+
+auth:
+  provider: "test"
+  disabled: false
+  clerk_secret_key: ""
+  clerk_jwt_public_key: ""
+  clerk_jwt_template: ""
+  jwt_secret: "default-jwt-secret-for-testing-only"
+  use_enhanced: true
