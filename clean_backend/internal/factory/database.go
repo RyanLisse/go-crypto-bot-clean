@@ -1,10 +1,12 @@
 package factory
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/RyanLisse/go-crypto-bot-clean/clean_backend/internal/config"
@@ -79,22 +81,64 @@ func NewDBConnection(cfg *config.Config, log *zerolog.Logger) (*gorm.DB, error) 
 
 // connectTurso creates a connection to a Turso database using the gorm-libsql driver
 func connectTurso(cfg *config.Config, gormConfig *gorm.Config, log *zerolog.Logger) (*gorm.DB, error) {
-	// Check if Turso URL and auth token are set
-	if cfg.Database.TursoURL == "" || cfg.Database.AuthToken == "" {
-		log.Warn().Msg("TURSO_DB_URL or TURSO_AUTH_TOKEN not set, using local database only")
-		// Use local database only
-		return gorm.Open(libsql.Open(cfg.Database.DSN), gormConfig)
-	}
-
 	// Create a persistent directory for the local database
 	dir := "./data/turso"
 	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Error().Err(err).Msg("Failed to create database directory")
 		return nil, fmt.Errorf("error creating database directory: %w", err)
 	}
 
 	// Use a persistent path for the local database
 	dbPath := filepath.Join(dir, "local.db")
 	log.Info().Str("path", dbPath).Msg("Using local database for Turso")
+
+	// Check if Turso URL and auth token are set for remote sync
+	if cfg.Database.TursoURL == "" || cfg.Database.AuthToken == "" {
+		log.Warn().Msg("TURSO_DB_URL or TURSO_AUTH_TOKEN not set, using local database only without remote sync")
+		// Use local database only without remote sync
+		return openLocalDatabase(dbPath, gormConfig, cfg, log)
+	}
+
+	// Try to connect with remote sync enabled
+	db, err := openWithRemoteSync(dbPath, cfg, gormConfig, log)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to connect with remote sync, falling back to local-only mode")
+		return openLocalDatabase(dbPath, gormConfig, cfg, log)
+	}
+
+	// Setup periodic sync if successful
+	setupPeriodicSync(db, cfg, log)
+
+	return db, nil
+}
+
+// openLocalDatabase opens a local SQLite database without remote sync
+func openLocalDatabase(dbPath string, gormConfig *gorm.Config, cfg *config.Config, log *zerolog.Logger) (*gorm.DB, error) {
+	// Use the file path directly with the SQLite dialect
+	log.Info().Msg("Opening local database without remote sync")
+	db, err := gorm.Open(libsql.Open(fmt.Sprintf("file:%s", dbPath)), gormConfig)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to open local database")
+		return nil, fmt.Errorf("failed to open local database: %w", err)
+	}
+
+	// Configure connection pool
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get database connection")
+		return db, nil // Return DB anyway, it might still work
+	}
+
+	sqlDB.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+	sqlDB.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+	sqlDB.SetConnMaxLifetime(time.Duration(cfg.Database.ConnMaxLifetimeMinutes) * time.Minute)
+
+	return db, nil
+}
+
+// openWithRemoteSync opens a database with remote sync enabled
+func openWithRemoteSync(dbPath string, cfg *config.Config, gormConfig *gorm.Config, log *zerolog.Logger) (*gorm.DB, error) {
+	log.Info().Str("remote_url", cfg.Database.TursoURL).Msg("Creating embedded replica connector with remote sync")
 
 	// Create connector with auth token
 	connector, err := libsqlgo.NewEmbeddedReplicaConnector(
@@ -103,16 +147,19 @@ func connectTurso(cfg *config.Config, gormConfig *gorm.Config, log *zerolog.Logg
 		libsqlgo.WithAuthToken(cfg.Database.AuthToken),
 	)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create Turso connector, falling back to local database")
-		return gorm.Open(libsql.Open(cfg.Database.DSN), gormConfig)
+		return nil, fmt.Errorf("failed to create Turso connector: %w", err)
 	}
 
 	// Open database connection
 	sqlDB := sql.OpenDB(connector)
-	if err := sqlDB.Ping(); err != nil {
+
+	// Test the connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := sqlDB.PingContext(ctx); err != nil {
 		connector.Close()
-		log.Error().Err(err).Msg("Failed to connect to Turso database, falling back to local database")
-		return gorm.Open(libsql.Open(cfg.Database.DSN), gormConfig)
+		return nil, fmt.Errorf("failed to connect to Turso database: %w", err)
 	}
 
 	// Perform initial sync
@@ -130,7 +177,89 @@ func connectTurso(cfg *config.Config, gormConfig *gorm.Config, log *zerolog.Logg
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.Database.ConnMaxLifetimeMinutes) * time.Minute)
 
 	// Create GORM DB with the SQLite dialect using the Turso connector
-	return gorm.Open(libsql.Dialector{Conn: sqlDB}, gormConfig)
+	db, err := gorm.Open(libsql.Dialector{Conn: sqlDB}, gormConfig)
+	if err != nil {
+		connector.Close()
+		return nil, fmt.Errorf("failed to open database with GORM: %w", err)
+	}
+
+	return db, nil
+}
+
+// setupPeriodicSync sets up periodic synchronization with the remote database
+func setupPeriodicSync(db *gorm.DB, cfg *config.Config, log *zerolog.Logger) {
+	// Skip if sync is disabled
+	syncInterval := 5 * time.Minute // Default interval
+
+	// Check environment variables for sync configuration
+	syncEnabledStr := os.Getenv("TURSO_SYNC_ENABLED")
+	syncIntervalStr := os.Getenv("TURSO_SYNC_INTERVAL_SECONDS")
+
+	// Parse sync enabled flag
+	syncEnabled := true
+	if syncEnabledStr != "" {
+		var err error
+		syncEnabled, err = strconv.ParseBool(syncEnabledStr)
+		if err != nil {
+			log.Warn().Err(err).Msg("Invalid TURSO_SYNC_ENABLED value, defaulting to true")
+			syncEnabled = true
+		}
+	}
+
+	// Parse sync interval
+	if syncIntervalStr != "" {
+		syncIntervalSec, err := strconv.Atoi(syncIntervalStr)
+		if err != nil {
+			log.Warn().Err(err).Msg("Invalid TURSO_SYNC_INTERVAL_SECONDS value, using default")
+		} else if syncIntervalSec > 0 {
+			syncInterval = time.Duration(syncIntervalSec) * time.Second
+		}
+	}
+
+	if !syncEnabled {
+		log.Info().Msg("Periodic sync with Turso is disabled")
+		return
+	}
+
+	log.Info().Dur("interval", syncInterval).Msg("Setting up periodic sync with Turso")
+
+	// Start a goroutine for periodic sync
+	go func() {
+		ticker := time.NewTicker(syncInterval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			// Get the underlying SQL DB
+			sqlDB, err := db.DB()
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to get database connection for sync")
+				continue
+			}
+
+			// Get the connector
+			driver := sqlDB.Driver()
+
+			// Type assertion for the connector
+			type syncable interface {
+				Sync() (struct{ FramesSynced int }, error)
+			}
+
+			connector, ok := driver.(syncable)
+			if !ok {
+				log.Error().Msg("Database driver does not support sync")
+				return // Exit the goroutine if sync is not supported
+			}
+
+			// Perform sync
+			log.Debug().Msg("Performing periodic sync with Turso primary database")
+			result, err := connector.Sync()
+			if err != nil {
+				log.Error().Err(err).Msg("Periodic sync failed")
+			} else {
+				log.Debug().Int("frames_synced", result.FramesSynced).Msg("Periodic sync completed")
+			}
+		}
+	}()
 }
 
 // maskDSN masks sensitive information in the DSN for logging
