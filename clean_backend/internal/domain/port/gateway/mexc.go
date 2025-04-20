@@ -29,11 +29,14 @@ type MEXCGateway interface {
 	CancelOrder(ctx context.Context, symbol, orderID string) error // Requires authentication
 	// TODO: Add other trading methods (Batch Orders, etc.) as needed
 
-	// WebSocket (Optional - could be separate interface if complex)
-	// SubscribeTicker(ctx context.Context, symbol string, handler func(model.Ticker)) error
-	// SubscribeOrderBook(ctx context.Context, symbol string, depth int, handler func(model.OrderBook)) error
-	// Unsubscribe(ctx context.Context, streamName string) error
+	// WebSocket
+	SubscribeToTicker(ctx context.Context, symbol string, handler func(model.Ticker)) error
+	SubscribeToOrderBook(ctx context.Context, symbol string, depth int, handler func(model.OrderBook)) error
+	Unsubscribe(ctx context.Context, channel, symbol string) error
 
 	// GetExchangeInfo retrieves general exchange information
 	GetExchangeInfo(ctx context.Context) (*model.ExchangeInfo, error)
+
+	// ChangeAPIKey changes the API key used by the gateway
+	ChangeAPIKey(ctx context.Context, keyID string) error
 }

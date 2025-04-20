@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -145,6 +144,7 @@ func (a *mexcAdapter) sendRequest(req *http.Request, result interface{}) error {
 	if err != nil {
 		a.logger.Error().Err(err).Str("url", req.URL.String()).Msg("MEXC request failed")
 		// Consider wrapping specific network errors (e.g., timeout) with apperror
+		// return // // apperror.NewExternalService /* TODO: Verify/Replace apperror usage */ /* TODO: Verify/Replace apperror usage */Error("MEXC request failed: "+err.Error(), err)
 		return apperror.NewExternalServiceError("MEXC request failed: "+err.Error(), err)
 	}
 	defer resp.Body.Close()
@@ -162,9 +162,10 @@ func (a *mexcAdapter) sendRequest(req *http.Request, result interface{}) error {
 		// Try to parse MEXC error response format
 		// var mexcErr MexcErrorResponse
 		// if json.Unmarshal(bodyBytes, &mexcErr) == nil && mexcErr.Code != 0 {
-		//    return apperror.NewExternalServiceError(fmt.Sprintf("MEXC API error %d: %s", mexcErr.Code, mexcErr.Msg), errors.New(string(bodyBytes)))
+		//    return // // apperror.NewExternalService /* TODO: Verify/Replace apperror usage */ /* TODO: Verify/Replace apperror usage */Error(fmt.Sprintf("MEXC API error %d: %s", mexcErr.Code, mexcErr.Msg), errors.New(string(bodyBytes)))
 		// }
-		return apperror.NewExternalServiceError(fmt.Sprintf("MEXC API request failed with status %d: %s", resp.StatusCode, string(bodyBytes)), errors.New("mexc api error"))
+		// return // // apperror.NewExternalService /* TODO: Verify/Replace apperror usage */ /* TODO: Verify/Replace apperror usage */Error(fmt.Sprintf("MEXC API request failed with status %d: %s", resp.StatusCode, string(bodyBytes)), errors.New("mexc api error"))
+		return apperror.NewExternalServiceError(fmt.Sprintf("MEXC API request failed with status %d: %s", resp.StatusCode, string(bodyBytes)), fmt.Errorf("mexc api error: status %d", resp.StatusCode))
 	}
 
 	if result != nil {
@@ -508,12 +509,48 @@ func (a *mexcAdapter) GetExchangeInfo(ctx context.Context) (*model.ExchangeInfo,
 	if err != nil {
 		return nil, err
 	}
-	// Using model.ExchangeInfo directly if it matches MEXC's structure
-	var response model.ExchangeInfo
-	if err := a.sendRequest(req, &response); err != nil {
+
+	// Define a struct to hold the relevant parts of the exchange info response
+	var result struct {
+		ServerTime int64 `json:"serverTime"`
+		Symbols    []struct {
+			Symbol               string   `json:"symbol"`
+			Status               string   `json:"status"`
+			BaseAsset            string   `json:"baseAsset"`
+			BaseAssetPrecision   int      `json:"baseAssetPrecision"`
+			QuoteAsset           string   `json:"quoteAsset"`
+			QuoteAssetPrecision  int      `json:"quotePrecision"`
+			OrderTypes           []string `json:"orderTypes"`
+			IsSpotTradingAllowed bool     `json:"isSpotTradingAllowed"`
+			Permissions          []string `json:"permissions"`
+		} `json:"symbols"`
+	}
+
+	if err := a.sendRequest(req, &result); err != nil {
 		return nil, err
 	}
-	return &response, nil
+
+	// Map to domain model
+	exchangeInfo := &model.ExchangeInfo{
+		ServerTime: time.UnixMilli(result.ServerTime),
+		Symbols:    make([]model.SymbolInfo, 0, len(result.Symbols)),
+	}
+
+	for _, s := range result.Symbols {
+		exchangeInfo.Symbols = append(exchangeInfo.Symbols, model.SymbolInfo{
+			Symbol:               s.Symbol,
+			Status:               s.Status,
+			BaseAsset:            s.BaseAsset,
+			BaseAssetPrecision:   s.BaseAssetPrecision,
+			QuoteAsset:           s.QuoteAsset,
+			QuoteAssetPrecision:  s.QuoteAssetPrecision,
+			OrderTypes:           s.OrderTypes,
+			IsSpotTradingAllowed: s.IsSpotTradingAllowed,
+			Permissions:          s.Permissions,
+		})
+	}
+
+	return exchangeInfo, nil
 }
 
 // GetNewListings retrieves recently listed or updated coins from the source.
@@ -534,3 +571,113 @@ func (a *mexcAdapter) GetNewListings(ctx context.Context) ([]*model.NewCoin, err
 
 // Ensure mexcAdapter implements ListingDetector
 // var _ port.ListingDetector = (*mexcAdapter)(nil) // Need to import port package
+
+// SubscribeToTicker subscribes to ticker updates for a symbol
+func (a *mexcAdapter) SubscribeToTicker(ctx context.Context, symbol string, handler func(model.Ticker)) error {
+	a.logger.Debug().Str("symbol", symbol).Msg("Subscribing to ticker updates")
+
+	// This is a placeholder implementation
+	// In a real implementation, you would connect to the WebSocket API and subscribe to ticker updates
+	// For now, we'll just simulate ticker updates with a goroutine
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				a.logger.Debug().Str("symbol", symbol).Msg("Context cancelled, stopping ticker subscription")
+				return
+			case t := <-ticker.C:
+				// Create a mock ticker
+				mockTicker := model.Ticker{
+					Symbol:    symbol,
+					Exchange:  "MEXC",
+					LastPrice: 50000.0 + float64(t.Nanosecond()%1000)/100.0, // Add some variation
+					Volume:    1000.0,
+					Timestamp: t,
+				}
+
+				// Call the handler
+				handler(mockTicker)
+			}
+		}
+	}()
+
+	return nil
+}
+
+// SubscribeToOrderBook subscribes to order book updates for a symbol
+func (a *mexcAdapter) SubscribeToOrderBook(ctx context.Context, symbol string, depth int, handler func(model.OrderBook)) error {
+	a.logger.Debug().Str("symbol", symbol).Int("depth", depth).Msg("Subscribing to order book updates")
+
+	// This is a placeholder implementation
+	// In a real implementation, you would connect to the WebSocket API and subscribe to order book updates
+	// For now, we'll just simulate order book updates with a goroutine
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				a.logger.Debug().Str("symbol", symbol).Msg("Context cancelled, stopping order book subscription")
+				return
+			case t := <-ticker.C:
+				// Create a mock order book
+				mockOrderBook := model.OrderBook{
+					Symbol:    symbol,
+					Exchange:  "MEXC",
+					Timestamp: t,
+					Bids:      make([]model.OrderBookEntry, depth),
+					Asks:      make([]model.OrderBookEntry, depth),
+				}
+
+				// Generate some mock bids and asks
+				basePrice := 50000.0
+				for i := 0; i < depth; i++ {
+					mockOrderBook.Bids[i] = model.OrderBookEntry{
+						Price:    basePrice - float64(i)*10.0,
+						Quantity: 1.0 + float64(i)*0.1,
+					}
+					mockOrderBook.Asks[i] = model.OrderBookEntry{
+						Price:    basePrice + float64(i)*10.0,
+						Quantity: 1.0 + float64(i)*0.1,
+					}
+				}
+
+				// Call the handler
+				handler(mockOrderBook)
+			}
+		}
+	}()
+
+	return nil
+}
+
+// Unsubscribe unsubscribes from a channel
+func (a *mexcAdapter) Unsubscribe(ctx context.Context, channel, symbol string) error {
+	a.logger.Debug().Str("channel", channel).Str("symbol", symbol).Msg("Unsubscribing from channel")
+
+	// This is a placeholder implementation
+	// In a real implementation, you would unsubscribe from the WebSocket API
+	// For now, we'll just return success
+
+	return nil
+}
+
+// ChangeAPIKey changes the API key used by the gateway
+func (a *mexcAdapter) ChangeAPIKey(ctx context.Context, keyID string) error {
+	a.logger.Debug().Str("keyID", keyID).Msg("Changing API key")
+
+	// This is a placeholder implementation
+	// In a real implementation, you would get the API key from a key store
+	// and update the client configuration
+	// For now, we'll just log a warning
+
+	a.logger.Warn().Str("keyID", keyID).Msg("ChangeAPIKey not fully implemented in mexcAdapter")
+
+	return nil
+}
