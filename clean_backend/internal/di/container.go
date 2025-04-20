@@ -16,7 +16,6 @@ import (
 	portservice "github.com/RyanLisse/go-crypto-bot-clean/clean_backend/internal/domain/port/service"
 	"github.com/RyanLisse/go-crypto-bot-clean/clean_backend/internal/domain/service"
 	"github.com/RyanLisse/go-crypto-bot-clean/clean_backend/internal/factory"
-	"github.com/RyanLisse/go-crypto-bot-clean/clean_backend/internal/usecase"
 	"github.com/RyanLisse/go-crypto-bot-clean/clean_backend/internal/util/crypto"
 )
 
@@ -51,9 +50,9 @@ type Container struct {
 	MarketDataService port.MarketDataService
 	TradeExecutor     port.TradeExecutor
 	MexcSniperService *service.MexcSniperService
-	SniperShotUseCase *usecase.SniperShotService
-	WalletUseCase     port.WalletService
-	ProtectedUseCase  portservice.ProtectedUserService
+	// SniperShotUseCase *usecase.SniperShotService // Commented out until implemented
+	// WalletUseCase     port.WalletService        // Commented out until implemented
+	ProtectedUseCase portservice.ProtectedUserService
 
 	// Event Bus
 	EventBus port.EventBus
@@ -146,10 +145,7 @@ func NewContainer() (*Container, error) {
 	containerForProviders.AIGateway = aiGateway
 
 	// --- Initialize Domain/Infra Services (dependencies for Use Cases/Factory) ---
-	authService, err := provideAuthService(containerForProviders)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize AuthService: %w", err)
-	}
+	authService := provideAuthService(cfg, logger)
 	triggerService := provideTriggerService(logger)
 	marketDataService, err := provideMarketDataService(containerForProviders)
 	if err != nil {
@@ -163,17 +159,14 @@ func NewContainer() (*Container, error) {
 	// --- Initialize UseCase Factory ---
 	useCaseFactory := factory.NewUseCaseFactory(
 		logger,
-		tradeExecutor,
-		orderRepo,
-		marketDataService,
-		triggerService,
-		walletRepo,
+		cfg,
 		authService,
 	)
 
 	// --- Build Use Cases using Factory ---
-	sniperShotUseCase := useCaseFactory.BuildSniperShotService()
-	walletUseCase := useCaseFactory.BuildWalletUseCase()
+	// These use cases are commented out until they are properly implemented in the factory
+	// sniperShotUseCase := useCaseFactory.BuildSniperShotService()
+	// walletUseCase := useCaseFactory.BuildWalletUseCase()
 	protectedUseCase := useCaseFactory.BuildProtectedUserUseCase()
 
 	// --- Initialize MexcSniperService (Domain Service) - Keep for now if still needed elsewhere ---
@@ -183,7 +176,7 @@ func NewContainer() (*Container, error) {
 	}
 
 	// --- Initialize Middleware ---
-	middlewareProviders := provideMiddlewares(cfg, logger, authService)
+	middlewareProviders := provideMiddlewares(cfg, logger)
 
 	// --- Initialize Workers ---
 	newCoinWorker, err := provideNewCoinWorker(containerForProviders)
@@ -231,9 +224,9 @@ func NewContainer() (*Container, error) {
 		MarketDataService: marketDataService,
 		TradeExecutor:     tradeExecutor,
 		MexcSniperService: mexcSniperService,
-		SniperShotUseCase: sniperShotUseCase,
-		WalletUseCase:     walletUseCase,
-		ProtectedUseCase:  protectedUseCase,
+		// SniperShotUseCase: sniperShotUseCase, // Commented out until implemented
+		// WalletUseCase:     walletUseCase,     // Commented out until implemented
+		ProtectedUseCase: protectedUseCase,
 
 		// Event Bus
 		EventBus: eventBus,
@@ -385,14 +378,14 @@ func (c *Container) GetUseCaseFactory() *factory.UseCaseFactory {
 }
 
 // Getter for SniperShotUseCase
-func (c *Container) GetSniperShotUseCase() *usecase.SniperShotService {
-	return c.SniperShotUseCase
-}
+// func (c *Container) GetSniperShotUseCase() *usecase.SniperShotService {
+// 	return c.SniperShotUseCase
+// }
 
 // Getter for WalletUseCase
-func (c *Container) GetWalletUseCase() port.WalletService {
-	return c.WalletUseCase
-}
+// func (c *Container) GetWalletUseCase() port.WalletService {
+// 	return c.WalletUseCase
+// }
 
 // Getter for ProtectedUserUseCase
 func (c *Container) GetProtectedUserUseCase() portservice.ProtectedUserService {
